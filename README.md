@@ -1,13 +1,15 @@
 Experimental rewrite of [fishnet](https://github.com/niklasf/fishnet)
 =====================================================================
 
-Goals:
+Goals
+-----
 
 * Update to Stockfish 12 NNUE
 * Reproducible analysis
-* Modernize by dropping dead Python versions
+* Modernize by rewriting in Rust or dropping old Python versions
 
-Roadmap:
+Roadmap
+-------
 
 * [ ] Application structure
 * [ ] Signal handler
