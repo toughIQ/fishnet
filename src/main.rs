@@ -6,6 +6,7 @@ use tokio::{signal, time, sync};
 use structopt::StructOpt;
 use std::path::PathBuf;
 use std::num::ParseIntError;
+use url::Url;
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -32,7 +33,7 @@ struct Opt {
 
     /// Lichess HTTP endpoint.
     #[structopt(long, global = true)]
-    endpoint: Option<String>, // TODO: narrow to url?
+    endpoint: Option<Url>,
 
     /// Number of logical CPU cores to use for engine processes
     /// (or auto for n - 1, or all for n).
@@ -79,10 +80,10 @@ struct Legacy {
     #[structopt(long, global = true, hidden = true)]
     fixed_backoff: bool,
 
-    #[structopt(long, global = true, conflicts_with = "fixed-backoff", hidden = true)]
+    #[structopt(long, conflicts_with = "fixed-backoff", global = true, hidden = true)]
     no_fixed_backoff: bool,
 
-    #[structopt(long, short = "o", number_of_values = 2, multiple = true)]
+    #[structopt(long, short = "o", number_of_values = 2, multiple = true, global = true, hidden = true)]
     setoption: Vec<String>,
 }
 
@@ -140,8 +141,6 @@ enum Command {
     SystemdUser,
     /// Show debug information for OS and CPU.
     Cpuid,
-    /// Run benchmark suite.
-    Benchmark,
 }
 
 #[derive(Debug)]
