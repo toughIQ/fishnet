@@ -87,8 +87,7 @@ async fn producer(id: usize, tx: sync::mpsc::Sender<Product>) {
 
 #[tokio::main]
 async fn main() {
-    let opt = Opt::from_args();
-    dbg!(opt);
+    let opt = configure::parse_and_configure();
     panic!("stop");
 
     let num_threads = 2;

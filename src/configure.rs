@@ -177,3 +177,8 @@ struct Config {
     memory: bool,
     fixed_backoff: bool,
 }
+
+pub fn parse_and_configure() -> Opt {
+    let opt = Opt::from_args();
+    opt
+}
