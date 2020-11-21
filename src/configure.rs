@@ -140,10 +140,8 @@ impl FromStr for Backlog {
                 (s, 60 * 60)
             } else if let Some(s) = s.strip_suffix("m") {
                 (s, 60)
-            } else if let Some(s) = s.strip_suffix("s") {
-                (s, 1)
             } else {
-                (s, 1)
+                (s.strip_suffix("s").unwrap_or(s), 1)
             };
             Backlog::Duration(Duration::from_secs(u64::from(s.trim().parse::<u32>()?) * factor))
         })
