@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::signal::unix::SignalKind;
 use tokio::{signal, time, sync, process};
@@ -43,10 +44,13 @@ async fn producer(id: usize, tx: sync::mpsc::Sender<Product>) {
 
         let (next_tx, next_rx) = sync::oneshot::channel();
 
-        tx.send(Product {
+        if let Err(_) = tx.send(Product {
             res: job_result,
             next_tx,
-        }).await.expect("send");
+        }).await {
+            println!("{} no longer interested", prefix);
+            break;
+        }
 
         match next_rx.await {
             Ok(Job::Analysis(ana)) => {
@@ -75,10 +79,14 @@ async fn main() {
 
     let (tx, mut rx) = sync::mpsc::channel(num_threads);
 
-    for id in 1..=5 {
+    let shutdown_barrier = Arc::new(sync::Barrier::new(num_threads + 1));
+
+    for id in 1..=num_threads {
         let tx = tx.clone();
+        let shutdown_barrier = shutdown_barrier.clone();
         tokio::spawn(async move {
             producer(id, tx).await;
+            shutdown_barrier.wait().await;
         });
     }
     drop(tx);
@@ -91,10 +99,20 @@ async fn main() {
 
     loop {
         tokio::select! {
+            res = ctrl_c.recv() => {
+                res.expect("signal handler installed");
+                println!("ctrl+c");
+                if shutdown_soon {
+                    println!("emergency shutdown");
+                    rx.close();
+                } else {
+                    shutdown_soon = true;
+                }
+            }
             req = rx.recv() => {
                 if let Some(req) = req {
                     if let Some(res) = req.res {
-                        println!("got result");
+                        println!("got result: {:?}", res);
                     }
 
                     if in_queue == 0 {
@@ -117,15 +135,17 @@ async fn main() {
                         req.next_tx.send(Job::Idle).expect("send to worker");
                     }
                 } else {
-                    println!("all workers exited");
-                    return;
+                    if in_queue > 0 {
+                        println!("had to abort jobs");
+                    }
+                    println!("rx closed and empty");
+                    break;
                 }
-            }
-            res = ctrl_c.recv() => {
-                res.expect("signal handler installed");
-                println!("ctrl+c");
-                shutdown_soon = true;
             }
         }
     }
+
+    println!("waiting for workers to shut down ...");
+    shutdown_barrier.wait().await;
+    println!("... workers shut down");
 }
