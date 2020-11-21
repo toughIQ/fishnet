@@ -57,7 +57,7 @@ struct Opt {
     legacy: Legacy,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Default, StructOpt)]
 struct Verbose {
     #[structopt(name = "verbose", short = "v", parse(from_occurrences), global = true)]
     level: u32,
@@ -94,6 +94,12 @@ enum Cores {
     Number(u32),
 }
 
+impl Default for Cores {
+    fn default() -> Cores {
+        Cores::Auto
+    }
+}
+
 impl FromStr for Cores {
     type Err = ParseIntError;
 
@@ -113,6 +119,12 @@ enum Backlog {
     Short,
     Long,
     Duration(Duration),
+}
+
+impl Default for Backlog {
+    fn default() -> Backlog {
+        Backlog::Duration(Duration::default())
+    }
 }
 
 impl FromStr for Backlog {
