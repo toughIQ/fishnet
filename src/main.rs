@@ -15,42 +15,42 @@ struct Opt {
 
     /// Automatically install available updates on startup and at random
     /// intervals.
-    #[structopt(long)]
+    #[structopt(long, global = true)]
     auto_update: bool,
 
     /// Do not use a configuration file.
-    #[structopt(long)]
+    #[structopt(long, conflicts_with = "conf", global = true)]
     no_conf: bool,
 
     /// Configuration file.
-    #[structopt(long, parse(from_os_str))]
+    #[structopt(long, parse(from_os_str), global = true)]
     conf: Option<PathBuf>,
 
     /// Fishnet API key.
-    #[structopt(long, alias = "apikey", short = "k")]
+    #[structopt(long, alias = "apikey", short = "k", global = true)]
     key: Option<String>,
 
     /// Lichess HTTP endpoint.
-    #[structopt(long)]
+    #[structopt(long, global = true)]
     endpoint: Option<String>, // TODO: narrow to url?
 
     /// Number of logical CPU cores to use for engine processes
     /// (or auto for n - 1, or all for n).
-    #[structopt(long)]
+    #[structopt(long, alias = "threads", global = true)]
     cores: Option<Cores>,
 
     /// Prefer to run high-priority jobs only if older than this duration
     /// (for example 120s).
-    #[structopt(long)]
+    #[structopt(long, global = true)]
     user_backlog: Option<Backlog>,
 
     /// Prefer to run low-priority jobs only if older than this duration
     /// (for example 2h).
-    #[structopt(long)]
+    #[structopt(long, global = true)]
     system_backlog: Option<Backlog>,
 
     #[structopt(subcommand)]
-    command: Command,
+    command: Option<Command>,
 
     #[structopt(flatten)]
     legacy: Legacy,
@@ -58,36 +58,33 @@ struct Opt {
 
 #[derive(Debug, StructOpt)]
 struct Verbose {
-    #[structopt(name = "verbose", short = "v", parse(from_occurrences))]
+    #[structopt(name = "verbose", short = "v", parse(from_occurrences), global = true)]
     level: u32,
 }
 
 #[derive(Debug, StructOpt)]
 struct Legacy {
-    #[structopt(long)]
+    #[structopt(long, global = true, hidden = true)]
     memory: Option<String>,
 
-    #[structopt(long, parse(from_os_str))]
+    #[structopt(long, parse(from_os_str), global = true, hidden = true)]
     engine_dir: Option<PathBuf>,
 
-    #[structopt(long)]
-    stockfish_command: Option<String>, // TODO: check type
+    #[structopt(long, global = true, hidden = true)]
+    stockfish_command: Option<String>,
 
-    #[structopt(long)]
+    #[structopt(long, global = true, hidden = true)]
     threads_per_process: Option<u32>,
 
-    #[structopt(long)]
+    #[structopt(long, global = true, hidden = true)]
     fixed_backoff: bool,
 
-    #[structopt(long)]
+    #[structopt(long, global = true, conflicts_with = "fixed-backoff", hidden = true)]
     no_fixed_backoff: bool,
 
     // TODO: fix if possible
     //#[structopt(long, short = "o")]
     //setoption: (String, String),
-
-    #[structopt(long)]
-    threads: Option<u32>,
 }
 
 #[derive(Debug)]
@@ -122,18 +119,30 @@ impl FromStr for Backlog {
     type Err = ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Backlog::Short) // TODO
+        if s == "short" {
+            Ok(Backlog::Short)
+        } else if s == "long" {
+            Ok(Backlog::Long)
+        } else {
+            todo!("parse duration")
+        }
     }
 }
 
 #[derive(StructOpt, Debug)]
 enum Command {
+    /// Run analysis (default).
     Run,
+    /// Run interactive configuration.
     Configure,
-    Benchmark,
+    /// Generate a systemd service file.
     Systemd,
+    /// Generate a systemd user service file.
     SystemdUser,
+    /// Show debug information for OS and CPU.
     Cpuid,
+    /// Run benchmark suite.
+    Benchmark,
 }
 
 #[derive(Debug)]
