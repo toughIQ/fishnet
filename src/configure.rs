@@ -178,7 +178,21 @@ struct Config {
     fixed_backoff: bool,
 }
 
+fn intro() {
+    println!(r#".   _________         .    ."#);
+    println!(r#".  (..       \_    ,  |\  /|"#);
+    println!(r#".   \       O  \  /|  \ \/ /"#);
+    println!(r#".    \______    \/ |   \  /      _____ _     _     _   _      _"#);
+    println!(r#".       vvvv\    \ |   /  |     |  ___(_)___| |__ | \ | | ___| |_"#);
+    println!(r#".       \^^^^  ==   \_/   |     | |_  | / __| '_ \|  \| |/ _ \ __|"#);
+    println!(r#".        `\_   ===    \.  |     |  _| | \__ \ | | | |\  |  __/ |_"#);
+    println!(r#".        / /\_   \ /      |     |_|   |_|___/_| |_|_| \_|\___|\__| {}"#, env!("CARGO_PKG_VERSION"));
+    println!(r#".        |/   \_  \|      /"#);
+    println!(r#".               \________/      Distributed Stockfish analysis for lichess.org"#);
+}
+
 pub fn parse_and_configure() -> Opt {
+    intro();
     let opt = Opt::from_args();
     opt
 }
