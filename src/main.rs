@@ -1,8 +1,140 @@
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::signal::unix::SignalKind;
-use tokio::{signal, time, sync, process};
-use std::collections::VecDeque;
+use tokio::{signal, time, sync};
+use structopt::StructOpt;
+use std::path::PathBuf;
+use std::num::ParseIntError;
+
+#[derive(Debug, StructOpt)]
+struct Opt {
+    /// Increase verbosity.
+    #[structopt(flatten)]
+    verbose: Verbose,
+
+    /// Automatically install available updates on startup and at random
+    /// intervals.
+    #[structopt(long)]
+    auto_update: bool,
+
+    /// Do not use a configuration file.
+    #[structopt(long)]
+    no_conf: bool,
+
+    /// Configuration file.
+    #[structopt(long, parse(from_os_str))]
+    conf: Option<PathBuf>,
+
+    /// Fishnet API key.
+    #[structopt(long, alias = "apikey", short = "k")]
+    key: Option<String>,
+
+    /// Lichess HTTP endpoint.
+    #[structopt(long)]
+    endpoint: Option<String>, // TODO: narrow to url?
+
+    /// Number of logical CPU cores to use for engine processes
+    /// (or auto for n - 1, or all for n).
+    #[structopt(long)]
+    cores: Option<Cores>,
+
+    /// Prefer to run high-priority jobs only if older than this duration
+    /// (for example 120s).
+    #[structopt(long)]
+    user_backlog: Option<Backlog>,
+
+    /// Prefer to run low-priority jobs only if older than this duration
+    /// (for example 2h).
+    #[structopt(long)]
+    system_backlog: Option<Backlog>,
+
+    #[structopt(subcommand)]
+    command: Command,
+
+    #[structopt(flatten)]
+    legacy: Legacy,
+}
+
+#[derive(Debug, StructOpt)]
+struct Verbose {
+    #[structopt(name = "verbose", short = "v", parse(from_occurrences))]
+    level: u32,
+}
+
+#[derive(Debug, StructOpt)]
+struct Legacy {
+    #[structopt(long)]
+    memory: Option<String>,
+
+    #[structopt(long, parse(from_os_str))]
+    engine_dir: Option<PathBuf>,
+
+    #[structopt(long)]
+    stockfish_command: Option<String>, // TODO: check type
+
+    #[structopt(long)]
+    threads_per_process: Option<u32>,
+
+    #[structopt(long)]
+    fixed_backoff: bool,
+
+    #[structopt(long)]
+    no_fixed_backoff: bool,
+
+    // TODO: fix if possible
+    //#[structopt(long, short = "o")]
+    //setoption: (String, String),
+
+    #[structopt(long)]
+    threads: Option<u32>,
+}
+
+#[derive(Debug)]
+enum Cores {
+    Auto,
+    All,
+    Number(u32),
+}
+
+impl FromStr for Cores {
+    type Err = ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "auto" {
+            Ok(Cores::Auto)
+        } else if s == "all" {
+            Ok(Cores::All)
+        } else {
+            Ok(Cores::Number(s.parse()?))
+        }
+    }
+}
+
+#[derive(Debug)]
+enum Backlog {
+    Short,
+    Long,
+    Duration(Duration),
+}
+
+impl FromStr for Backlog {
+    type Err = ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Backlog::Short) // TODO
+    }
+}
+
+#[derive(StructOpt, Debug)]
+enum Command {
+    Run,
+    Configure,
+    Benchmark,
+    Systemd,
+    SystemdUser,
+    Cpuid,
+}
 
 #[derive(Debug)]
 enum Job {
@@ -83,6 +215,9 @@ async fn producer(id: usize, tx: sync::mpsc::Sender<Product>) {
 
 #[tokio::main]
 async fn main() {
+    let opt = Opt::from_args();
+    dbg!(opt);
+
     let num_threads = 2;
 
     let mut ctrl_c = signal::unix::signal(SignalKind::interrupt()).expect("install signal handler");
