@@ -2,12 +2,12 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::signal::unix::SignalKind;
 use tokio::{signal, time, sync, process};
+use std::collections::VecDeque;
 
 #[derive(Debug)]
 enum Job {
     Analysis(AnalysisJob),
-    Idle,
-    Shutdown,
+    Idle(Duration),
 }
 
 #[derive(Debug)]
@@ -63,15 +63,16 @@ async fn producer(id: usize, tx: sync::mpsc::Sender<Product>) {
             Ok(Job::Analysis(ana)) => {
                 job = Some(ana);
             }
-            Ok(Job::Idle) => {
+            Ok(Job::Idle(t)) => {
                 println!("{} idling ...", prefix);
-            }
-            Ok(Job::Shutdown) => {
-                println!("{} shutting down", prefix);
-                break;
+                tokio::select! {
+                    _ = time::sleep(t) => {}
+                    _ = tx.closed() => {}
+                }
             }
             Err(_) => {
                 println!("{} next_tx dropped", prefix);
+                break;
             }
         }
     }
@@ -137,9 +138,9 @@ async fn main() {
                         in_queue -= 1;
                         req.next_tx.send(Job::Analysis(AnalysisJob)).expect("send to worker");
                     } else if shutdown_soon {
-                        req.next_tx.send(Job::Shutdown).expect("send to worker");
+                        drop(req.next_tx);
                     } else {
-                        req.next_tx.send(Job::Idle).expect("send to worker");
+                        req.next_tx.send(Job::Idle(Duration::from_millis(50))).expect("send to worker");
                     }
                 } else {
                     if in_queue > 0 {
