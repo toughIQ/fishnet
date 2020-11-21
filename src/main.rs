@@ -82,9 +82,8 @@ struct Legacy {
     #[structopt(long, global = true, conflicts_with = "fixed-backoff", hidden = true)]
     no_fixed_backoff: bool,
 
-    // TODO: fix if possible
-    //#[structopt(long, short = "o")]
-    //setoption: (String, String),
+    #[structopt(long, short = "o", number_of_values = 2, multiple = true)]
+    setoption: Vec<String>,
 }
 
 #[derive(Debug)]
