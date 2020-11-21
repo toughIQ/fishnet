@@ -1,0 +1,7 @@
+[package]
+name = "fishnet"
+version = "0.0.1"
+authors = ["Niklas Fiekas <niklas.fiekas@backscattering.de>"]
+edition = "2018"
+
+[dependencies]
