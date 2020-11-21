@@ -1,5 +1,11 @@
-Experimental rewrite of [fishnet](https://github.com/niklasf/fishnet)
-=====================================================================
+fishnet: distributed Stockfish analysis for lichess.org
+=======================================================
+
+Experimental rewrite
+--------------------
+
+This is an experimental rewrite of [fishnet](https://github.com/niklasf/fishnet).
+Look there for the current version.
 
 Goals
 -----
