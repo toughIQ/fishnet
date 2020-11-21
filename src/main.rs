@@ -166,6 +166,22 @@ enum Command {
     Cpuid,
 }
 
+#[derive(Debug, Default)]
+struct Config {
+    key: Option<String>,
+    cores: Option<Cores>,
+    endpoint: Option<Url>,
+    user_backlog: Option<Backlog>,
+    system_backlog: Option<Backlog>,
+
+    // Legacy.
+    engine_dir: bool,
+    stockfish_command: bool,
+    threads_per_process: bool,
+    memory: bool,
+    fixed_backoff: bool,
+}
+
 #[derive(Debug)]
 enum Job {
     Analysis(AnalysisJob),
