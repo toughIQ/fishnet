@@ -98,13 +98,13 @@ impl FromStr for Cores {
     type Err = ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s == "auto" {
-            Ok(Cores::Auto)
+        Ok(if s == "auto" {
+            Cores::Auto
         } else if s == "all" {
-            Ok(Cores::All)
+            Cores::All
         } else {
-            Ok(Cores::Number(s.parse()?))
-        }
+            Cores::Number(s.parse()?)
+        })
     }
 }
 
@@ -119,13 +119,24 @@ impl FromStr for Backlog {
     type Err = ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s == "short" {
-            Ok(Backlog::Short)
+        Ok(if s == "short" {
+            Backlog::Short
         } else if s == "long" {
-            Ok(Backlog::Long)
+            Backlog::Long
         } else {
-            todo!("parse duration")
-        }
+            let (s, factor) = if let Some(s) = s.strip_suffix("d") {
+                (s, 60 * 60 * 24)
+            } else if let Some(s) = s.strip_suffix("h") {
+                (s, 60 * 60)
+            } else if let Some(s) = s.strip_suffix("m") {
+                (s, 60)
+            } else if let Some(s) = s.strip_suffix("s") {
+                (s, 1)
+            } else {
+                (s, 1)
+            };
+            Backlog::Duration(Duration::from_secs(u64::from(s.trim().parse::<u32>()?) * factor))
+        })
     }
 }
 
