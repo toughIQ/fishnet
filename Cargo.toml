@@ -11,3 +11,4 @@ keywords = ["chess"]
 edition = "2018"
 
 [dependencies]
+tokio = { version = "0.3", features = ["full"] } # TODO: consider reducing features
