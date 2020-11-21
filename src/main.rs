@@ -1,4 +1,5 @@
 use std::time::Duration;
+use tokio::signal::unix::SignalKind;
 use tokio::{signal, time, sync};
 
 #[derive(Debug)]
@@ -8,10 +9,11 @@ struct Product {
 }
 
 /// Produces analysis.
-async fn producer(tx: sync::mpsc::Sender<Product>) {
+async fn producer(id: usize, tx: sync::mpsc::Sender<Product>) {
     loop {
-        println!("working ...");
+        println!("{} working ...", " ".repeat(id * 15));
         time::sleep(Duration::from_millis(5000)).await;
+        println!("{} ... worked.", " ".repeat(id * 15));
 
         let (next_tx, next_rx) = sync::oneshot::channel();
 
@@ -20,8 +22,7 @@ async fn producer(tx: sync::mpsc::Sender<Product>) {
             next_tx,
         }).await.expect("send");
 
-        let job = next_rx.await.expect("main sender not dropped");
-        dbg!(job);
+        let _job = next_rx.await.expect("main sender not dropped");
     }
 }
 
@@ -31,14 +32,37 @@ async fn main() {
 
     let (tx, mut rx) = sync::mpsc::channel(num_threads);
 
-    for _ in 0..2 {
+    for id in 1..=5 {
         let tx = tx.clone();
         tokio::spawn(async move {
-            producer(tx).await;
+            producer(id, tx).await;
         });
     }
 
-    while let Some(req) = rx.recv().await {
-        dbg!(req).next_tx.send(()).expect("send");
+    let mut in_queue: usize = 0;
+
+    let mut ctrl_c = signal::unix::signal(SignalKind::interrupt()).expect("install signal handler");
+
+    loop {
+        tokio::select! {
+            req = rx.recv() => {
+                if let Some(req) = req {
+                    if in_queue == 0 {
+                        println!("fetching ...");
+                        time::sleep(Duration::from_millis(2000)).await;
+                        println!("... fetched.");
+                        in_queue += 7;
+                    }
+
+                    in_queue -= 1;
+                    req.next_tx.send(()).expect("send");
+                }
+            }
+            res = ctrl_c.recv() => {
+                res.expect("signal handler installed");
+                println!("ctrl+c");
+                return;
+            }
+        }
     }
 }

@@ -11,4 +11,5 @@ keywords = ["chess"]
 edition = "2018"
 
 [dependencies]
+#futures = "0.3"
 tokio = { version = "0.3", features = ["full"] } # TODO: consider reducing features
