@@ -35,9 +35,16 @@ async fn producer(id: usize, tx: sync::mpsc::Sender<Product>) {
     loop {
         let job_result = if let Some(job) = job.take() {
             println!("{} working ({:?}) ...", prefix, job);
-            time::sleep(Duration::from_millis(5000)).await;
-            println!("{} ... worked.", prefix);
-            Some(AnalysisResult)
+            tokio::select! {
+                _ = time::sleep(Duration::from_millis(5000)) => {
+                    println!("{} ... worked.", prefix);
+                    Some(AnalysisResult)
+                }
+                _ = tx.closed() => {
+                    println!("{} ... cancelled.", prefix);
+                    None
+                }
+            }
         } else {
             None
         };
@@ -77,6 +84,8 @@ async fn producer(id: usize, tx: sync::mpsc::Sender<Product>) {
 async fn main() {
     let num_threads = 2;
 
+    let mut ctrl_c = signal::unix::signal(SignalKind::interrupt()).expect("install signal handler");
+
     let (tx, mut rx) = sync::mpsc::channel(num_threads);
 
     let shutdown_barrier = Arc::new(sync::Barrier::new(num_threads + 1));
@@ -92,8 +101,6 @@ async fn main() {
     drop(tx);
 
     let mut in_queue: usize = 0;
-
-    let mut ctrl_c = signal::unix::signal(SignalKind::interrupt()).expect("install signal handler");
 
     let mut shutdown_soon = false;
 
