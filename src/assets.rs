@@ -25,6 +25,7 @@ impl Asset {
             use std::os::unix::fs::PermissionsExt as _;
             file.metadata()?.permissions().set_mode(700);
         }
+
         file.sync_all()?;
         Ok(path)
     }
@@ -41,6 +42,8 @@ impl fmt::Debug for Asset {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Asset")
             .field("name", &self.name)
+            .field("needs", &self.needs)
+            .field("executable", &self.executable)
             .finish()
     }
 }
