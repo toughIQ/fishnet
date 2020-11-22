@@ -8,9 +8,7 @@ use crate::configure::Command;
 
 #[tokio::main]
 async fn main() {
-    let mut http_api = HttpApi::new();
-
-    let opt = configure::parse_and_configure(&mut http_api).await;
+    let opt = configure::parse_and_configure().await;
 
     tracing::subscriber::set_global_default(
         tracing_subscriber::fmt()

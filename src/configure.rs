@@ -74,6 +74,7 @@ pub struct Key(pub String);
 pub enum KeyError {
     EmptyKey,
     InvalidKey,
+    AccessDenied,
 }
 
 impl fmt::Display for KeyError {
@@ -81,6 +82,7 @@ impl fmt::Display for KeyError {
         match self {
             KeyError::EmptyKey => f.write_str("key expected to be non-empty"),
             KeyError::InvalidKey => f.write_str("key expected to be alphanumeric"),
+            KeyError::AccessDenied => f.write_str("access denied"),
         }
     }
 }
@@ -235,7 +237,7 @@ fn intro() {
     println!();
 }
 
-pub async fn parse_and_configure(http_api: &mut HttpApi) -> Opt {
+pub async fn parse_and_configure() -> Opt {
     let mut opt = Opt::from_args();
 
     // Show intro.
@@ -287,6 +289,7 @@ pub async fn parse_and_configure(http_api: &mut HttpApi) -> Opt {
             };
 
             // Step 2: Key.
+            let mut http_api = HttpApi::new(endpoint.clone());
             eprintln!();
             loop {
                 let mut key = String::new();
@@ -319,7 +322,13 @@ pub async fn parse_and_configure(http_api: &mut HttpApi) -> Opt {
                 };
 
                 let key = match Key::from_str(key) {
-                    Ok(key) if network => http_api.check_key(key).await,
+                    Ok(key) if network => match http_api.check_key(key).await {
+                        Ok(res) => res,
+                        Err(err) => {
+                            eprintln!("Network error: {}", err);
+                            continue;
+                        }
+                    },
                     Ok(key) => Ok(key),
                     Err(err) => Err(err),
                 };

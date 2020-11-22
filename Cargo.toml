@@ -16,10 +16,11 @@ bitflags = "1.2"
 configparser = "1.0"
 num_cpus = "1.13"
 raw-cpuid = "8.1.2"
+reqwest = "0.10"
 shell-escape = "0.1"
 structopt = "0.3"
 tempfile = "3.1"
-tokio = { version = "0.3", features = ["full"] } # TODO: consider reducing features
+tokio = { version = "0.2", features = ["full"] } # TODO: consider reducing features
 tracing = "0.1"
 tracing-subscriber = "0.2"
 url = "2.2"

@@ -1,3 +1,6 @@
+use url::Url;
+use std::time::Duration;
+use reqwest::StatusCode;
 use crate::configure::{Key, KeyError};
 
 struct Acquire {
@@ -129,14 +132,30 @@ struct QueueStatus {
 }
 
 pub struct HttpApi {
+    endpoint: Url,
+    client: reqwest::Client,
 }
 
 impl HttpApi {
-    pub fn new() -> HttpApi {
-        HttpApi { }
+    pub fn new(endpoint: Url) -> HttpApi {
+        HttpApi {
+            endpoint,
+            client: reqwest::Client::builder()
+                .user_agent(concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION")))
+                .timeout(Duration::from_secs(15))
+                .build().expect("client")
+        }
     }
 
-    pub async fn check_key(&mut self, key: Key) -> Result<Key, KeyError> {
-        todo!()
+    pub async fn check_key(&mut self, key: Key) -> Result<Result<Key, KeyError>, reqwest::Error> {
+        let url = format!("{}/key/{}", self.endpoint, key.0);
+        match self.client.get(&url).send().await {
+            Ok(res) if res.status() == StatusCode::NOT_FOUND => Ok(Err(KeyError::AccessDenied)),
+            Ok(res) => match res.error_for_status() {
+                Ok(_) => Ok(Ok(key)),
+                Err(err) => Err(err),
+            }
+            Err(err) => Err(err),
+        }
     }
 }
