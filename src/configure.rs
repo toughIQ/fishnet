@@ -10,7 +10,6 @@ use std::num::{ParseIntError, NonZeroUsize};
 use std::time::Duration;
 use url::Url;
 use configparser::ini::Ini;
-use tracing::warn;
 
 const DEFAULT_ENDPOINT: &str = "https://lichess.org/fishnet";
 
@@ -19,56 +18,56 @@ const DEFAULT_ENDPOINT: &str = "https://lichess.org/fishnet";
 pub struct Opt {
     /// Increase verbosity.
     #[structopt(flatten)]
-    verbose: Verbose,
+    pub verbose: Verbose,
 
     /// Automatically install available updates on startup and at random
     /// intervals.
     #[structopt(long, global = true)]
-    auto_update: bool,
+    pub auto_update: bool,
 
     /// Configuration file.
     #[structopt(long, parse(from_os_str), default_value = "fishnet.ini", global = true)]
-    conf: PathBuf,
+    pub conf: PathBuf,
 
     /// Do not use a configuration file.
     #[structopt(long, conflicts_with = "conf", global = true)]
-    no_conf: bool,
+    pub no_conf: bool,
 
     /// Fishnet API key.
     #[structopt(long, alias = "apikey", short = "k", global = true)]
-    key: Option<String>,
+    pub key: Option<String>,
 
     /// Lichess HTTP endpoint.
     #[structopt(long, global = true)]
-    endpoint: Option<Url>,
+    pub endpoint: Option<Url>,
 
     /// Number of logical CPU cores to use for engine processes
     /// (or auto for n - 1, or all for n).
     #[structopt(long, alias = "threads", global = true)]
-    cores: Option<Cores>,
+    pub cores: Option<Cores>,
 
     /// Prefer to run high-priority jobs only if older than this duration
     /// (for example 120s).
     #[structopt(long, global = true)]
-    user_backlog: Option<Backlog>,
+    pub user_backlog: Option<Backlog>,
 
     /// Prefer to run low-priority jobs only if older than this duration
     /// (for example 2h).
     #[structopt(long, global = true)]
-    system_backlog: Option<Backlog>,
+    pub system_backlog: Option<Backlog>,
 
     #[structopt(subcommand)]
-    command: Option<Command>,
+    pub command: Option<Command>,
 }
 
 #[derive(Debug, Default, StructOpt)]
-struct Verbose {
+pub struct Verbose {
     #[structopt(name = "verbose", short = "v", parse(from_occurrences), global = true)]
     level: u32,
 }
 
 #[derive(Debug)]
-enum Cores {
+pub enum Cores {
     Auto,
     All,
     Number(NonZeroUsize),
@@ -105,7 +104,7 @@ impl fmt::Display for Cores {
 }
 
 #[derive(Debug)]
-enum Backlog {
+pub enum Backlog {
     Short,
     Long,
     Duration(Duration),
@@ -141,7 +140,7 @@ impl FromStr for Backlog {
 }
 
 #[derive(StructOpt, Debug, PartialEq, Eq)]
-enum Command {
+pub enum Command {
     /// Donate CPU time by running analysis (default).
     Run,
     /// Run interactive configuration.
