@@ -10,6 +10,7 @@ use std::num::{ParseIntError, NonZeroUsize};
 use std::time::Duration;
 use url::Url;
 use configparser::ini::Ini;
+use tracing::{warn, error};
 use crate::api::HttpApi;
 
 const DEFAULT_ENDPOINT: &str = "https://lichess.org/fishnet";
@@ -240,11 +241,17 @@ fn intro() {
 pub async fn parse_and_configure() -> Opt {
     let mut opt = Opt::from_args();
 
-    // Show intro.
-    match opt.command {
-        Some(Command::Systemd) | Some(Command::SystemdUser) => (),
-        _ => intro(),
-    }
+    // Show intro and configure logger.
+    (match opt.command {
+        Some(Command::Systemd) | Some(Command::SystemdUser) => {
+            tracing::subscriber::set_global_default(
+                tracing_subscriber::fmt().with_writer(io::stderr).finish())
+        },
+        _ => {
+            intro();
+            tracing::subscriber::set_global_default(tracing_subscriber::fmt().finish())
+        }
+    }).expect("set global tracing subsriber");
 
     // Handle config file.
     if !opt.no_conf || opt.command == Some(Command::Configure) {
@@ -263,7 +270,6 @@ pub async fn parse_and_configure() -> Opt {
 
         // Configuration dialog.
         if (!file_found && opt.command != Some(Command::Run)) || opt.command == Some(Command::Configure) {
-            eprintln!();
             eprintln!("### Configuration");
 
             // Step 1: Endpoint.
@@ -325,7 +331,7 @@ pub async fn parse_and_configure() -> Opt {
                     Ok(key) if network => match http_api.check_key(key).await {
                         Ok(res) => res,
                         Err(err) => {
-                            eprintln!("Network error: {}", err);
+                            error!("Network error: {}", err);
                             continue;
                         }
                     },
@@ -406,7 +412,10 @@ pub async fn parse_and_configure() -> Opt {
                     }
                     _ => (),
                 }
+
             }
+
+            eprintln!();
         }
 
         // Merge config file into command line arguments.
@@ -439,8 +448,7 @@ pub async fn parse_and_configure() -> Opt {
     let all = num_cpus::get();
     match opt.cores {
         Some(Cores::Number(n)) if usize::from(n) > all => {
-            eprintln!();
-            eprintln!("# Warning: Requested logical {} cores, but only {} available. Capped.", n, all);
+            warn!("Requested logical {} cores, but only {} available. Capped.", n, all);
             opt.cores = Some(Cores::All);
         }
         _ => (),

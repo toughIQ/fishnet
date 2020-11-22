@@ -10,10 +10,6 @@ use crate::configure::Command;
 async fn main() {
     let opt = configure::parse_and_configure().await;
 
-    tracing::subscriber::set_global_default(
-        tracing_subscriber::fmt()
-            .finish()).expect("set gloabl tracing subsriber");
-
     if opt.auto_update {
         todo!("--auto-update");
     }
