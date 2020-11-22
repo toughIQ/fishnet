@@ -254,7 +254,7 @@ pub fn parse_and_configure() -> Opt {
             println!();
             print!("Done. Write configuration to {:?} now? (default: yes) ", opt.conf);
             io::stdout().flush().expect("flush stdout");
-            io::stdin().read_line(&mut backlog).expect("read confirmation from stdin");
+            io::stdin().read_line(&mut write).expect("read confirmation from stdin");
         }
     }
 
