@@ -1,6 +1,11 @@
 use atty::Stream;
 use crate::configure::Opt;
 
+fn exec_start(opt: Opt) -> String {
+    let exe = std::env::current_exe().expect("current exe").;
+    let builder = Vec::new();
+}
+
 pub fn systemd_user(opt: Opt) {
     let exe = std::env::current_exe().expect("current exe");
     println!("[Unit]");
