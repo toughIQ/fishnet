@@ -9,6 +9,8 @@ use std::time::Duration;
 use url::Url;
 use configparser::ini::Ini;
 
+const DEFAULT_ENDPOINT: &str = "https://lichess.org/fishnet";
+
 /// Distributed Stockfish analysis for lichess.org.
 #[derive(Debug, StructOpt)]
 pub struct Opt {
@@ -173,6 +175,7 @@ pub fn parse_and_configure() -> Opt {
     // Handle config file.
     if !opt.no_conf || opt.command == Some(Command::Configure) {
         let mut ini = Ini::new();
+        ini.set_default_section("Fishnet");
 
         // Load ini.
         let file_found = match fs::read_to_string(&opt.conf) {
@@ -189,26 +192,71 @@ pub fn parse_and_configure() -> Opt {
             eprintln!();
             eprintln!("### Configuration");
 
-            let mut endpoint = String::new();
             eprintln!();
-            eprint!("Endpoint (default: ...): ");
-            io::stderr().flush().expect("flush stderr");
-            io::stdin().read_line(&mut endpoint).expect("read endpoint from stdin");
+            let endpoint = loop {
+                let mut endpoint = String::new();
+                eprint!("Endpoint (default: {}): ", ini.get("Fishnet", "Endpoint").unwrap_or(DEFAULT_ENDPOINT.to_owned()));
+                io::stderr().flush().expect("flush stderr");
+                io::stdin().read_line(&mut endpoint).expect("read endpoint from stdin");
 
-            let mut key = String::new();
+                let endpoint = Some(endpoint.trim().to_owned())
+                    .filter(|e| !e.is_empty())
+                    .or_else(|| ini.get("Fishnet", "Endpoint").map(|e| e.trim().to_owned()))
+                    .unwrap_or(DEFAULT_ENDPOINT.to_owned());
+
+                match Url::from_str(&endpoint) {
+                    Ok(url) => {
+                        ini.setstr("Fishnet", "Endpoint", Some(&endpoint));
+                        break opt.endpoint.clone().unwrap_or(url);
+                    }
+                    Err(err) => eprintln!("Invalid: {}", err),
+                }
+            };
+
             eprintln!();
-            eprint!("Personal fishnet key (append ! to force, https://lichess.org/get-fishnet): ");
-            io::stderr().flush().expect("flush stderr");
-            io::stdin().read_line(&mut key).expect("read key from stdin");
+            loop {
+                let mut key = String::new();
+                let required = if let Some(current) = ini.get("Fishnet", "Key") {
+                    eprint!("Personal fishnet key (append ! to force, default: keep {}): ", "*".repeat(current.trim().len()));
+                    false
+                } else if endpoint.host_str() == Some("lichess.org") {
+                    eprint!("Personal fishnet key (append ! to force, https://lichess.org/get-fishnet): ");
+                    true
+                } else {
+                    eprint!("Personal fishnet key (append ! to force, probably not required): ");
+                    false
+                };
 
+                io::stderr().flush().expect("flush stderr");
+                io::stdin().read_line(&mut key).expect("read key from stdin");
+
+                let key = key.trim();
+                let key = if key.is_empty() {
+                    if required {
+                        eprintln!("Key required.");
+                        continue;
+                    } else {
+                        break;
+                    }
+                } else if let Some(key) = key.strip_suffix("!") {
+                    key
+                } else {
+                    // TODO: Validate.
+                    key
+                };
+
+                ini.setstr("Fishnet", "Key", Some(key));
+                break;
+            }
+
+            eprintln!();
             let mut cores = String::new();
-            eprintln!();
             eprint!("Number of logical cores to use for engine threads (default {}, max {}): ", 3, 4);
             io::stderr().flush().expect("flush stderr");
             io::stdin().read_line(&mut cores).expect("read cores from stdin");
 
-            let mut backlog = String::new();
             eprintln!();
+            let mut backlog = String::new();
             eprintln!("You can choose to join only if a backlog is building up. Examples:");
             eprintln!("* Rented server exclusively for fishnet: choose no");
             eprintln!("* Running on a laptop: choose yes");
@@ -216,8 +264,8 @@ pub fn parse_and_configure() -> Opt {
             io::stderr().flush().expect("flush stderr");
             io::stdin().read_line(&mut backlog).expect("read backlog from stdin");
 
-            let mut write = String::new();
             eprintln!();
+            let mut write = String::new();
             eprint!("Done. Write configuration to {:?} now? (default: yes) ", opt.conf);
             io::stderr().flush().expect("flush stderr");
             io::stdin().read_line(&mut write).expect("read confirmation from stdin");

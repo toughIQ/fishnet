@@ -82,7 +82,7 @@ checksum = "fe1d7dcda7d1da79e444bdfba1465f2f849a58b07774e1df473ee77030cb47a7"
 
 [[package]]
 name = "fishnet"
-version = "0.0.1"
+version = "2.0.0-alpha"
 dependencies = [
  "configparser",
  "structopt",
