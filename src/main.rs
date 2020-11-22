@@ -1,6 +1,7 @@
 mod configure;
 mod assets;
 mod systemd;
+mod api;
 
 use crate::configure::Command;
 
