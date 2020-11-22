@@ -1,10 +1,7 @@
 mod configure;
 mod systemd;
 
-use std::env;
-use std::fs::OpenOptions;
 use crate::configure::Command;
-use tracing::error;
 
 #[tokio::main]
 async fn main() {
@@ -21,7 +18,7 @@ async fn main() {
     match opt.command {
         Some(Command::Configure) => (),
         None | Some(Command::Run) => todo!("run"),
-        Some(Command::Systemd) => todo!("systemd"),
+        Some(Command::Systemd) => systemd::systemd_system(opt),
         Some(Command::SystemdUser) => systemd::systemd_user(opt),
         Some(Command::Cpuid) => todo!("cpuid"),
     }
