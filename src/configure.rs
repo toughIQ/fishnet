@@ -199,6 +199,7 @@ fn intro() {
     println!(r#"#        / /\_   \ /      |     |_|   |_|___/_| |_|_| \_|\___|\__| {}"#, env!("CARGO_PKG_VERSION"));
     println!(r#"#        |/   \_  \|      /"#);
     println!(r#"#               \________/      Distributed Stockfish analysis for lichess.org"#);
+    println!();
 }
 
 pub fn parse_and_configure() -> Opt {
