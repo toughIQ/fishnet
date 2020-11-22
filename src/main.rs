@@ -1,4 +1,5 @@
 mod configure;
+mod cpuid;
 mod systemd;
 
 use crate::configure::Command;
@@ -20,6 +21,6 @@ async fn main() {
         None | Some(Command::Run) => todo!("run"),
         Some(Command::Systemd) => systemd::systemd_system(opt),
         Some(Command::SystemdUser) => systemd::systemd_user(opt),
-        Some(Command::Cpuid) => todo!("cpuid"),
+        Some(Command::Cpuid) => cpuid::cpuid(),
     }
 }
