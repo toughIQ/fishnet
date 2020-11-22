@@ -4,7 +4,6 @@ mod systemd;
 mod api;
 
 use std::mem;
-use std::io;
 use std::sync::Arc;
 use tracing::{info, warn};
 use tokio::signal;
@@ -68,7 +67,8 @@ async fn run(opt: Opt) {
         sig_int
     };
 
-    // Spawn workers.
+    // Spawn workers. Workers handle engine processes and send their results
+    // to tx, thereby requesting more work.
     let shutdown_barrier = Arc::new(Barrier::new(cores + 1));
     let mut rx = {
         let (tx, rx) = mpsc::channel::<()>(cores);
@@ -76,6 +76,7 @@ async fn run(opt: Opt) {
             let tx = tx.clone();
             let shutdown_barrier = shutdown_barrier.clone();
             tokio::spawn(async move {
+                tokio::time::delay_for(std::time::Duration::from_secs(5)).await;
                 drop(tx);
                 shutdown_barrier.wait().await;
             });
@@ -85,7 +86,8 @@ async fn run(opt: Opt) {
 
     let mut shutdown_soon = false;
 
-    // Main loop.
+    // Main loop. Handles signals, forwards worker results from rx to the HTTP
+    // API and responds with more work.
     loop {
         tokio::select! {
             res = sig_int.recv() => {
@@ -94,18 +96,20 @@ async fn run(opt: Opt) {
                     info!("Stopping now.");
                     rx.close();
                 } else {
-                    info!("Stopping soon. Press ^C again to abort pendng jobs ...");
+                    info!("Stopping soon. Press ^C again to abort pending jobs ...");
                     shutdown_soon = true;
                 }
             }
             res = sig_term.recv() => {
                 res.expect("sigterm handler installed");
                 info!("Stopping now.");
+                shutdown_soon = true;
                 rx.close();
             }
             res = rx.recv() => {
                 if let Some(res) = res {
                 } else {
+                    // All workers dropped their tx.
                     // TODO: Actively abort jobs.
                     warn!("Aborting remaining jobs.");
                     break;
