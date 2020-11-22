@@ -10,6 +10,7 @@ use std::num::{ParseIntError, NonZeroUsize};
 use std::time::Duration;
 use url::Url;
 use configparser::ini::Ini;
+use tracing::warn;
 
 const DEFAULT_ENDPOINT: &str = "https://lichess.org/fishnet";
 
@@ -181,16 +182,16 @@ impl FromStr for Toggle {
 }
 
 fn intro() {
-    println!(r#".   _________         .    ."#);
-    println!(r#".  (..       \_    ,  |\  /|"#);
-    println!(r#".   \       O  \  /|  \ \/ /"#);
-    println!(r#".    \______    \/ |   \  /      _____ _     _     _   _      _"#);
-    println!(r#".       vvvv\    \ |   /  |     |  ___(_)___| |__ | \ | | ___| |_"#);
-    println!(r#".       \^^^^  ==   \_/   |     | |_  | / __| '_ \|  \| |/ _ \ __|"#);
-    println!(r#".        `\_   ===    \.  |     |  _| | \__ \ | | | |\  |  __/ |_"#);
-    println!(r#".        / /\_   \ /      |     |_|   |_|___/_| |_|_| \_|\___|\__| {}"#, env!("CARGO_PKG_VERSION"));
-    println!(r#".        |/   \_  \|      /"#);
-    println!(r#".               \________/      Distributed Stockfish analysis for lichess.org"#);
+    println!(r#"#   _________         .    ."#);
+    println!(r#"#  (..       \_    ,  |\  /|"#);
+    println!(r#"#   \       O  \  /|  \ \/ /"#);
+    println!(r#"#    \______    \/ |   \  /      _____ _     _     _   _      _"#);
+    println!(r#"#       vvvv\    \ |   /  |     |  ___(_)___| |__ | \ | | ___| |_"#);
+    println!(r#"#       \^^^^  ==   \_/   |     | |_  | / __| '_ \|  \| |/ _ \ __|"#);
+    println!(r#"#        `\_   ===    \.  |     |  _| | \__ \ | | | |\  |  __/ |_"#);
+    println!(r#"#        / /\_   \ /      |     |_|   |_|___/_| |_|_| \_|\___|\__| {}"#, env!("CARGO_PKG_VERSION"));
+    println!(r#"#        |/   \_  \|      /"#);
+    println!(r#"#               \________/      Distributed Stockfish analysis for lichess.org"#);
 }
 
 pub fn parse_and_configure() -> Opt {
@@ -370,6 +371,17 @@ pub fn parse_and_configure() -> Opt {
                 });
             }
         }
+    }
+
+    // Validate number of cores.
+    let all = num_cpus::get();
+    match opt.cores {
+        Some(Cores::Number(n)) if usize::from(n) > all => {
+            eprintln!();
+            eprintln!("# Warning: Requested logical {} cores, but only {} available. Capped.", n, all);
+            opt.cores = Some(Cores::All);
+        }
+        _ => (),
     }
 
     opt

@@ -87,8 +87,14 @@ async fn producer(id: usize, tx: sync::mpsc::Sender<Product>) {
 
 #[tokio::main]
 async fn main() {
+    tracing::subscriber::set_global_default(
+        tracing_subscriber::fmt()
+            .finish()).expect("tracing");
+
+    tracing::error!("hey!");
+
     let opt = configure::parse_and_configure();
-    panic!("stop");
+    return;
 
     let num_threads = 2;
 
