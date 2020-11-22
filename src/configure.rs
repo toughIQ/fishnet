@@ -4,7 +4,7 @@ use std::io;
 use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::num::ParseIntError;
+use std::num::{ParseIntError, NonZeroU32};
 use std::time::Duration;
 use url::Url;
 use configparser::ini::Ini;
@@ -66,7 +66,7 @@ struct Verbose {
 enum Cores {
     Auto,
     All,
-    Number(u32),
+    Number(NonZeroU32),
 }
 
 impl Default for Cores {
