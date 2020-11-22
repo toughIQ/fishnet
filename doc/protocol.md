@@ -79,8 +79,6 @@ POST http://lichess.org/fishnet/analysis/{work_id}
   "analysis": [
     { // first ply
       "pv": "e2e4 e7e5 g1f3 g8f6",
-      "seldepth": 24,
-      "tbhits": 0,
       "depth": 18,
       "score": {
         "cp": 24
@@ -95,8 +93,6 @@ POST http://lichess.org/fishnet/analysis/{work_id}
     // ...
     { // second last ply
       "pv": "b4d3",
-      "seldepth": 2,
-      "tbhits": 0,
       "depth": 127,
       "score": {
         "mate": 1
