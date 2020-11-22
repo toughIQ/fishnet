@@ -119,6 +119,7 @@ name = "fishnet"
 version = "2.0.0-alpha"
 dependencies = [
  "atty",
+ "bitflags",
  "configparser",
  "num_cpus",
  "shell-escape",
