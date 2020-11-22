@@ -11,6 +11,16 @@ struct Fishnet {
     apikey: String,
 }
 
+impl From<Key> for Fishnet {
+    fn from(Key(apikey): Key) -> Fishnet {
+        Fishnet {
+            version: env!("CARGO_PKG_VERSION"),
+            python: "-",
+            apikey,
+        }
+    }
+}
+
 struct Stockfish {
     name: &'static str,
     options: StockfishOptions,
