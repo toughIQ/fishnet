@@ -1,3 +1,5 @@
+use crate::configure::{Key, KeyError};
+
 struct Acquire {
     fishnet: Fishnet,
     stockfish: Stockfish,
@@ -114,4 +116,17 @@ struct QueueStatus {
     acquired: u64,
     queued: u64,
     oldest: u64,
+}
+
+pub struct HttpApi {
+}
+
+impl HttpApi {
+    pub fn new() -> HttpApi {
+        HttpApi { }
+    }
+
+    pub async fn check_key(&mut self, key: Key) -> Result<Key, KeyError> {
+        todo!()
+    }
 }

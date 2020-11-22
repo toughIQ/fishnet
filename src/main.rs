@@ -3,11 +3,14 @@ mod assets;
 mod systemd;
 mod api;
 
+use crate::api::HttpApi;
 use crate::configure::Command;
 
 #[tokio::main]
 async fn main() {
-    let opt = configure::parse_and_configure();
+    let mut http_api = HttpApi::new();
+
+    let opt = configure::parse_and_configure(&mut http_api).await;
 
     tracing::subscriber::set_global_default(
         tracing_subscriber::fmt()

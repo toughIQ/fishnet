@@ -10,6 +10,7 @@ use std::num::{ParseIntError, NonZeroUsize};
 use std::time::Duration;
 use url::Url;
 use configparser::ini::Ini;
+use crate::api::HttpApi;
 
 const DEFAULT_ENDPOINT: &str = "https://lichess.org/fishnet";
 
@@ -234,7 +235,7 @@ fn intro() {
     println!();
 }
 
-pub fn parse_and_configure() -> Opt {
+pub async fn parse_and_configure(http_api: &mut HttpApi) -> Opt {
     let mut opt = Opt::from_args();
 
     // Show intro.
@@ -312,12 +313,18 @@ pub fn parse_and_configure() -> Opt {
                         break;
                     }
                 } else if let Some(key) = key.strip_suffix("!") {
-                    (key, true)
-                } else {
                     (key, false)
+                } else {
+                    (key, true)
                 };
 
-                match Key::from_str(key) {
+                let key = match Key::from_str(key) {
+                    Ok(key) if network => http_api.check_key(key).await,
+                    Ok(key) => Ok(key),
+                    Err(err) => Err(err),
+                };
+
+                match key  {
                     Ok(Key(key)) => {
                         ini.set("Fishnet", "Key", Some(key));
                         break;
