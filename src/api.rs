@@ -5,6 +5,7 @@ use reqwest::StatusCode;
 use tokio::time;
 use tokio::time::Instant;
 use tracing::{debug, error};
+use rand::Rng;
 use crate::configure::{Key, KeyError};
 
 struct Acquire {
@@ -144,7 +145,7 @@ pub struct HttpApi {
 
 impl HttpApi {
     pub fn new(endpoint: Url) -> HttpApi {
-        let mut api = HttpApi {
+        HttpApi {
             endpoint,
             not_before: Instant::now(),
             backoff: Duration::default(),
@@ -152,17 +153,13 @@ impl HttpApi {
                 .user_agent(concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION")))
                 .timeout(Duration::from_secs(15))
                 .build().expect("client")
-        };
-        api.reset_backoff();
-        api
-    }
-
-    fn reset_backoff(&mut self) {
-        self.backoff = Duration::from_millis(500);
+        }
     }
 
     fn backoff(&mut self, base: Duration) -> Duration {
-        self.backoff = min(Duration::from_secs(120), self.backoff * 2);
+        let low = self.backoff.as_millis() as u64;
+        let high = min(60_000, (low + 500) * 2);
+        self.backoff = Duration::from_millis(rand::thread_rng().gen_range(low, high));
         self.not_before = Instant::now() + base + self.backoff;
         base + self.backoff
     }
@@ -183,7 +180,7 @@ impl HttpApi {
             }
             Ok(res) => {
                 debug!("Response: {} -> {}.", url, res.status());
-                self.reset_backoff();
+                self.backoff = Duration::default();
                 Ok(res)
             }
             Err(err) => {

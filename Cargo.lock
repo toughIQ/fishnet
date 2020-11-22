@@ -160,6 +160,7 @@ dependencies = [
  "bitflags",
  "configparser",
  "num_cpus",
+ "rand",
  "raw-cpuid",
  "reqwest",
  "shell-escape",
