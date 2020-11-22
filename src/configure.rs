@@ -186,40 +186,40 @@ pub fn parse_and_configure() -> Opt {
 
         // Configuration dialog.
         if !file_found || opt.command == Some(Command::Configure) {
-            println!();
-            println!("### Configuration");
+            eprintln!();
+            eprintln!("### Configuration");
 
             let mut endpoint = String::new();
-            println!();
-            print!("Endpoint (default: ...): ");
-            io::stdout().flush().expect("flush stdout");
+            eprintln!();
+            eprint!("Endpoint (default: ...): ");
+            io::stderr().flush().expect("flush stderr");
             io::stdin().read_line(&mut endpoint).expect("read endpoint from stdin");
 
             let mut key = String::new();
-            println!();
-            print!("Personal fishnet key (append ! to force, https://lichess.org/get-fishnet): ");
-            io::stdout().flush().expect("flush stdout");
+            eprintln!();
+            eprint!("Personal fishnet key (append ! to force, https://lichess.org/get-fishnet): ");
+            io::stderr().flush().expect("flush stderr");
             io::stdin().read_line(&mut key).expect("read key from stdin");
 
             let mut cores = String::new();
-            println!();
-            print!("Number of logical cores to use for engine threads (default {}, max {}): ", 3, 4);
-            io::stdout().flush().expect("flush stdout");
+            eprintln!();
+            eprint!("Number of logical cores to use for engine threads (default {}, max {}): ", 3, 4);
+            io::stderr().flush().expect("flush stderr");
             io::stdin().read_line(&mut cores).expect("read cores from stdin");
 
             let mut backlog = String::new();
-            println!();
-            println!("You can choose to join only if a backlog is building up. Examples:");
-            println!("* Rented server exclusively for fishnet: choose no");
-            println!("* Running on a laptop: choose yes");
-            print!("Would you prefer to keep your client idle? (default: no) ");
-            io::stdout().flush().expect("flush stdout");
+            eprintln!();
+            eprintln!("You can choose to join only if a backlog is building up. Examples:");
+            eprintln!("* Rented server exclusively for fishnet: choose no");
+            eprintln!("* Running on a laptop: choose yes");
+            eprint!("Would you prefer to keep your client idle? (default: no) ");
+            io::stderr().flush().expect("flush stderr");
             io::stdin().read_line(&mut backlog).expect("read backlog from stdin");
 
             let mut write = String::new();
-            println!();
-            print!("Done. Write configuration to {:?} now? (default: yes) ", opt.conf);
-            io::stdout().flush().expect("flush stdout");
+            eprintln!();
+            eprint!("Done. Write configuration to {:?} now? (default: yes) ", opt.conf);
+            io::stderr().flush().expect("flush stderr");
             io::stdin().read_line(&mut write).expect("read confirmation from stdin");
         }
     }
