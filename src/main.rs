@@ -17,10 +17,9 @@ async fn main() {
     }
 
     match opt.command {
+        Some(Command::Run) | None => todo!("run"),
         Some(Command::Configure) => (),
-        None | Some(Command::Run) => todo!("run"),
         Some(Command::Systemd) => systemd::systemd_system(opt),
         Some(Command::SystemdUser) => systemd::systemd_user(opt),
-        Some(Command::Cpuid) => cpuid::cpuid(),
     }
 }

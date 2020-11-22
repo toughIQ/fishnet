@@ -159,8 +159,6 @@ pub enum Command {
     Systemd,
     /// Generate a systemd user service file.
     SystemdUser,
-    /// Show debug information about OS and CPU.
-    Cpuid,
 }
 
 #[derive(Debug)]
