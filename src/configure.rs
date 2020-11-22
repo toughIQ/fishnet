@@ -63,7 +63,7 @@ pub struct Opt {
 #[derive(Debug, Default, StructOpt)]
 pub struct Verbose {
     #[structopt(name = "verbose", short = "v", parse(from_occurrences), global = true)]
-    level: u32,
+    pub level: usize,
 }
 
 #[derive(Debug)]
@@ -136,6 +136,16 @@ impl FromStr for Backlog {
             };
             Backlog::Duration(Duration::from_secs(u64::from(s.trim().parse::<u32>()?) * factor))
         })
+    }
+}
+
+impl fmt::Display for Backlog {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Backlog::Short => f.write_str("short"),
+            Backlog::Long => f.write_str("long"),
+            Backlog::Duration(d) => write!(f, "{}s", d.as_secs()),
+        }
     }
 }
 
@@ -218,7 +228,7 @@ pub fn parse_and_configure() -> Opt {
         };
 
         // Configuration dialog.
-        if !file_found || opt.command == Some(Command::Configure) {
+        if (!file_found && opt.command != Some(Command::Run)) || opt.command == Some(Command::Configure) {
             eprintln!();
             eprintln!("### Configuration");
 

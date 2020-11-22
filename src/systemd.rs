@@ -1,20 +1,62 @@
+use std::env;
+use std::fs;
+use std::fmt::format;
 use atty::Stream;
+use shell_escape::escape;
 use crate::configure::Opt;
 
-fn exec_start(opt: Opt) -> String {
-    let exe = std::env::current_exe().expect("current exe").;
-    let builder = Vec::new();
+fn exec_start(opt: &Opt) -> String {
+    let exe = env::current_exe().expect("current exe").to_str().expect("printable exec path").to_owned();
+    let mut builder = vec![escape(exe.into()).into_owned()];
+    if opt.verbose.level > 0 {
+        builder.push(format!("-{}", "v".repeat(opt.verbose.level)));
+    }
+    if opt.auto_update {
+        builder.push("--auto-update".to_owned());
+    }
+    if opt.no_conf {
+        builder.push("--no-conf".to_owned());
+    } else {
+        builder.push("--conf".to_owned());
+        let canonical = fs::canonicalize(&opt.conf)
+            .expect("canonicalize config path")
+            .to_str()
+            .expect("printable config path").to_owned();
+        builder.push(escape(canonical.into()).into_owned());
+    }
+    if let Some(ref key) = opt.key {
+        builder.push("--key".to_owned());
+        builder.push(escape(key.into()).into_owned());
+    }
+    if let Some(ref endpoint) = opt.endpoint {
+        builder.push("--endpoint".to_owned());
+        builder.push(escape(endpoint.to_string().into()).into_owned());
+    }
+    if let Some(ref cores) = opt.cores {
+        builder.push("--cores".to_owned());
+        builder.push(escape(cores.to_string().into()).into_owned());
+    }
+    if let Some(ref user_backlog) = opt.user_backlog {
+        builder.push("--user-backlog".to_owned());
+        builder.push(escape(user_backlog.to_string().into()).into_owned());
+    }
+    if let Some(ref system_backlog) = opt.system_backlog {
+        builder.push("--system_backlog".to_owned());
+        builder.push(escape(system_backlog.to_string().into()).into_owned());
+    }
+    builder.push("run".to_owned());
+    builder.join(" ")
 }
 
 pub fn systemd_user(opt: Opt) {
-    let exe = std::env::current_exe().expect("current exe");
+    let exe = exec_start(&opt);
     println!("[Unit]");
     println!("Description=Fishnet client");
     println!("After=network-online.target");
     println!("Wants=network-online.target");
     println!();
     println!("[Service]");
-    println!("ExecStart={:?}", exe);
+    println!("ExecStart={}", exe);
     println!("KillMode=mixed");
     println!("WorkingDirectory=/tmp");
     println!("Nice=5");

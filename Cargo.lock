@@ -121,6 +121,7 @@ dependencies = [
  "atty",
  "configparser",
  "num_cpus",
+ "shell-escape",
  "structopt",
  "tokio",
  "tracing",
@@ -525,6 +526,12 @@ dependencies = [
  "lazy_static",
  "loom",
 ]
+
+[[package]]
+name = "shell-escape"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45bb67a18fa91266cc7807181f62f9178a6873bfad7dc788c42e6430db40184f"
 
 [[package]]
 name = "signal-hook-registry"
