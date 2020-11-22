@@ -19,6 +19,7 @@ const NNUE: Asset = Asset {
     data: include_bytes!("../assets/nn-c3ca321c51c9.nnue"),
 };
 
+#[cfg(all(unix, target_arch = "x86_64", not(target_os = "macos")))]
 const STOCKFISH: &'static [Asset] = &[
     Asset {
         name: "stockfish-x86-64-bmi2",
@@ -42,6 +43,7 @@ const STOCKFISH: &'static [Asset] = &[
     },
 ];
 
+#[cfg(all(unix, target_arch = "x86_64", not(target_os = "macos")))]
 const STOCKFISH_MV: &'static [Asset] = &[
     Asset {
         name: "stockfish-mv-x86-64-bmi2",
@@ -62,6 +64,70 @@ const STOCKFISH_MV: &'static [Asset] = &[
     Asset {
         name: "stockfish-mv-x86-64",
         data: include_bytes!("../assets/stockfish-mv-x86-64"),
+    },
+];
+
+#[cfg(all(windows, target_arch = "x86_64"))]
+const STOCKFISH: &'static [Asset] = &[
+    Asset {
+        name: "stockfish-x86-64-bmi2.exe",
+        data: include_bytes!("../assets/stockfish-x86-64-bmi2.exe"),
+    },
+    Asset {
+        name: "stockfish-x86-64-avx2.exe",
+        data: include_bytes!("../assets/stockfish-x86-64-avx2.exe"),
+    },
+    Asset {
+        name: "stockfish-x86-64-sse41-popcnt.exe",
+        data: include_bytes!("../assets/stockfish-x86-64-sse41-popcnt.exe"),
+    },
+    Asset {
+        name: "stockfish-x86-64-ssse3.exe",
+        data: include_bytes!("../assets/stockfish-x86-64-ssse3.exe"),
+    },
+    Asset {
+        name: "stockfish-x86-64.exe",
+        data: include_bytes!("../assets/stockfish-x86-64.exe"),
+    },
+];
+
+#[cfg(all(windows, target_arch = "x86_64"))]
+const STOCKFISH_MV: &'static [Asset] = &[
+    Asset {
+        name: "stockfish-mv-x86-64-bmi2.exe",
+        data: include_bytes!("../assets/stockfish-mv-x86-64-bmi2.exe"),
+    },
+    Asset {
+        name: "stockfish-mv-x86-64-avx2.exe",
+        data: include_bytes!("../assets/stockfish-mv-x86-64-avx2.exe"),
+    },
+    Asset {
+        name: "stockfish-mv-x86-64-sse41-popcnt.exe",
+        data: include_bytes!("../assets/stockfish-mv-x86-64-sse41-popcnt.exe"),
+    },
+    Asset {
+        name: "stockfish-mv-x86-64-ssse3.exe",
+        data: include_bytes!("../assets/stockfish-mv-x86-64-ssse3.exe"),
+    },
+    Asset {
+        name: "stockfish-mv-x86-64.exe",
+        data: include_bytes!("../assets/stockfish-mv-x86-64.exe"),
+    },
+];
+
+#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+const STOCKFISH: &'static [Asset] = &[
+    Asset {
+        name: "stockfish-macos-x86-64",
+        data: include_bytes!("../assets/stockfish-macos-x86-64"),
+    },
+];
+
+#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+const STOCKFISH_MV: &'static [Asset] = &[
+    Asset {
+        name: "stockfish-mv-macos-x86-64",
+        data: include_bytes!("../assets/stockfish-mv-macos-x86-64"),
     },
 ];
 
