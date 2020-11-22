@@ -75,9 +75,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "configparser"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe1d7dcda7d1da79e444bdfba1465f2f849a58b07774e1df473ee77030cb47a7"
+
+[[package]]
 name = "fishnet"
 version = "0.0.1"
 dependencies = [
+ "configparser",
  "structopt",
  "tokio",
  "url",

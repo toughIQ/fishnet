@@ -1,9 +1,13 @@
 use structopt::StructOpt;
+use std::fs;
+use std::io;
+use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::num::ParseIntError;
 use std::time::Duration;
 use url::Url;
+use configparser::ini::Ini;
 
 /// Distributed Stockfish analysis for lichess.org.
 #[derive(Debug, StructOpt)]
@@ -17,13 +21,13 @@ pub struct Opt {
     #[structopt(long, global = true)]
     auto_update: bool,
 
+    /// Configuration file.
+    #[structopt(long, parse(from_os_str), default_value = "fishnet.ini", global = true)]
+    conf: PathBuf,
+
     /// Do not use a configuration file.
     #[structopt(long, conflicts_with = "conf", global = true)]
     no_conf: bool,
-
-    /// Configuration file.
-    #[structopt(long, parse(from_os_str), global = true)]
-    conf: Option<PathBuf>,
 
     /// Fishnet API key.
     #[structopt(long, alias = "apikey", short = "k", global = true)]
@@ -148,7 +152,7 @@ impl FromStr for Backlog {
     }
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(StructOpt, Debug, PartialEq, Eq)]
 enum Command {
     /// Donate CPU time by running analysis (default).
     Run,
@@ -164,9 +168,9 @@ enum Command {
 
 #[derive(Debug, Default)]
 struct Config {
+    endpoint: Option<Url>,
     key: Option<String>,
     cores: Option<Cores>,
-    endpoint: Option<Url>,
     user_backlog: Option<Backlog>,
     system_backlog: Option<Backlog>,
 
@@ -192,7 +196,67 @@ fn intro() {
 }
 
 pub fn parse_and_configure() -> Opt {
-    intro();
     let opt = Opt::from_args();
+
+    // Show intro.
+    match opt.command {
+        Some(Command::Systemd) | Some(Command::SystemdUser) => (),
+        _ => intro(),
+    }
+
+    // Handle config file.
+    if !opt.no_conf || opt.command == Some(Command::Configure) {
+        let mut ini = Ini::new();
+
+        // Load ini.
+        let file_found = match fs::read_to_string(&opt.conf) {
+            Ok(contents) => {
+                ini.read(contents).expect("parse config file");
+                true
+            }
+            Err(err) if err.kind() == io::ErrorKind::NotFound => false,
+            Err(err) => panic!("failed to open config file: {}", err),
+        };
+
+        // Configuration dialog.
+        if !file_found || opt.command == Some(Command::Configure) {
+            println!();
+            println!("### Configuration");
+
+            let mut endpoint = String::new();
+            println!();
+            print!("Endpoint (default: ...): ");
+            io::stdout().flush().expect("flush stdout");
+            io::stdin().read_line(&mut endpoint).expect("read endpoint from stdin");
+
+            let mut key = String::new();
+            println!();
+            print!("Personal fishnet key (append ! to force, https://lichess.org/get-fishnet): ");
+            io::stdout().flush().expect("flush stdout");
+            io::stdin().read_line(&mut key).expect("read key from stdin");
+
+            let mut cores = String::new();
+            println!();
+            print!("Number of logical cores to use for engine threads (default {}, max {}): ", 3, 4);
+            io::stdout().flush().expect("flush stdout");
+            io::stdin().read_line(&mut cores).expect("read cores from stdin");
+
+            let mut backlog = String::new();
+            println!();
+            println!("You can choose to join only if a backlog is building up. Examples:");
+            println!("* Rented server exclusively for fishnet: choose no");
+            println!("* Running on a laptop: choose yes");
+            print!("Would you prefer to keep your client idle? (default: no) ");
+            io::stdout().flush().expect("flush stdout");
+            io::stdin().read_line(&mut backlog).expect("read backlog from stdin");
+
+            let mut write = String::new();
+            println!();
+            print!("Done. Write configuration to {:?} now? (default: yes) ", opt.conf);
+            io::stdout().flush().expect("flush stdout");
+            io::stdin().read_line(&mut backlog).expect("read confirmation from stdin");
+        }
+    }
+
     opt
 }
