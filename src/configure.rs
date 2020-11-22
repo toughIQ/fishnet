@@ -1,11 +1,12 @@
 use structopt::StructOpt;
 use std::fs;
 use std::io;
-use std::cmp::max
+use std::cmp::max;
+use std::fmt;
 use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::num::{ParseIntError, NonZeroU32};
+use std::num::{ParseIntError, NonZeroUsize};
 use std::time::Duration;
 use url::Url;
 use configparser::ini::Ini;
@@ -69,7 +70,7 @@ struct Verbose {
 enum Cores {
     Auto,
     All,
-    Number(NonZeroU32),
+    Number(NonZeroUsize),
 }
 
 impl Default for Cores {
@@ -84,11 +85,21 @@ impl FromStr for Cores {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(if s == "auto" {
             Cores::Auto
-        } else if s == "all" {
+        } else if s == "all" || s == "max" {
             Cores::All
         } else {
             Cores::Number(s.parse()?)
         })
+    }
+}
+
+impl fmt::Display for Cores {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Cores::Auto => f.write_str("auto"),
+            Cores::All => f.write_str("all"),
+            Cores::Number(n) => write!(f, "{}", n),
+        }
     }
 }
 
@@ -163,6 +174,7 @@ impl FromStr for Toggle {
         match s.as_str() {
             "y" | "j" | "yes" | "yep" | "yay" | "true" | "t" | "1" | "ok" => Ok(Toggle::Yes),
             "n" | "no" | "nop" | "nope" | "nay" | "f" | "false" | "0" => Ok(Toggle::No),
+            "" => Ok(Toggle::Default),
             _ => Err(()),
         }
     }
@@ -280,16 +292,29 @@ pub fn parse_and_configure() -> Opt {
 
             // Step 3: Cores.
             eprintln!();
-            let mut cores = String::new();
-            let max = num_cpus::get();
-            let auto = max(max - 1, 1);
-            eprint!("Number of logical cores to use for engine threads (default {}, max {}): ", auto, max);
-            io::stderr().flush().expect("flush stderr");
-            io::stdin().read_line(&mut cores).expect("read cores from stdin");
+            loop {
+                let mut cores = String::new();
+                let all = num_cpus::get();
+                let auto = max(all - 1, 1);
+                eprint!("Number of logical cores to use for engine threads (default {}, max {}): ", auto, all);
+                io::stderr().flush().expect("flush stderr");
+                io::stdin().read_line(&mut cores).expect("read cores from stdin");
+
+                match Some(cores.trim()).filter(|c| !c.is_empty()).map(Cores::from_str).unwrap_or(Ok(Cores::Auto)) {
+                    Ok(Cores::Number(n)) if usize::from(n) > all => {
+                        eprintln!("At most {} logical cores available on your machine.", all);
+                    }
+                    Ok(cores) => {
+                        ini.set("Fishnet", "Cores", Some(cores.to_string()));
+                        break;
+                    }
+                    Err(err) => eprintln!("Invalid: {}", err),
+                }
+            }
 
             // Step 4: Backlog.
             eprintln!();
-            eprintln!("You can choose to join only if a backlog is building up. Examples:");
+            eprintln!("You can choose to not join unless a backlog is building up. Examples:");
             eprintln!("* Rented server exclusively for fishnet: choose no");
             eprintln!("* Running on a laptop: choose yes");
             loop {
@@ -297,6 +322,7 @@ pub fn parse_and_configure() -> Opt {
                 eprint!("Would you prefer to keep your client idle? (default: no) ");
                 io::stderr().flush().expect("flush stderr");
                 io::stdin().read_line(&mut backlog).expect("read backlog from stdin");
+
                 match Toggle::from_str(&backlog) {
                     Ok(Toggle::Yes) => {
                         ini.setstr("Fishnet", "UserBacklog", Some("short"));
@@ -319,6 +345,7 @@ pub fn parse_and_configure() -> Opt {
                 eprint!("Done. Write configuration to {:?} now? (default: yes) ", opt.conf);
                 io::stderr().flush().expect("flush stderr");
                 io::stdin().read_line(&mut write).expect("read confirmation from stdin");
+
                 match Toggle::from_str(&write) {
                     Ok(Toggle::Yes) | Ok(Toggle::Default) => {
                         let contents = ini.writes();
