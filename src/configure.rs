@@ -1,6 +1,7 @@
 use structopt::StructOpt;
 use std::fs;
 use std::io;
+use std::cmp::max
 use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -141,6 +142,32 @@ enum Command {
     Cpuid,
 }
 
+#[derive(Debug)]
+enum Toggle {
+    Yes,
+    No,
+    Default,
+}
+
+impl Default for Toggle {
+    fn default() -> Toggle {
+        Toggle::Default
+    }
+}
+
+impl FromStr for Toggle {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.trim().to_lowercase();
+        match s.as_str() {
+            "y" | "j" | "yes" | "yep" | "yay" | "true" | "t" | "1" | "ok" => Ok(Toggle::Yes),
+            "n" | "no" | "nop" | "nope" | "nay" | "f" | "false" | "0" => Ok(Toggle::No),
+            _ => Err(()),
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 struct Config {
     endpoint: Option<Url>,
@@ -192,6 +219,7 @@ pub fn parse_and_configure() -> Opt {
             eprintln!();
             eprintln!("### Configuration");
 
+            // Step 1: Endpoint.
             eprintln!();
             let endpoint = loop {
                 let mut endpoint = String::new();
@@ -213,6 +241,7 @@ pub fn parse_and_configure() -> Opt {
                 }
             };
 
+            // Step 2: Key.
             eprintln!();
             loop {
                 let mut key = String::new();
@@ -249,26 +278,56 @@ pub fn parse_and_configure() -> Opt {
                 break;
             }
 
+            // Step 3: Cores.
             eprintln!();
             let mut cores = String::new();
-            eprint!("Number of logical cores to use for engine threads (default {}, max {}): ", 3, 4);
+            let max = num_cpus::get();
+            let auto = max(max - 1, 1);
+            eprint!("Number of logical cores to use for engine threads (default {}, max {}): ", auto, max);
             io::stderr().flush().expect("flush stderr");
             io::stdin().read_line(&mut cores).expect("read cores from stdin");
 
+            // Step 4: Backlog.
             eprintln!();
-            let mut backlog = String::new();
             eprintln!("You can choose to join only if a backlog is building up. Examples:");
             eprintln!("* Rented server exclusively for fishnet: choose no");
             eprintln!("* Running on a laptop: choose yes");
-            eprint!("Would you prefer to keep your client idle? (default: no) ");
-            io::stderr().flush().expect("flush stderr");
-            io::stdin().read_line(&mut backlog).expect("read backlog from stdin");
+            loop {
+                let mut backlog = String::new();
+                eprint!("Would you prefer to keep your client idle? (default: no) ");
+                io::stderr().flush().expect("flush stderr");
+                io::stdin().read_line(&mut backlog).expect("read backlog from stdin");
+                match Toggle::from_str(&backlog) {
+                    Ok(Toggle::Yes) => {
+                        ini.setstr("Fishnet", "UserBacklog", Some("short"));
+                        ini.setstr("Fishnet", "SystemBacklog", Some("long"));
+                        break;
+                    }
+                    Ok(Toggle::No) | Ok(Toggle::Default) => {
+                        ini.setstr("Fishnet", "UserBacklog", Some("0"));
+                        ini.setstr("Fishnet", "SystemBacklog", Some("0"));
+                        break;
+                    }
+                    Err(_) => (),
+                }
+            }
 
+            // Step 5: Write config.
             eprintln!();
-            let mut write = String::new();
-            eprint!("Done. Write configuration to {:?} now? (default: yes) ", opt.conf);
-            io::stderr().flush().expect("flush stderr");
-            io::stdin().read_line(&mut write).expect("read confirmation from stdin");
+            loop {
+                let mut write = String::new();
+                eprint!("Done. Write configuration to {:?} now? (default: yes) ", opt.conf);
+                io::stderr().flush().expect("flush stderr");
+                io::stdin().read_line(&mut write).expect("read confirmation from stdin");
+                match Toggle::from_str(&write) {
+                    Ok(Toggle::Yes) | Ok(Toggle::Default) => {
+                        let contents = ini.writes();
+                        fs::write(&opt.conf, contents).expect("write config");
+                        break;
+                    }
+                    _ => (),
+                }
+            }
         }
     }
 

@@ -85,6 +85,7 @@ name = "fishnet"
 version = "2.0.0-alpha"
 dependencies = [
  "configparser",
+ "num_cpus",
  "structopt",
  "tokio",
  "url",
