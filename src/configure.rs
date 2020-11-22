@@ -54,39 +54,12 @@ pub struct Opt {
 
     #[structopt(subcommand)]
     command: Option<Command>,
-
-    #[structopt(flatten)]
-    legacy: Legacy,
 }
 
 #[derive(Debug, Default, StructOpt)]
 struct Verbose {
     #[structopt(name = "verbose", short = "v", parse(from_occurrences), global = true)]
     level: u32,
-}
-
-#[derive(Debug, StructOpt)]
-struct Legacy {
-    #[structopt(long, global = true, hidden = true)]
-    memory: Option<String>,
-
-    #[structopt(long, parse(from_os_str), global = true, hidden = true)]
-    engine_dir: Option<PathBuf>,
-
-    #[structopt(long, global = true, hidden = true)]
-    stockfish_command: Option<String>,
-
-    #[structopt(long, global = true, hidden = true)]
-    threads_per_process: Option<u32>,
-
-    #[structopt(long, global = true, hidden = true)]
-    fixed_backoff: bool,
-
-    #[structopt(long, conflicts_with = "fixed-backoff", global = true, hidden = true)]
-    no_fixed_backoff: bool,
-
-    #[structopt(long, short = "o", number_of_values = 2, multiple = true, global = true, hidden = true)]
-    setoption: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -173,13 +146,6 @@ struct Config {
     cores: Option<Cores>,
     user_backlog: Option<Backlog>,
     system_backlog: Option<Backlog>,
-
-    // Legacy.
-    engine_dir: bool,
-    stockfish_command: bool,
-    threads_per_process: bool,
-    memory: bool,
-    fixed_backoff: bool,
 }
 
 fn intro() {
