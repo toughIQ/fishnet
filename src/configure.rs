@@ -180,15 +180,6 @@ impl FromStr for Toggle {
     }
 }
 
-#[derive(Debug, Default)]
-struct Config {
-    endpoint: Option<Url>,
-    key: Option<String>,
-    cores: Option<Cores>,
-    user_backlog: Option<Backlog>,
-    system_backlog: Option<Backlog>,
-}
-
 fn intro() {
     println!(r#".   _________         .    ."#);
     println!(r#".  (..       \_    ,  |\  /|"#);
@@ -203,7 +194,7 @@ fn intro() {
 }
 
 pub fn parse_and_configure() -> Opt {
-    let opt = Opt::from_args();
+    let mut opt = Opt::from_args();
 
     // Show intro.
     match opt.command {
@@ -241,7 +232,7 @@ pub fn parse_and_configure() -> Opt {
 
                 let endpoint = Some(endpoint.trim().to_owned())
                     .filter(|e| !e.is_empty())
-                    .or_else(|| ini.get("Fishnet", "Endpoint").map(|e| e.trim().to_owned()))
+                    .or_else(|| ini.get("Fishnet", "Endpoint"))
                     .unwrap_or(DEFAULT_ENDPOINT.to_owned());
 
                 match Url::from_str(&endpoint) {
@@ -258,7 +249,7 @@ pub fn parse_and_configure() -> Opt {
             loop {
                 let mut key = String::new();
                 let required = if let Some(current) = ini.get("Fishnet", "Key") {
-                    eprint!("Personal fishnet key (append ! to force, default: keep {}): ", "*".repeat(current.trim().len()));
+                    eprint!("Personal fishnet key (append ! to force, default: keep {}): ", "*".repeat(current.chars().count()));
                     false
                 } else if endpoint.host_str() == Some("lichess.org") {
                     eprint!("Personal fishnet key (append ! to force, https://lichess.org/get-fishnet): ");
@@ -354,6 +345,29 @@ pub fn parse_and_configure() -> Opt {
                     }
                     _ => (),
                 }
+            }
+        }
+
+        // Merge config file into command line arguments.
+        match opt.command {
+            Some(Command::Systemd) | Some(Command::SystemdUser) => (),
+            _ => {
+                opt.endpoint = opt.endpoint.or_else(|| {
+                    ini.get("Fishnet", "Endpoint").map(|e| e.parse().expect("valid endpoint"))
+                });
+
+                opt.key = opt.key.or_else(|| ini.get("Fishnet", "Key"));
+
+                opt.cores = opt.cores.or_else(|| {
+                    ini.get("Fishnet", "Cores").map(|c| c.parse().expect("valid cores"))
+                });
+
+                opt.user_backlog = opt.user_backlog.or_else(|| {
+                    ini.get("Fishnet", "UserBacklog").map(|b| b.parse().expect("valid user backlog"))
+                });
+                opt.system_backlog = opt.system_backlog.or_else(|| {
+                    ini.get("Fishnet", "SystemBacklog").map(|b| b.parse().expect("valid system backlog"))
+                });
             }
         }
     }
