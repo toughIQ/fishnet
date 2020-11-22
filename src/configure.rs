@@ -139,6 +139,16 @@ impl fmt::Display for Cores {
     }
 }
 
+impl From<Cores> for usize {
+    fn from(cores: Cores) -> usize {
+        match cores {
+            Cores::Number(n) => usize::from(n),
+            Cores::Auto => max(1, num_cpus::get() - 1),
+            Cores::All => num_cpus::get(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum Backlog {
     Short,
