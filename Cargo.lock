@@ -118,6 +118,7 @@ checksum = "fe1d7dcda7d1da79e444bdfba1465f2f849a58b07774e1df473ee77030cb47a7"
 name = "fishnet"
 version = "2.0.0-alpha"
 dependencies = [
+ "atty",
  "configparser",
  "num_cpus",
  "structopt",
