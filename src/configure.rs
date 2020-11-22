@@ -35,7 +35,7 @@ pub struct Opt {
 
     /// Fishnet API key.
     #[structopt(long, alias = "apikey", short = "k", global = true)]
-    pub key: Option<String>,
+    pub key: Option<Key>,
 
     /// Lichess HTTP endpoint.
     #[structopt(long, global = true)]
@@ -64,6 +64,38 @@ pub struct Opt {
 pub struct Verbose {
     #[structopt(name = "verbose", short = "v", parse(from_occurrences), global = true)]
     pub level: usize,
+}
+
+#[derive(Debug)]
+pub struct Key(pub String);
+
+#[derive(Debug)]
+pub enum KeyError {
+    EmptyKey,
+    InvalidKey,
+}
+
+impl fmt::Display for KeyError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            KeyError::EmptyKey => f.write_str("key expected to be non-empty"),
+            KeyError::InvalidKey => f.write_str("key expected to be alphanumeric"),
+        }
+    }
+}
+
+impl FromStr for Key {
+    type Err = KeyError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.is_empty() {
+            Err(KeyError::EmptyKey)
+        } else if !s.chars().all(|c| char::is_ascii_alphanumeric(&c)) {
+            Err(KeyError::InvalidKey)
+        } else {
+            Ok(Key(s.to_owned()))
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -272,7 +304,7 @@ pub fn parse_and_configure() -> Opt {
                 io::stdin().read_line(&mut key).expect("read key from stdin");
 
                 let key = key.trim();
-                let key = if key.is_empty() {
+                let (key, network) = if key.is_empty() {
                     if required {
                         eprintln!("Key required.");
                         continue;
@@ -280,14 +312,18 @@ pub fn parse_and_configure() -> Opt {
                         break;
                     }
                 } else if let Some(key) = key.strip_suffix("!") {
-                    key
+                    (key, true)
                 } else {
-                    // TODO: Validate.
-                    key
+                    (key, false)
                 };
 
-                ini.setstr("Fishnet", "Key", Some(key));
-                break;
+                match Key::from_str(key) {
+                    Ok(Key(key)) => {
+                        ini.set("Fishnet", "Key", Some(key));
+                        break;
+                    }
+                    Err(err) => eprintln!("Invalid: {}", err),
+                }
             }
 
             // Step 3: Cores.
@@ -365,7 +401,9 @@ pub fn parse_and_configure() -> Opt {
                     ini.get("Fishnet", "Endpoint").map(|e| e.parse().expect("valid endpoint"))
                 });
 
-                opt.key = opt.key.or_else(|| ini.get("Fishnet", "Key"));
+                opt.key = opt.key.or_else(|| {
+                    ini.get("Fishnet", "Key").map(|k| k.parse().expect("valid key"))
+                });
 
                 opt.cores = opt.cores.or_else(|| {
                     ini.get("Fishnet", "Cores").map(|c| c.parse().expect("valid cores"))

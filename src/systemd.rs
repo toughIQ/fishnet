@@ -2,7 +2,7 @@ use std::env;
 use std::fs;
 use atty::Stream;
 use shell_escape::escape;
-use crate::configure::Opt;
+use crate::configure::{Opt, Key};
 
 fn exec_start(opt: &Opt) -> String {
     let exe = env::current_exe().expect("current exe").to_str().expect("printable exec path").to_owned();
@@ -23,7 +23,7 @@ fn exec_start(opt: &Opt) -> String {
             .expect("printable config path").to_owned();
         builder.push(escape(canonical.into()).into_owned());
     }
-    if let Some(ref key) = opt.key {
+    if let Some(Key(ref key)) = opt.key {
         builder.push("--key".to_owned());
         builder.push(escape(key.into()).into_owned());
     }

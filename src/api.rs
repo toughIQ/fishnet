@@ -69,8 +69,6 @@ struct Analysis {
 enum AnalysisPart {
     Complete {
         pv: Option<String>,
-        seldepth: Option<u64>,
-        tbhits: Option<u64>,
         depth: u64,
         score: Score,
         time: Option<u64>,
