@@ -88,7 +88,7 @@ async fn run(opt: Opt) {
     };
 
     // Spawn queue actor.
-    let queue = {
+    let mut queue = {
         let shutdown_barrier = shutdown_barrier.clone();
         let (queue, queue_actor) = queue::channel(api);
         tokio::spawn(async move {
@@ -138,6 +138,7 @@ async fn run(opt: Opt) {
             }
             res = rx.recv() => {
                 if let Some(res) = res {
+                    queue.pull(res.callback);
                 } else {
                     // All workers dropped their tx.
                     break;

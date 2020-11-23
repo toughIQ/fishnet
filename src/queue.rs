@@ -1,26 +1,52 @@
 use std::collections::{VecDeque, HashMap};
-use tokio::sync::{mpsc, oneshot};
+use std::sync::Arc;
+use tokio::sync::{mpsc, oneshot, Mutex};
 use crate::api::ApiStub;
 use crate::ipc::{BatchId, Position, PositionResponse};
+use crate::util::WhateverExt as _ ;
 
 pub fn channel(api: ApiStub) -> (QueueStub, QueueActor) {
+    let state = Arc::new(Mutex::new(QueueState::default()));
     let (tx, rx) = mpsc::unbounded_channel();
-    (QueueStub::new(tx), QueueActor::new(rx, api))
+    (QueueStub::new(tx, state.clone(), api.clone()), QueueActor::new(rx, state, api))
 }
 
 #[derive(Clone)]
 pub struct QueueStub {
     tx: mpsc::UnboundedSender<QueueMessage>,
+    state: Arc<Mutex<QueueState>>,
+    api: ApiStub,
 }
 
 impl QueueStub {
-    fn new(tx: mpsc::UnboundedSender<QueueMessage>) -> QueueStub {
-        QueueStub { tx }
+    fn new(tx: mpsc::UnboundedSender<QueueMessage>, state: Arc<Mutex<QueueState>>, api: ApiStub) -> QueueStub {
+        QueueStub { tx, state, api }
     }
 
     pub fn pull(&mut self, callback: oneshot::Sender<Position>) {
-        self.tx.send(QueueMessage::Pull { callback });
+        self.tx.send(QueueMessage::Pull { callback }).whatever("queue dropped");
     }
+
+    pub async fn stop_soon(&mut self) {
+        let mut state = self.state.lock().await;
+        state.stopping_soon = true;
+    }
+
+    pub async fn stop_immediately(&mut self) {
+        let mut state = self.state.lock().await;
+        state.stopping_soon = true;
+        state.incoming.clear();
+        for (k, _) in state.pending.drain() {
+            self.api.abort(k);
+        }
+    }
+}
+
+#[derive(Default)]
+struct QueueState {
+    stopping_soon: bool,
+    incoming: VecDeque<Position>,
+    pending: HashMap<BatchId, PendingBatch>,
 }
 
 #[derive(Debug)]
@@ -33,12 +59,14 @@ enum QueueMessage {
 pub struct QueueActor {
     rx: mpsc::UnboundedReceiver<QueueMessage>,
     api: ApiStub,
+    state: Arc<Mutex<QueueState>>,
 }
 
 impl QueueActor {
-    fn new(rx: mpsc::UnboundedReceiver<QueueMessage>, api: ApiStub) -> QueueActor {
+    fn new(rx: mpsc::UnboundedReceiver<QueueMessage>, state: Arc<Mutex<QueueState>>, api: ApiStub) -> QueueActor {
         QueueActor {
             rx,
+            state,
             api,
         }
     }
@@ -87,13 +115,7 @@ pub struct CompletedBatch {
     positions: Vec<Skip<PositionResponse>>,
 }
 
-pub struct Queue {
-    incoming: VecDeque<Position>,
-    pending: HashMap<BatchId, PendingBatch>,
-    completed: VecDeque<CompletedBatch>,
-}
-
-impl Queue {
+/* impl Queue {
     pub fn add_incoming_batch(&mut self, batch: IncomingBatch) {
         let mut positions = Vec::with_capacity(batch.positions.len());
 
@@ -153,4 +175,4 @@ impl Queue {
             }
         }
     }
-}
+} */

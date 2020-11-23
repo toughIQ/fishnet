@@ -66,12 +66,6 @@ pub struct PositionResponse {
 
 #[derive(Debug)]
 pub struct Pull {
-    response: Option<PositionResponse>,
-    next_tx: oneshot::Sender<PullResponse>,
-}
-
-#[derive(Debug)]
-pub enum PullResponse {
-    Position(Position),
-    Sleep(Duration),
+    pub response: Option<PositionResponse>,
+    pub callback: oneshot::Sender<Position>,
 }
