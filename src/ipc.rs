@@ -1,4 +1,5 @@
 use arrayvec::ArrayString;
+use std::fmt;
 use std::time::Duration;
 use shakmaty::fen::Fen;
 use shakmaty::uci::Uci;
@@ -8,6 +9,12 @@ use tokio::sync::oneshot;
 /// Uniquely identifies a batch in this process.
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct BatchId(ArrayString<[u8; 16]>);
+
+impl fmt::Display for BatchId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
 
 /// Uniquely identifies a position within a batch.
 #[derive(Debug, Clone)]

@@ -9,14 +9,20 @@ use rand::Rng;
 use serde::Deserialize;
 use serde_with::{serde_as, DurationSeconds};
 use crate::configure::{Key, KeyError};
+use crate::ipc::BatchId;
 use crate::util::WhateverExt as _;
 
-pub fn spawn(endpoint: Url) -> ApiStub {
+pub fn channel(endpoint: Url) -> (ApiStub, ApiActor) {
     let (tx, rx) = mpsc::unbounded_channel();
+    (ApiStub::new(tx), ApiActor::new(rx, endpoint))
+}
+
+pub fn spawn(endpoint: Url) -> ApiStub {
+    let (stub, actor) = channel(endpoint);
     tokio::spawn(async move {
-        ApiActor::new(rx, endpoint).run().await;
+        actor.run().await;
     });
-    ApiStub { tx }
+    stub
 }
 
 #[derive(Debug)]
@@ -27,6 +33,9 @@ enum ApiMessage {
     },
     Status {
         callback: oneshot::Sender<AnalysisStatus>,
+    },
+    Abort {
+        batch_id: BatchId,
     },
 }
 
@@ -173,6 +182,10 @@ pub struct ApiStub {
 }
 
 impl ApiStub {
+    fn new(tx: mpsc::UnboundedSender<ApiMessage>) -> ApiStub {
+        ApiStub { tx }
+    }
+
     pub async fn check_key(&mut self, key: Key) -> Option<Result<Key, KeyError>> {
         let (req, res) = oneshot::channel();
         self.tx.send(ApiMessage::CheckKey {
@@ -211,7 +224,7 @@ impl ApiActor {
         }
     }
 
-    async fn run(mut self) {
+    pub async fn run(mut self) {
         while let Some(msg) = self.rx.recv().await {
             if let Err(err) = self.handle_message(msg).await {
                 match err.status() {
@@ -254,6 +267,11 @@ impl ApiActor {
                 let url = format!("{}/status", self.endpoint);
                 let res: Status = self.client.get(&url).send().await?.error_for_status()?.json().await?;
                 callback.send(res.analysis).whatever("callback dropped");
+            }
+            ApiMessage::Abort { batch_id } => {
+                let url = format!("{}/abort/{}", self.endpoint, batch_id);
+                warn!("Aborting batch {} ...", batch_id);
+                self.client.post(&url).json(&()).send().await?.error_for_status()?;
             }
         })
     }
