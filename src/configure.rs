@@ -10,13 +10,14 @@ use std::num::{ParseIntError, NonZeroUsize};
 use std::time::Duration;
 use url::Url;
 use configparser::ini::Ini;
-use tracing::{warn, error};
+use tracing::warn;
 use crate::api::HttpApi;
 
 const DEFAULT_ENDPOINT: &str = "https://lichess.org/fishnet";
 
 /// Distributed Stockfish analysis for lichess.org.
 #[derive(Debug, StructOpt)]
+#[structopt(setting = structopt::clap::AppSettings::DisableHelpSubcommand)]
 pub struct Opt {
     /// Increase verbosity.
     #[structopt(flatten)]
@@ -58,6 +59,7 @@ pub struct Opt {
     #[structopt(long, global = true)]
     pub system_backlog: Option<Backlog>,
 
+    /// Run, configure or generate systemd unit files.
     #[structopt(subcommand)]
     pub command: Option<Command>,
 }

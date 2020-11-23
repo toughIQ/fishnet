@@ -20,9 +20,7 @@ async fn main() {
     }
 
     match opt.command {
-        Some(Command::Run) | None => {
-            run(opt).await;
-        }
+        Some(Command::Run) | None => run(opt).await,
         Some(Command::Systemd) => systemd::systemd_system(opt),
         Some(Command::SystemdUser) => systemd::systemd_user(opt),
         Some(Command::Configure) => (),
