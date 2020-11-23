@@ -40,7 +40,7 @@ enum ApiMessage {
     },
     Acquire {
         key: Option<Key>,
-        slow: bool,
+        query: AcquireQuery,
         callback: oneshot::Sender<Option<()>>,
     },
     Submit {
@@ -122,8 +122,8 @@ impl Default for StockfishOptions {
 }
 
 #[derive(Debug, Serialize)]
-struct AcquireQuery {
-    slow: bool,
+pub struct AcquireQuery {
+    pub slow: bool,
 }
 
 /* struct Acquire {
@@ -232,6 +232,16 @@ impl ApiStub {
             batch_id,
         }).expect("api actor alive");
     }
+
+    pub async fn acquire(&mut self, key: Option<Key>, query: AcquireQuery) -> Option<Option<()>> {
+        let (req, res) = oneshot::channel();
+        self.tx.send(ApiMessage::Acquire {
+            key,
+            query,
+            callback: req,
+        }).expect("api actor alive");
+        res.await.ok()
+    }
 }
 
 pub struct ApiActor {
@@ -285,6 +295,17 @@ impl ApiActor {
         }
     }
 
+    async fn abort(&mut self, key: Option<Key>, batch_id: BatchId) -> reqwest::Result<()> {
+        Ok({
+            let url = format!("{}/abort/{}", self.endpoint, batch_id);
+            warn!("Aborting batch {}.", batch_id);
+            self.client.post(&url).json(&VoidRequestBody {
+                fishnet: Fishnet::authenticated(key),
+                stockfish: Stockfish::default(),
+            }).send().await?.error_for_status()?;
+        })
+    }
+
     async fn handle_message_inner(&mut self, msg: ApiMessage) -> reqwest::Result<()> {
         Ok(match msg {
             ApiMessage::CheckKey { key, callback } => {
@@ -303,34 +324,22 @@ impl ApiActor {
                 callback.send(res.analysis).whatever("callback dropped");
             }
             ApiMessage::Abort { key, batch_id } => {
-                let url = format!("{}/abort/{}", self.endpoint, batch_id);
-                warn!("Aborting batch {}.", batch_id);
-                self.client.post(&url).json(&VoidRequestBody {
-                    fishnet: Fishnet::authenticated(key),
-                    stockfish: Stockfish::default(),
-                }).send().await?.error_for_status()?;
+                self.abort(key, batch_id).await?;
             }
-            ApiMessage::Acquire { key, callback, slow } => {
+            ApiMessage::Acquire { key, callback, query } => {
                 let url = format!("{}/acquire", self.endpoint);
-                let res = self.client.post(&url).query(&AcquireQuery {
-                    slow,
-                }).json(&VoidRequestBody {
-                    fishnet: Fishnet::authenticated(key),
+                let res = self.client.post(&url).query(&query).json(&VoidRequestBody {
+                    fishnet: Fishnet::authenticated(key.clone()),
                     stockfish: Stockfish::default(),
                 }).send().await?.error_for_status()?;
 
                 match res.status() {
                     StatusCode::NO_CONTENT => callback.send(None).whatever("callback dropped"),
                     StatusCode::OK => {
-                        todo!("Parse content");
-
                         if let Err(_) = callback.send(Some((
                         ))) {
                             error!("Acquired a batch, but callback dropped. Please report this bug.");
-                            self.handle_mesage(ApiMessage::Abort {
-                                key,
-                                batch_id: todo!("which batch id to abort?"),
-                            });
+                            self.abort(key, "TODO".parse().expect("valid batch id")).await?;
                         }
                     }
                     status => warn!("Unexpected status for acquire: {}", status),

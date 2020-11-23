@@ -14,6 +14,7 @@ use tokio::sync::{mpsc, Barrier};
 use crate::configure::{Opt, Command, Cores};
 use crate::assets::Cpu;
 use crate::ipc::{BatchId, Pull};
+use crate::api::AcquireQuery;
 
 #[tokio::main]
 async fn main() {
@@ -46,7 +47,11 @@ async fn run(opt: Opt) {
         info!("Queue status: {:?}", status);
     }
 
-    api.abort(opt.key.clone(), "abc".parse().expect("synthetic batch id"));
+    if let Some(Some(batch)) = dbg!(api.acquire(opt.key.clone(), AcquireQuery {
+        slow: false,
+    }).await) {
+        api.abort(opt.key.clone(), "abc".parse().expect("synthetic batch id"));
+    }
 
     // Install handler for SIGTERM.
     //#[cfg(unix)]
