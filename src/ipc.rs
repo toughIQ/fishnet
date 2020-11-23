@@ -4,19 +4,21 @@ use shakmaty::uci::Uci;
 use shakmaty::variants::Variant;
 use tokio::sync::oneshot;
 
-#[derive(Debug)]
-pub struct WorkId(u64);
+/// Uniquely identifies a batch in this process.
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct BatchId(String);
 
-#[derive(Debug)]
-pub struct WorkUnitId(u64);
+/// Uniquely identifies a position within a batch.
+#[derive(Debug, Clone)]
+pub struct PositionId(u64);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Skill(u32);
 
-#[derive(Debug)]
-pub struct WorkUnit {
-    work_id: WorkId,
-    work_unit_id: WorkUnitId,
+#[derive(Debug, Clone)]
+pub struct Position {
+    batch_id: BatchId,
+    position_id: PositionId,
 
     variant: Variant,
     fen: Fen,
@@ -25,16 +27,16 @@ pub struct WorkUnit {
     skill: Option<Skill>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Score {
     Cp(i32),
     Mate(i32),
 }
 
-#[derive(Debug)]
-pub struct WorkUnitResponse {
-    work_id: WorkId,
-    work_unit_id: WorkUnitId,
+#[derive(Debug, Clone)]
+pub struct PositionResponse {
+    batch_id: BatchId,
+    position_id: PositionId,
 
     score: Score,
     best_move: Option<Uci>,
@@ -47,12 +49,12 @@ pub struct WorkUnitResponse {
 
 #[derive(Debug)]
 pub struct Pull {
-    response: Option<WorkUnitResponse>,
+    response: Option<PositionResponse>,
     next_tx: oneshot::Sender<PullResponse>,
 }
 
 #[derive(Debug)]
 pub enum PullResponse {
-    WorkUnit(WorkUnit),
+    Position(Position),
     Sleep(Duration),
 }

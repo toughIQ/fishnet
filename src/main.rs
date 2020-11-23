@@ -3,6 +3,7 @@ mod assets;
 mod systemd;
 mod api;
 mod ipc;
+mod queue;
 
 use std::mem;
 use std::sync::Arc;
