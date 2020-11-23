@@ -31,23 +31,23 @@ enum ApiMessage {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Status {
+struct Status {
     analysis: AnalysisStatus,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct AnalysisStatus {
-    user: QueueStatus,
-    system: QueueStatus,
+    pub user: QueueStatus,
+    pub system: QueueStatus,
 }
 
 #[serde_as]
 #[derive(Debug, Deserialize)]
 pub struct QueueStatus {
-    acquired: u64,
-    queued: u64,
+    pub acquired: u64,
+    pub queued: u64,
     #[serde_as(as = "DurationSeconds<u64>")]
-    oldest: Duration,
+    pub oldest: Duration,
 }
 
 /* struct Acquire {
@@ -252,8 +252,8 @@ impl ApiActor {
             }
             ApiMessage::Status { callback } => {
                 let url = format!("{}/status", self.endpoint);
-                let res = self.client.get(&url).send().await?.error_for_status()?.json().await?;
-                // TODO
+                let res: Status = self.client.get(&url).send().await?.error_for_status()?.json().await?;
+                callback.send(res.analysis).whatever("callback dropped");
             }
         })
     }
