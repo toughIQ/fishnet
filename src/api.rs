@@ -133,7 +133,7 @@ pub struct AcquireQuery {
 #[derive(Debug, Deserialize)]
 pub struct Work {
     #[serde(rename = "type")]
-    pub tpe: WorkType,
+    pub work_type: WorkType,
     #[serde_as(as = "DisplayFromStr")]
     pub id: BatchId,
 }
@@ -150,6 +150,7 @@ pub enum WorkType {
 #[derive(Debug, Deserialize)]
 pub struct AcquireResponseBody {
     pub work: Work,
+    #[serde(default)]
     pub game_id: Option<String>,
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub position: Option<Fen>,
@@ -157,6 +158,7 @@ pub struct AcquireResponseBody {
     pub variant: LichessVariant,
     #[serde_as(as = "StringWithSeparator::<SpaceSeparator, Uci>")]
     pub moves: Vec<Uci>,
+    #[serde(default)]
     pub nodes: Option<u64>,
     #[serde(rename = "skipPositions", default)]
     pub skip_positions: Vec<usize>,
@@ -214,10 +216,13 @@ pub enum AnalysisPart {
     },
     Complete {
         #[serde_as(as = "StringWithSeparator::<SpaceSeparator, Uci>")]
+        #[serde(skip_serializing_if = "Vec::is_empty")]
         pv: Vec<Uci>,
         depth: u64,
         score: Score,
+        #[serde(skip_serializing_if = "Option::is_none")]
         time: Option<u64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
         nodes: Option<u64>,
         nps: Option<u64>,
     },
