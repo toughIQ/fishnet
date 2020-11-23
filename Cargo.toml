@@ -11,6 +11,7 @@ keywords = ["chess"]
 edition = "2018"
 
 [dependencies]
+arrayvec = "0.5.2"
 atty = "0.2"
 bitflags = "1.2"
 configparser = "1.0"

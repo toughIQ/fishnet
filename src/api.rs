@@ -3,10 +3,26 @@ use std::cmp::min;
 use std::time::Duration;
 use reqwest::StatusCode;
 use tokio::time;
-use tokio::time::Instant;
-use tracing::{debug, error};
+use tokio::sync::{mpsc, oneshot};
+use tracing::error;
 use rand::Rng;
 use crate::configure::{Key, KeyError};
+
+pub fn spawn(endpoint: Url) -> ApiStub {
+    let (tx, rx) = mpsc::unbounded_channel();
+    tokio::spawn(async move {
+        ApiActor::new(rx, endpoint).run().await;
+    });
+    ApiStub { tx }
+}
+
+#[derive(Debug)]
+enum ApiMessage {
+    CheckKey {
+        key: Key,
+        callback: oneshot::Sender<reqwest::Result<Result<Key, KeyError>>>,
+    }
+}
 
 /* struct Acquire {
     fishnet: Fishnet,
@@ -136,70 +152,98 @@ struct QueueStatus {
     oldest: u64,
 } */
 
-pub struct HttpApi {
-    endpoint: Url,
-    not_before: Instant,
-    backoff: Duration,
-    client: reqwest::Client,
+#[derive(Debug, Clone)]
+pub struct ApiStub {
+    tx: mpsc::UnboundedSender<ApiMessage>,
 }
 
-impl HttpApi {
-    pub fn new(endpoint: Url) -> HttpApi {
-        HttpApi {
+impl ApiStub {
+    pub async fn check_key(&mut self, key: Key) -> reqwest::Result<Result<Key, KeyError>> {
+        let (req, res) = oneshot::channel();
+        self.tx.send(ApiMessage::CheckKey {
+            key,
+            callback: req,
+        }).expect("api actor alive");
+        res.await.expect("response")
+    }
+}
+
+struct ApiActor {
+    rx: mpsc::UnboundedReceiver<ApiMessage>,
+    endpoint: Url,
+    client: reqwest::Client,
+    error_backoff: RandomizedBackoff,
+}
+
+impl ApiActor {
+    fn new(rx: mpsc::UnboundedReceiver<ApiMessage>, endpoint: Url) -> ApiActor {
+        ApiActor {
+            rx,
             endpoint,
-            not_before: Instant::now(),
-            backoff: Duration::default(),
             client: reqwest::Client::builder()
                 .user_agent(concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION")))
                 .timeout(Duration::from_secs(15))
-                .build().expect("client")
+                .build().expect("client"),
+            error_backoff: RandomizedBackoff::default(),
         }
     }
 
-    fn backoff(&mut self, base: Duration) -> Duration {
-        let low = self.backoff.as_millis() as u64;
-        let high = min(60_000, (low + 500) * 2);
-        self.backoff = Duration::from_millis(rand::thread_rng().gen_range(low, high));
-        self.not_before = Instant::now() + base + self.backoff;
-        base + self.backoff
-    }
-
-    async fn send(&mut self, req: reqwest::Request) -> reqwest::Result<reqwest::Response> {
-        time::delay_until(self.not_before).await;
-
-        let url = req.url().clone();
-
-        match self.client.execute(req).await {
-            Ok(res) if res.status() == StatusCode::TOO_MANY_REQUESTS => {
-                error!("Too many requests. Suspending requests for {:?}.", self.backoff(Duration::from_secs(60)));
-                Ok(res)
-            }
-            Ok(res) if res.status().is_server_error() => {
-                error!("Server error: {}. Backing off {:?}.", res.status(), self.backoff(Duration::default()));
-                Ok(res)
-            }
-            Ok(res) => {
-                debug!("Response: {} -> {}.", url, res.status());
-                self.backoff = Duration::default();
-                Ok(res)
-            }
-            Err(err) => {
-                error!("Network error: {}. Backing off {:?}.", err, self.backoff(Duration::default()));
-                Err(err)
+    async fn run(mut self) {
+        while let Some(msg) = self.rx.recv().await {
+            if let Err(err) = self.handle_message(msg).await {
+                match err.status() {
+                    Some(status) if status == StatusCode::TOO_MANY_REQUESTS => {
+                        let backoff = Duration::from_secs(60) + self.error_backoff.next();
+                        error!("Too many requests. Suspending requests for {:?}.", backoff);
+                        time::delay_for(backoff).await;
+                    }
+                    Some(status) if status.is_server_error() => {
+                        let backoff = self.error_backoff.next();
+                        error!("Server error: {}. Backing off {:?}.", status, backoff);
+                        time::delay_for(backoff).await;
+                    }
+                    Some(status) => (),
+                    None => {
+                        let backoff = self.error_backoff.next();
+                        error!("Network error: {}. Backing off {:?}.", err, backoff);
+                        time::delay_for(backoff).await;
+                    }
+                }
             }
         }
     }
 
-    pub async fn check_key(&mut self, key: Key) -> reqwest::Result<Result<Key, KeyError>> {
-        Ok({
-            let url = format!("{}/key/{}", self.endpoint, key.0);
-            let res = self.send(self.client.get(&url).build()?).await?;
-            if res.status() == StatusCode::NOT_FOUND {
-                Err(KeyError::AccessDenied)
-            } else {
-                res.error_for_status()?;
-                Ok(key)
+    async fn handle_message(&mut self, msg: ApiMessage) -> reqwest::Result<()> {
+        Ok(match msg {
+            ApiMessage::CheckKey { key, callback } => {
+                let url = format!("{}/key/{}", self.endpoint, key.0);
+                let res = self.client.get(&url).send().await;
+                callback.send(match res {
+                    Ok(res) if res.status() == StatusCode::NOT_FOUND => {
+                        Ok(Err(KeyError::AccessDenied))
+                    }
+                    Ok(res) => res.error_for_status().map(|_| Ok(key)),
+                    Err(err) => Err(err),
+                });
             }
         })
+    }
+}
+
+#[derive(Default)]
+struct RandomizedBackoff {
+    duration: Duration,
+}
+
+impl RandomizedBackoff {
+    fn next(&mut self) -> Duration {
+        let low = self.duration.as_millis() as u64;
+        let high = min(60_000, (low + 500) * 2);
+        self.duration = Duration::from_millis(rand::thread_rng().gen_range(low, high));
+        self.duration
+    }
+
+    fn reset(&mut self) {
+        self.duration = Duration::default();
     }
 }

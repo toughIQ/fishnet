@@ -11,7 +11,7 @@ use std::time::Duration;
 use url::Url;
 use configparser::ini::Ini;
 use tracing::warn;
-use crate::api::HttpApi;
+use crate::api;
 
 const DEFAULT_ENDPOINT: &str = "https://lichess.org/fishnet";
 
@@ -306,7 +306,7 @@ pub async fn parse_and_configure() -> Opt {
             };
 
             // Step 2: Key.
-            let mut http_api = HttpApi::new(endpoint.clone());
+            let mut api = api::spawn(endpoint.clone());
             eprintln!();
             loop {
                 let mut key = String::new();
@@ -339,7 +339,7 @@ pub async fn parse_and_configure() -> Opt {
                 };
 
                 let key = match Key::from_str(key) {
-                    Ok(key) if network => match http_api.check_key(key).await {
+                    Ok(key) if network => match api.check_key(key).await {
                         Ok(res) => res,
                         Err(_) => continue, // error already logged
                     },

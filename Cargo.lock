@@ -171,6 +171,7 @@ dependencies = [
 name = "fishnet"
 version = "2.0.0-alpha"
 dependencies = [
+ "arrayvec",
  "atty",
  "bitflags",
  "configparser",

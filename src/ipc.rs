@@ -1,3 +1,4 @@
+use arrayvec::ArrayString;
 use std::time::Duration;
 use shakmaty::fen::Fen;
 use shakmaty::uci::Uci;
@@ -5,12 +6,12 @@ use shakmaty::variants::Variant;
 use tokio::sync::oneshot;
 
 /// Uniquely identifies a batch in this process.
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct BatchId(String);
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct BatchId(ArrayString<[u8; 16]>);
 
 /// Uniquely identifies a position within a batch.
 #[derive(Debug, Clone)]
-pub struct PositionId(u64);
+pub struct PositionId(pub usize);
 
 #[derive(Debug, Clone)]
 pub struct Skill(u32);
@@ -35,8 +36,8 @@ pub enum Score {
 
 #[derive(Debug, Clone)]
 pub struct PositionResponse {
-    batch_id: BatchId,
-    position_id: PositionId,
+    pub batch_id: BatchId,
+    pub position_id: PositionId,
 
     score: Score,
     best_move: Option<Uci>,
