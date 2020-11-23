@@ -38,6 +38,13 @@ enum ApiMessage {
         key: Option<Key>,
         batch_id: BatchId,
     },
+    Acquire {
+        key: Option<Key>,
+        callback: oneshot::Sender<Option<()>>,
+    },
+    Submit {
+        key: Option<Key>,
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -61,7 +68,7 @@ pub struct QueueStatus {
 }
 
 #[derive(Debug, Serialize)]
-pub struct AbortRequestBody {
+pub struct VoidRequestBody {
     fishnet: Fishnet,
     stockfish: Stockfish,
 }
@@ -288,10 +295,32 @@ impl ApiActor {
             ApiMessage::Abort { key, batch_id } => {
                 let url = format!("{}/abort/{}", self.endpoint, batch_id);
                 warn!("Aborting batch {}.", batch_id);
-                self.client.post(&url).json(&AbortRequestBody {
+                self.client.post(&url).json(&VoidRequestBody {
                     fishnet: Fishnet::authenticated(key),
                     stockfish: Stockfish::default(),
                 }).send().await?.error_for_status()?;
+            }
+            ApiMessage::Acquire { key, callback } => {
+                let url = format!("{}/acquire", self.endpoint);
+                let res = self.client.post(&url).json(&VoidRequestBody {
+                    fishnet: Fishnet::authenticated(key),
+                    stockfish: Stockfish::default(),
+                }).send().await?.error_for_status()?;
+                match res.status() {
+                    StatusCode::NO_CONTENT => callback.send(None).whatever("callback dropped"),
+                    StatusCode::OK => {
+                        todo!("Parse content");
+
+                        if let Err(_) = callback.send(Some((
+                        ))) {
+                            error!("Acquired a batch, but callback dropped. Please report this bug.");
+                        }
+                    }
+                    status => warn!("Unexpected status for acquire: {}", status),
+                }
+            }
+            ApiMessage::Submit { key } => {
+                todo!("submit")
             }
         })
     }
