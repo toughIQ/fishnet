@@ -79,7 +79,7 @@ async fn run(opt: Opt) {
     info!("Endpoint: {}", endpoint);
     let api = {
         let shutdown_barrier = shutdown_barrier.clone();
-        let (api, api_actor) = api::channel(endpoint);
+        let (api, api_actor) = api::channel(endpoint, opt.key);
         tokio::spawn(async move {
             api_actor.run().await;
             shutdown_barrier.wait().await;

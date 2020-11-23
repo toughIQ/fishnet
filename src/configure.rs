@@ -322,7 +322,7 @@ pub async fn parse_and_configure() -> Opt {
             };
 
             // Step 2: Key.
-            let mut api = api::spawn(endpoint.clone());
+            let mut api = api::spawn(endpoint.clone(), None);
             eprintln!();
             loop {
                 let mut key = String::new();

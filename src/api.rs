@@ -12,13 +12,13 @@ use crate::configure::{Key, KeyError};
 use crate::ipc::BatchId;
 use crate::util::{WhateverExt as _, RandomizedBackoff};
 
-pub fn channel(endpoint: Url) -> (ApiStub, ApiActor) {
+pub fn channel(endpoint: Url, key: Option<Key>) -> (ApiStub, ApiActor) {
     let (tx, rx) = mpsc::unbounded_channel();
-    (ApiStub::new(tx), ApiActor::new(rx, endpoint))
+    (ApiStub::new(tx), ApiActor::new(rx, endpoint, key))
 }
 
-pub fn spawn(endpoint: Url) -> ApiStub {
-    let (stub, actor) = channel(endpoint);
+pub fn spawn(endpoint: Url, key: Option<Key>) -> ApiStub {
+    let (stub, actor) = channel(endpoint, key);
     tokio::spawn(async move {
         actor.run().await;
     });
@@ -35,11 +35,9 @@ enum ApiMessage {
         callback: oneshot::Sender<AnalysisStatus>,
     },
     Abort {
-        key: Option<Key>,
         batch_id: BatchId,
     },
     Acquire {
-        key: Option<Key>,
         query: AcquireQuery,
         callback: oneshot::Sender<Acquired>,
     },
@@ -277,17 +275,13 @@ impl ApiStub {
         res.await.ok()
     }
 
-    pub fn abort(&mut self, key: Option<Key>, batch_id: BatchId) {
-        self.tx.send(ApiMessage::Abort {
-            key,
-            batch_id,
-        }).expect("api actor alive");
+    pub fn abort(&mut self, batch_id: BatchId) {
+        self.tx.send(ApiMessage::Abort { batch_id }).expect("api actor alive");
     }
 
-    pub async fn acquire(&mut self, key: Option<Key>, query: AcquireQuery) -> Option<Acquired> {
+    pub async fn acquire(&mut self, query: AcquireQuery) -> Option<Acquired> {
         let (req, res) = oneshot::channel();
         self.tx.send(ApiMessage::Acquire {
-            key,
             query,
             callback: req,
         }).expect("api actor alive");
@@ -305,15 +299,17 @@ impl ApiStub {
 pub struct ApiActor {
     rx: mpsc::UnboundedReceiver<ApiMessage>,
     endpoint: Url,
+    key: Option<Key>,
     client: reqwest::Client,
     error_backoff: RandomizedBackoff,
 }
 
 impl ApiActor {
-    fn new(rx: mpsc::UnboundedReceiver<ApiMessage>, endpoint: Url) -> ApiActor {
+    fn new(rx: mpsc::UnboundedReceiver<ApiMessage>, endpoint: Url, key: Option<Key>) -> ApiActor {
         ApiActor {
             rx,
             endpoint,
+            key,
             client: reqwest::Client::builder()
                 .user_agent(concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION")))
                 .timeout(Duration::from_secs(15))
@@ -356,12 +352,12 @@ impl ApiActor {
         }
     }
 
-    async fn abort(&mut self, key: Option<Key>, batch_id: BatchId) -> reqwest::Result<()> {
+    async fn abort(&mut self, batch_id: BatchId) -> reqwest::Result<()> {
         Ok({
             let url = format!("{}/abort/{}", self.endpoint, batch_id);
             warn!("Aborting batch {}.", batch_id);
             self.client.post(&url).json(&VoidRequestBody {
-                fishnet: Fishnet::authenticated(key),
+                fishnet: Fishnet::authenticated(self.key.clone()),
                 stockfish: Stockfish::default(),
             }).send().await?.error_for_status()?;
         })
@@ -384,13 +380,13 @@ impl ApiActor {
                 let res: StatusResponseBody = self.client.get(&url).send().await?.error_for_status()?.json().await?;
                 callback.send(res.analysis).whatever("callback dropped");
             }
-            ApiMessage::Abort { key, batch_id } => {
-                self.abort(key, batch_id).await?;
+            ApiMessage::Abort { batch_id } => {
+                self.abort(batch_id).await?;
             }
-            ApiMessage::Acquire { key, callback, query } => {
+            ApiMessage::Acquire { callback, query } => {
                 let url = format!("{}/acquire", self.endpoint);
                 let res = self.client.post(&url).query(&query).json(&VoidRequestBody {
-                    fishnet: Fishnet::authenticated(key.clone()),
+                    fishnet: Fishnet::authenticated(self.key.clone()),
                     stockfish: Stockfish::default(),
                 }).send().await?.error_for_status()?;
 
@@ -399,7 +395,7 @@ impl ApiActor {
                     StatusCode::OK | StatusCode::ACCEPTED => {
                         if let Err(Acquired::Accepted(res)) = callback.send(Acquired::Accepted(res.json().await?)) {
                             error!("Acquired a batch, but callback dropped. Aborting.");
-                            self.abort(key, res.work.id).await?;
+                            self.abort(res.work.id).await?;
                         }
                     }
                     status => warn!("Unexpected status for acquire: {}", status),
