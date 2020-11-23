@@ -109,7 +109,7 @@ async fn run(opt: Opt) {
                 debug!("Started worker {}.", i);
 
                 loop {
-                    tokio::time::delay_for(std::time::Duration::from_secs(5)).await;
+                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 
                     let (callback, waiter) = oneshot::channel();
 
@@ -122,7 +122,7 @@ async fn run(opt: Opt) {
                     }
 
                     tokio::select! {
-                         _ = tokio::time::delay_for(std::time::Duration::from_millis(200)) => break,
+                         _ = tokio::time::sleep(std::time::Duration::from_millis(200)) => break,
                         res = waiter => {
                             match res {
                                 Ok(_) => todo!("next job"),

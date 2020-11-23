@@ -332,7 +332,7 @@ impl ApiActor {
                 Some(status) if status == StatusCode::TOO_MANY_REQUESTS => {
                     let backoff = Duration::from_secs(60) + self.error_backoff.next();
                     error!("Too many requests. Suspending requests for {:?}.", backoff);
-                    time::delay_for(backoff).await;
+                    time::sleep(backoff).await;
                 }
                 Some(status) if status == StatusCode::BAD_REQUEST => {
                     error!("Client error: {}", err);
@@ -340,13 +340,13 @@ impl ApiActor {
                 Some(status) if status.is_server_error() => {
                     let backoff = self.error_backoff.next();
                     error!("Server error: {}. Backing off {:?}.", status, backoff);
-                    time::delay_for(backoff).await;
+                    time::sleep(backoff).await;
                 }
                 Some(_) => self.error_backoff.reset(),
                 None => {
                     let backoff = self.error_backoff.next();
                     error!("{}. Backing off {:?}.", err, backoff);
-                    time::delay_for(backoff).await;
+                    time::sleep(backoff).await;
                 }
             }
         } else {

@@ -151,10 +151,10 @@ impl QueueActor {
                         }
 
                         // TODO: Simulated failed network request.
-                        time::delay_for(Duration::from_millis(2000)).await;
+                        time::sleep(Duration::from_millis(2000)).await;
 
                         // TODO: Simulated backoff.
-                        time::delay_for(Duration::from_millis(10_000)).await;
+                        time::sleep(Duration::from_millis(10_000)).await;
                     }
                 }
             }
