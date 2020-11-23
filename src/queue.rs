@@ -1,6 +1,7 @@
 use std::collections::{VecDeque, HashMap};
 use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot, Mutex};
+use tracing::debug;
 use crate::api::ApiStub;
 use crate::ipc::{BatchId, Position, PositionResponse, Pull};
 use crate::util::WhateverExt as _ ;
@@ -133,11 +134,15 @@ impl QueueActor {
     }
 
     pub async fn run(mut self) {
+        debug!("Queue actor started.");
+
         while let Some(msg) = self.rx.recv().await {
             match msg {
                 QueueMessage::Pull { callback } => todo!("impl pull"),
             }
         }
+
+        debug!("Queue actor exited.");
     }
 }
 

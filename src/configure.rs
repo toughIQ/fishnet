@@ -10,7 +10,7 @@ use std::num::{ParseIntError, NonZeroUsize};
 use std::time::Duration;
 use url::Url;
 use configparser::ini::Ini;
-use tracing::warn;
+use tracing::{Level, warn};
 use crate::api;
 
 const DEFAULT_ENDPOINT: &str = "https://lichess.org/fishnet";
@@ -72,11 +72,21 @@ impl Opt {
     }
 }
 
-#[derive(Debug, Default, StructOpt)]
+#[derive(Debug, Default, Copy, Clone, StructOpt)]
 pub struct Verbose {
     /// Increase verbosity.
     #[structopt(long = "verbose", short = "v", parse(from_occurrences), global = true)]
     pub level: usize,
+}
+
+impl From<Verbose> for Level {
+    fn from(Verbose { level }: Verbose) -> Level {
+        match level {
+            0 => Level::INFO,
+            1 => Level::DEBUG,
+            _ => Level::TRACE,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -269,6 +279,7 @@ pub async fn parse_and_configure() -> Opt {
                 tracing_subscriber::fmt()
                     .without_time()
                     .with_writer(io::stderr)
+                    .with_max_level(Level::from(opt.verbose))
                     .finish())
         },
         _ => {
@@ -276,6 +287,7 @@ pub async fn parse_and_configure() -> Opt {
             tracing::subscriber::set_global_default(
                 tracing_subscriber::fmt()
                     .without_time()
+                    .with_max_level(Level::from(opt.verbose))
                     .finish())
         }
     }).expect("set global tracing subsriber");

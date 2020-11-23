@@ -3,7 +3,7 @@ use url::Url;
 use reqwest::StatusCode;
 use tokio::time;
 use tokio::sync::{mpsc, oneshot};
-use tracing::{warn, error};
+use tracing::{debug, warn, error};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationSeconds, DisplayFromStr, SpaceSeparator, StringWithSeparator};
 use shakmaty::fen::Fen;
@@ -319,9 +319,11 @@ impl ApiActor {
     }
 
     pub async fn run(mut self) {
+        debug!("Api actor started.");
         while let Some(msg) = self.rx.recv().await {
             self.handle_mesage(msg).await;
         }
+        debug!("Api actor exited.");
     }
 
     async fn handle_mesage(&mut self, msg: ApiMessage) {
