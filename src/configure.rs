@@ -340,8 +340,8 @@ pub async fn parse_and_configure() -> Opt {
 
                 let key = match Key::from_str(key) {
                     Ok(key) if network => match api.check_key(key).await {
-                        Ok(res) => res,
-                        Err(_) => continue, // error already logged
+                        Some(res) => res,
+                        None => continue, // server/network error already logged
                     },
                     Ok(key) => Ok(key),
                     Err(err) => Err(err),

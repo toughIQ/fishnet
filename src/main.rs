@@ -4,6 +4,7 @@ mod systemd;
 mod api;
 mod ipc;
 mod queue;
+mod util;
 
 use std::mem;
 use std::sync::Arc;

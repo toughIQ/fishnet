@@ -4,9 +4,10 @@ use std::time::Duration;
 use reqwest::StatusCode;
 use tokio::time;
 use tokio::sync::{mpsc, oneshot};
-use tracing::error;
+use tracing::{warn, error};
 use rand::Rng;
 use crate::configure::{Key, KeyError};
+use crate::util::WhateverExt as _;
 
 pub fn spawn(endpoint: Url) -> ApiStub {
     let (tx, rx) = mpsc::unbounded_channel();
@@ -20,7 +21,7 @@ pub fn spawn(endpoint: Url) -> ApiStub {
 enum ApiMessage {
     CheckKey {
         key: Key,
-        callback: oneshot::Sender<reqwest::Result<Result<Key, KeyError>>>,
+        callback: oneshot::Sender<Result<Key, KeyError>>,
     }
 }
 
@@ -158,13 +159,13 @@ pub struct ApiStub {
 }
 
 impl ApiStub {
-    pub async fn check_key(&mut self, key: Key) -> reqwest::Result<Result<Key, KeyError>> {
+    pub async fn check_key(&mut self, key: Key) -> Option<Result<Key, KeyError>> {
         let (req, res) = oneshot::channel();
         self.tx.send(ApiMessage::CheckKey {
             key,
             callback: req,
         }).expect("api actor alive");
-        res.await.expect("response")
+        res.await.ok()
     }
 }
 
@@ -202,13 +203,15 @@ impl ApiActor {
                         error!("Server error: {}. Backing off {:?}.", status, backoff);
                         time::delay_for(backoff).await;
                     }
-                    Some(status) => (),
+                    Some(_) => self.error_backoff.reset(),
                     None => {
                         let backoff = self.error_backoff.next();
                         error!("Network error: {}. Backing off {:?}.", err, backoff);
                         time::delay_for(backoff).await;
                     }
                 }
+            } else {
+                self.error_backoff.reset();
             }
         }
     }
@@ -217,14 +220,13 @@ impl ApiActor {
         Ok(match msg {
             ApiMessage::CheckKey { key, callback } => {
                 let url = format!("{}/key/{}", self.endpoint, key.0);
-                let res = self.client.get(&url).send().await;
-                callback.send(match res {
-                    Ok(res) if res.status() == StatusCode::NOT_FOUND => {
-                        Ok(Err(KeyError::AccessDenied))
-                    }
-                    Ok(res) => res.error_for_status().map(|_| Ok(key)),
-                    Err(err) => Err(err),
-                });
+                let res = self.client.get(&url).send().await?;
+                match res.status() {
+                    StatusCode::NOT_FOUND => callback.send(Err(KeyError::AccessDenied)).whatever("callback dropped"),
+                    StatusCode::OK => callback.send(Ok(key)).whatever("callback dropped"),
+                    status => warn!("Unexpected status while checking key: {}", status),
+                }
+                res.error_for_status()?;
             }
         })
     }
