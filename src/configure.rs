@@ -79,7 +79,7 @@ pub struct Verbose {
     pub level: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Key(pub String);
 
 #[derive(Debug)]

@@ -1,6 +1,7 @@
 use arrayvec::ArrayString;
 use std::fmt;
 use std::time::Duration;
+use std::str::FromStr;
 use shakmaty::fen::Fen;
 use shakmaty::uci::Uci;
 use shakmaty::variants::Variant;
@@ -9,6 +10,14 @@ use tokio::sync::oneshot;
 /// Uniquely identifies a batch in this process.
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct BatchId(ArrayString<[u8; 16]>);
+
+impl FromStr for BatchId {
+    type Err = arrayvec::CapacityError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(BatchId(s.parse()?))
+    }
+}
 
 impl fmt::Display for BatchId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

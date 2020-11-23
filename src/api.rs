@@ -6,7 +6,7 @@ use tokio::time;
 use tokio::sync::{mpsc, oneshot};
 use tracing::{warn, error};
 use rand::Rng;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationSeconds};
 use crate::configure::{Key, KeyError};
 use crate::ipc::BatchId;
@@ -35,12 +35,13 @@ enum ApiMessage {
         callback: oneshot::Sender<AnalysisStatus>,
     },
     Abort {
+        key: Option<Key>,
         batch_id: BatchId,
     },
 }
 
 #[derive(Debug, Deserialize)]
-struct Status {
+struct StatusResponseBody {
     analysis: AnalysisStatus,
 }
 
@@ -59,27 +60,30 @@ pub struct QueueStatus {
     pub oldest: Duration,
 }
 
-/* struct Acquire {
+#[derive(Debug, Serialize)]
+pub struct AbortRequestBody {
     fishnet: Fishnet,
     stockfish: Stockfish,
 }
 
+#[derive(Debug, Serialize)]
 struct Fishnet {
     version: &'static str,
     python: &'static str,
-    apikey: String,
+    apikey: Option<String>
 }
 
-impl From<Key> for Fishnet {
-    fn from(Key(apikey): Key) -> Fishnet {
+impl Fishnet {
+    fn authenticated(key: Option<Key>) -> Fishnet {
         Fishnet {
             version: env!("CARGO_PKG_VERSION"),
             python: "-",
-            apikey,
+            apikey: key.map(|k| k.0),
         }
     }
 }
 
+#[derive(Debug, Serialize)]
 struct Stockfish {
     name: &'static str,
     options: StockfishOptions,
@@ -94,6 +98,7 @@ impl Default for Stockfish {
     }
 }
 
+#[derive(Debug, Serialize)]
 struct StockfishOptions {
     hash: u32,
     threads: usize,
@@ -106,6 +111,11 @@ impl Default for StockfishOptions {
             threads: 1,
         }
     }
+}
+
+/* struct Acquire {
+    fishnet: Fishnet,
+    stockfish: Stockfish,
 }
 
 struct Work {
@@ -202,9 +212,16 @@ impl ApiStub {
         }).expect("api actor alive");
         res.await.ok()
     }
+
+    pub fn abort(&mut self, key: Option<Key>, batch_id: BatchId) {
+        self.tx.send(ApiMessage::Abort {
+            key,
+            batch_id,
+        }).expect("api actor alive");
+    }
 }
 
-struct ApiActor {
+pub struct ApiActor {
     rx: mpsc::UnboundedReceiver<ApiMessage>,
     endpoint: Url,
     client: reqwest::Client,
@@ -265,13 +282,16 @@ impl ApiActor {
             }
             ApiMessage::Status { callback } => {
                 let url = format!("{}/status", self.endpoint);
-                let res: Status = self.client.get(&url).send().await?.error_for_status()?.json().await?;
+                let res: StatusResponseBody = self.client.get(&url).send().await?.error_for_status()?.json().await?;
                 callback.send(res.analysis).whatever("callback dropped");
             }
-            ApiMessage::Abort { batch_id } => {
+            ApiMessage::Abort { key, batch_id } => {
                 let url = format!("{}/abort/{}", self.endpoint, batch_id);
-                warn!("Aborting batch {} ...", batch_id);
-                self.client.post(&url).json(&()).send().await?.error_for_status()?;
+                warn!("Aborting batch {}.", batch_id);
+                self.client.post(&url).json(&AbortRequestBody {
+                    fishnet: Fishnet::authenticated(key),
+                    stockfish: Stockfish::default(),
+                }).send().await?.error_for_status()?;
             }
         })
     }
