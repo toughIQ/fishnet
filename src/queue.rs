@@ -1,6 +1,8 @@
 use std::collections::{VecDeque, HashMap};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::{mpsc, oneshot, Mutex};
+use tokio::time;
 use tracing::debug;
 use crate::api::ApiStub;
 use crate::ipc::{BatchId, Position, PositionResponse, Pull};
@@ -138,7 +140,23 @@ impl QueueActor {
 
         while let Some(msg) = self.rx.recv().await {
             match msg {
-                QueueMessage::Pull { callback } => todo!("impl pull"),
+                QueueMessage::Pull { callback } => {
+                    loop {
+                        {
+                            let state = self.state.lock().await;
+                            if state.shutdown_soon {
+                                self.rx.close();
+                                break;
+                            }
+                        }
+
+                        // TODO: Simulated failed network request.
+                        time::delay_for(Duration::from_millis(2000)).await;
+
+                        // TODO: Simulated backoff.
+                        time::delay_for(Duration::from_millis(10_000)).await;
+                    }
+                }
             }
         }
 

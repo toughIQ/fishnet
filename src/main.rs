@@ -8,9 +8,9 @@ mod util;
 
 use std::mem;
 use std::sync::Arc;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 use tokio::signal;
-use tokio::sync::{mpsc, Barrier};
+use tokio::sync::{Barrier, mpsc, oneshot};
 use crate::configure::{Opt, Command, Cores};
 use crate::assets::Cpu;
 use crate::ipc::{BatchId, Pull};
@@ -102,12 +102,32 @@ async fn run(opt: Opt) {
     // to tx, thereby requesting more work.
     let mut rx = {
         let (tx, rx) = mpsc::channel::<Pull>(cores);
-        for _ in 0..cores {
-            let tx = tx.clone();
+        for i in 0..cores {
+            let mut tx = tx.clone();
             let shutdown_barrier = shutdown_barrier.clone();
             tokio::spawn(async move {
-                tokio::time::delay_for(std::time::Duration::from_secs(5)).await;
-                drop(tx);
+                debug!("Started worker {}.", i);
+
+                loop {
+                    tokio::time::delay_for(std::time::Duration::from_secs(5)).await;
+
+                    let (callback, waiter) = oneshot::channel();
+
+                    if let Err(_) = tx.send(Pull {
+                        response: None,
+                        callback,
+                    }).await {
+                        debug!("Worker was about to send result, but tx is dead.");
+                        break;
+                    }
+
+                    match waiter.await {
+                        Ok(_) => todo!("next job"),
+                        Err(_) => break,
+                    }
+                }
+
+                debug!("Stopped worker {}.", i);
                 shutdown_barrier.wait().await;
             });
         }
@@ -139,9 +159,9 @@ async fn run(opt: Opt) {
             }
             res = rx.recv() => {
                 if let Some(res) = res {
-                    queue.pull(res);
+                    queue.pull(dbg!(res)).await;
                 } else {
-                    // All workers dropped their tx.
+                    debug!("All workers dropped their tx.");
                     queue.shutdown().await;
                     break;
                 }
@@ -152,5 +172,6 @@ async fn run(opt: Opt) {
     // Drop queue to abort remaining jobs.
     drop(queue);
 
+    debug!("Bye.");
     shutdown_barrier.wait().await;
 }
