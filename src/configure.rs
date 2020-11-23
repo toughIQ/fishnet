@@ -19,7 +19,6 @@ const DEFAULT_ENDPOINT: &str = "https://lichess.org/fishnet";
 #[derive(Debug, StructOpt)]
 #[structopt(setting = structopt::clap::AppSettings::DisableHelpSubcommand)]
 pub struct Opt {
-    /// Increase verbosity.
     #[structopt(flatten)]
     pub verbose: Verbose,
 
@@ -59,14 +58,14 @@ pub struct Opt {
     #[structopt(long, global = true)]
     pub system_backlog: Option<Backlog>,
 
-    /// Run, configure or generate systemd unit files.
     #[structopt(subcommand)]
     pub command: Option<Command>,
 }
 
 #[derive(Debug, Default, StructOpt)]
 pub struct Verbose {
-    #[structopt(name = "verbose", short = "v", parse(from_occurrences), global = true)]
+    /// Increase verbosity.
+    #[structopt(long = "verbose", short = "v", parse(from_occurrences), global = true)]
     pub level: usize,
 }
 
