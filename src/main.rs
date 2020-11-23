@@ -127,6 +127,7 @@ async fn run(opt: Opt) {
                     rx.close();
                 } else {
                     info!("Stopping soon. Press ^C again to abort pending jobs ...");
+                    queue.shutdown_soon().await;
                     shutdown_soon = true;
                 }
             }
@@ -138,9 +139,10 @@ async fn run(opt: Opt) {
             }
             res = rx.recv() => {
                 if let Some(res) = res {
-                    queue.pull(res.callback);
+                    queue.pull(res);
                 } else {
                     // All workers dropped their tx.
+                    queue.shutdown().await;
                     break;
                 }
             }

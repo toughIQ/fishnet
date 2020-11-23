@@ -2,7 +2,7 @@ use std::collections::{VecDeque, HashMap};
 use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot, Mutex};
 use crate::api::ApiStub;
-use crate::ipc::{BatchId, Position, PositionResponse};
+use crate::ipc::{BatchId, Position, PositionResponse, Pull};
 use crate::util::WhateverExt as _ ;
 
 pub fn channel(api: ApiStub) -> (QueueStub, QueueActor) {
@@ -23,18 +23,34 @@ impl QueueStub {
         QueueStub { tx, state, api }
     }
 
-    pub fn pull(&mut self, callback: oneshot::Sender<Position>) {
-        self.tx.send(QueueMessage::Pull { callback }).whatever("queue dropped");
+    pub async fn pull(&mut self, pull: Pull) {
+        let position = {
+            let mut state = self.state.lock().await;
+
+            if let Some(response) = pull.response {
+                state.add_position_response(&mut self.api, response);
+            }
+
+            state.incoming.pop_front()
+        };
+
+        if let Some(position) = position {
+            pull.callback.send(position);
+        } else {
+            self.tx.send(QueueMessage::Pull {
+                callback: pull.callback,
+            }).whatever("queue dropped");
+        }
     }
 
-    pub async fn stop_soon(&mut self) {
+    pub async fn shutdown_soon(&mut self) {
         let mut state = self.state.lock().await;
-        state.stopping_soon = true;
+        state.shutdown_soon = true;
     }
 
-    pub async fn stop_immediately(&mut self) {
+    pub async fn shutdown(&mut self) {
         let mut state = self.state.lock().await;
-        state.stopping_soon = true;
+        state.shutdown_soon = true;
         state.incoming.clear();
         for (k, _) in state.pending.drain() {
             self.api.abort(k);
@@ -44,9 +60,54 @@ impl QueueStub {
 
 #[derive(Default)]
 struct QueueState {
-    stopping_soon: bool,
+    shutdown_soon: bool,
     incoming: VecDeque<Position>,
     pending: HashMap<BatchId, PendingBatch>,
+}
+
+impl QueueState {
+    fn add_incoming_batch(&mut self, api: &mut ApiStub, batch: IncomingBatch) {
+        let mut positions = Vec::with_capacity(batch.positions.len());
+
+        for pos in batch.positions {
+            match pos {
+                Skip::Present(pos) => {
+                    self.incoming.push_back(pos);
+                    positions.push(None);
+                }
+                Skip::Skip => positions.push(Some(Skip::Skip)),
+            }
+        }
+
+        self.pending.insert(batch.id, PendingBatch {
+            id: batch.id,
+            positions,
+        });
+
+        self.maybe_finished(api, batch.id);
+    }
+
+    fn add_position_response(&mut self, api: &mut ApiStub, res: PositionResponse) {
+        let batch_id = res.batch_id;
+        if let Some(pending) = self.pending.get_mut(&batch_id) {
+            if let Some(pos) = pending.positions.get_mut(res.position_id.0) {
+                *pos = Some(Skip::Present(res));
+            }
+        }
+
+        self.maybe_finished(api, batch_id);
+    }
+
+    fn maybe_finished(&mut self, api: &mut ApiStub, batch: BatchId) {
+        if let Some(pending) = self.pending.remove(&batch) {
+            match pending.try_into_completed() {
+                Ok(completed) => todo!("submit to api"),
+                Err(pending) => {
+                    self.pending.insert(pending.id, pending);
+                },
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -114,65 +175,3 @@ pub struct CompletedBatch {
     id: BatchId,
     positions: Vec<Skip<PositionResponse>>,
 }
-
-/* impl Queue {
-    pub fn add_incoming_batch(&mut self, batch: IncomingBatch) {
-        let mut positions = Vec::with_capacity(batch.positions.len());
-
-        for pos in batch.positions {
-            match pos {
-                Skip::Present(pos) => {
-                    self.incoming.push_back(pos);
-                    positions.push(None);
-                }
-                Skip::Skip => positions.push(Some(Skip::Skip)),
-            }
-        }
-
-        self.pending.insert(batch.id, PendingBatch {
-            id: batch.id,
-            positions,
-        });
-
-        self.maybe_finished(batch.id);
-    }
-
-    pub fn add_position_response(&mut self, res: PositionResponse) {
-        let batch_id = res.batch_id;
-        if let Some(pending) = self.pending.get_mut(&batch_id) {
-            if let Some(pos) = pending.positions.get_mut(res.position_id.0) {
-                *pos = Some(Skip::Present(res));
-            }
-        }
-
-        self.maybe_finished(batch_id);
-    }
-
-    pub fn take_incoming(&mut self) -> Option<Position> {
-        self.incoming.pop_front()
-    }
-
-    pub fn take_completed(&mut self) -> Option<CompletedBatch> {
-        self.completed.pop_front()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.incoming.is_empty()
-    }
-
-    pub fn abort_all(&mut self) -> Vec<BatchId> {
-        self.incoming.clear();
-        self.pending.drain().map(|(k, v)| k).collect()
-    }
-
-    fn maybe_finished(&mut self, batch: BatchId) {
-        if let Some(pending) = self.pending.remove(&batch) {
-            match pending.try_into_completed() {
-                Ok(completed) => self.completed.push_back(completed),
-                Err(pending) => {
-                    self.pending.insert(pending.id, pending);
-                },
-            }
-        }
-    }
-} */
