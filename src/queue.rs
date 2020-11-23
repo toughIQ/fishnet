@@ -137,30 +137,35 @@ impl QueueActor {
 
     pub async fn run(mut self) {
         debug!("Queue actor started.");
+        self.run_inner().await;
+        debug!("Queue actor exited.");
+    }
 
+    async fn run_inner(mut self) {
         while let Some(msg) = self.rx.recv().await {
             match msg {
-                QueueMessage::Pull { callback } => {
+                QueueMessage::Pull { mut callback } => {
                     loop {
                         {
                             let state = self.state.lock().await;
                             if state.shutdown_soon {
-                                self.rx.close();
-                                break;
+                                return;
                             }
                         }
 
                         // TODO: Simulated failed network request.
                         time::sleep(Duration::from_millis(2000)).await;
 
-                        // TODO: Simulated backoff.
-                        time::sleep(Duration::from_millis(10_000)).await;
+                        // Simulated backoff.
+                        tokio::select! {
+                            _ = callback.closed() => break,
+                            _ = time::sleep(Duration::from_millis(10_000)) => (),
+                        }
                     }
                 }
             }
         }
 
-        debug!("Queue actor exited.");
     }
 }
 

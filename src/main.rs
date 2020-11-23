@@ -122,7 +122,7 @@ async fn run(opt: Opt) {
                     }
 
                     tokio::select! {
-                         _ = tokio::time::sleep(std::time::Duration::from_millis(200)) => break,
+                        _ = tx.closed() => break,
                         res = waiter => {
                             match res {
                                 Ok(_) => todo!("next job"),
