@@ -19,6 +19,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "arrayvec"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -46,6 +52,15 @@ name = "bitflags"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
+
+[[package]]
+name = "btoi"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97c0869a9faa81f8bbf8102371105d6d0a7b79167a04c340b04ab16892246a11"
+dependencies = [
+ "num-traits",
+]
 
 [[package]]
 name = "bumpalo"
@@ -163,6 +178,7 @@ dependencies = [
  "rand",
  "raw-cpuid",
  "reqwest",
+ "shakmaty",
  "shell-escape",
  "structopt",
  "tempfile",
@@ -1039,6 +1055,17 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "shakmaty"
+version = "0.16.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "03a9e4398ae5746771d73c5d05efa5eed0f3478101d25a5ec362c024b5a4394c"
+dependencies = [
+ "arrayvec",
+ "bitflags",
+ "btoi",
 ]
 
 [[package]]

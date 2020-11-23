@@ -8,7 +8,7 @@ use tracing::{debug, error};
 use rand::Rng;
 use crate::configure::{Key, KeyError};
 
-struct Acquire {
+/* struct Acquire {
     fishnet: Fishnet,
     stockfish: Stockfish,
 }
@@ -134,7 +134,7 @@ struct QueueStatus {
     acquired: u64,
     queued: u64,
     oldest: u64,
-}
+} */
 
 pub struct HttpApi {
     endpoint: Url,

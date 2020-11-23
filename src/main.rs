@@ -2,6 +2,7 @@ mod configure;
 mod assets;
 mod systemd;
 mod api;
+mod ipc;
 
 use std::mem;
 use std::sync::Arc;
@@ -10,6 +11,7 @@ use tokio::signal;
 use tokio::sync::{mpsc, Barrier};
 use crate::configure::{Opt, Command, Cores};
 use crate::assets::Cpu;
+use crate::ipc::Pull;
 
 #[tokio::main]
 async fn main() {
@@ -69,7 +71,7 @@ async fn run(opt: Opt) {
     // to tx, thereby requesting more work.
     let shutdown_barrier = Arc::new(Barrier::new(cores + 1));
     let mut rx = {
-        let (tx, rx) = mpsc::channel::<()>(cores);
+        let (tx, rx) = mpsc::channel::<Pull>(cores);
         for _ in 0..cores {
             let tx = tx.clone();
             let shutdown_barrier = shutdown_barrier.clone();
