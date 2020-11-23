@@ -1,18 +1,16 @@
-use url::Url;
-use std::cmp::min;
 use std::time::Duration;
+use url::Url;
 use reqwest::StatusCode;
 use tokio::time;
 use tokio::sync::{mpsc, oneshot};
 use tracing::{warn, error};
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationSeconds, DisplayFromStr, SpaceSeparator, StringWithSeparator};
 use shakmaty::fen::Fen;
 use shakmaty::uci::Uci;
 use crate::configure::{Key, KeyError};
 use crate::ipc::BatchId;
-use crate::util::WhateverExt as _;
+use crate::util::{WhateverExt as _, RandomizedBackoff};
 
 pub fn channel(endpoint: Url) -> (ApiStub, ApiActor) {
     let (tx, rx) = mpsc::unbounded_channel();
@@ -419,23 +417,5 @@ impl ApiActor {
                 }
             }
         })
-    }
-}
-
-#[derive(Default)]
-struct RandomizedBackoff {
-    duration: Duration,
-}
-
-impl RandomizedBackoff {
-    fn next(&mut self) -> Duration {
-        let low = self.duration.as_millis() as u64;
-        let high = min(60_000, (low + 500) * 2);
-        self.duration = Duration::from_millis(rand::thread_rng().gen_range(low, high));
-        self.duration
-    }
-
-    fn reset(&mut self) {
-        self.duration = Duration::default();
     }
 }
