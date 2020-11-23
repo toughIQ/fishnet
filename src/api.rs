@@ -7,7 +7,9 @@ use tokio::sync::{mpsc, oneshot};
 use tracing::{warn, error};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DurationSeconds};
+use serde_with::{serde_as, DurationSeconds, DisplayFromStr, SpaceSeparator, StringWithSeparator};
+use shakmaty::fen::Fen;
+use shakmaty::uci::Uci;
 use crate::configure::{Key, KeyError};
 use crate::ipc::BatchId;
 use crate::util::WhateverExt as _;
@@ -41,7 +43,7 @@ enum ApiMessage {
     Acquire {
         key: Option<Key>,
         query: AcquireQuery,
-        callback: oneshot::Sender<Option<()>>,
+        callback: oneshot::Sender<Acquired>,
     },
     Submit {
         key: Option<Key>,
@@ -78,7 +80,7 @@ pub struct VoidRequestBody {
 struct Fishnet {
     version: &'static str,
     python: &'static str,
-    apikey: Option<String>
+    apikey: String,
 }
 
 impl Fishnet {
@@ -86,7 +88,7 @@ impl Fishnet {
         Fishnet {
             version: env!("CARGO_PKG_VERSION"),
             python: "-",
-            apikey: key.map(|k| k.0),
+            apikey: key.map_or("".to_owned(), |k| k.0),
         }
     }
 }
@@ -126,34 +128,69 @@ pub struct AcquireQuery {
     pub slow: bool,
 }
 
-/* struct Acquire {
-    fishnet: Fishnet,
-    stockfish: Stockfish,
+#[serde_as]
+#[derive(Debug, Deserialize)]
+pub struct Work {
+    #[serde(rename = "type")]
+    pub tpe: WorkType,
+    #[serde_as(as = "DisplayFromStr")]
+    pub id: BatchId,
 }
 
-struct Work {
-    tpe: WorkType, // type
-    id: String,
-}
-
-enum WorkType {
+#[derive(Debug, Deserialize)]
+pub enum WorkType {
+    #[serde(rename = "analysis")]
     Analysis,
+    #[serde(rename = "move")]
     Move,
 }
 
-enum Acquired {
-    Ok {
-        work: Work,
-        game_id: Option<String>,
-        position: Option<String>,
-        variant: Option<String>,
-        moves: Option<String>,
-        nodes: Option<u64>,
-        skip_positions: Vec<usize>,
-    },
+#[serde_as]
+#[derive(Debug, Deserialize)]
+pub struct AcquireResponseBody {
+    pub work: Work,
+    pub game_id: Option<String>,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub position: Option<Fen>,
+    pub variant: Option<String>,
+    #[serde_as(as = "StringWithSeparator::<SpaceSeparator, Uci>")]
+    pub moves: Vec<Uci>,
+    pub nodes: Option<u64>,
+    #[serde(rename = "skipPositions", default)]
+    pub skip_positions: Vec<usize>,
+}
+
+#[derive(Debug, Deserialize)]
+pub enum LichessVariant {
+    #[serde(rename = "antichess")]
+    Antichess,
+    #[serde(rename = "atomic")]
+    Atomic,
+    #[serde(rename = "chess960")]
+    Chess960,
+    #[serde(rename = "crazyhouse")]
+    Crazyhouse,
+    #[serde(rename = "fromPosition")]
+    FromPosition,
+    #[serde(rename = "horde")]
+    Horde,
+    #[serde(rename = "kingOfTheHill")]
+    KingOfTheHill,
+    #[serde(rename = "racingKings")]
+    RacingKings,
+    #[serde(rename = "standard")]
+    Standard,
+    #[serde(rename = "threeCheck")]
+    ThreeCheck,
+}
+
+#[derive(Debug)]
+pub enum Acquired {
+    Accepted(AcquireResponseBody),
     NoContent,
 }
 
+/*
 struct Analysis {
     fishnet: Fishnet,
     stockfish: Stockfish,
@@ -233,7 +270,7 @@ impl ApiStub {
         }).expect("api actor alive");
     }
 
-    pub async fn acquire(&mut self, key: Option<Key>, query: AcquireQuery) -> Option<Option<()>> {
+    pub async fn acquire(&mut self, key: Option<Key>, query: AcquireQuery) -> Option<Acquired> {
         let (req, res) = oneshot::channel();
         self.tx.send(ApiMessage::Acquire {
             key,
@@ -278,6 +315,9 @@ impl ApiActor {
                     error!("Too many requests. Suspending requests for {:?}.", backoff);
                     time::delay_for(backoff).await;
                 }
+                Some(status) if status == StatusCode::BAD_REQUEST => {
+                    error!("Client error: {}", err);
+                },
                 Some(status) if status.is_server_error() => {
                     let backoff = self.error_backoff.next();
                     error!("Server error: {}. Backing off {:?}.", status, backoff);
@@ -334,12 +374,11 @@ impl ApiActor {
                 }).send().await?.error_for_status()?;
 
                 match res.status() {
-                    StatusCode::NO_CONTENT => callback.send(None).whatever("callback dropped"),
-                    StatusCode::OK => {
-                        if let Err(_) = callback.send(Some((
-                        ))) {
-                            error!("Acquired a batch, but callback dropped. Please report this bug.");
-                            self.abort(key, "TODO".parse().expect("valid batch id")).await?;
+                    StatusCode::NO_CONTENT => callback.send(Acquired::NoContent).whatever("callback dropped"),
+                    StatusCode::OK | StatusCode::ACCEPTED => {
+                        if let Err(Acquired::Accepted(res)) = callback.send(Acquired::Accepted(res.json().await?)) {
+                            error!("Acquired a batch, but callback dropped. Aborting.");
+                            self.abort(key, res.work.id).await?;
                         }
                     }
                     status => warn!("Unexpected status for acquire: {}", status),
