@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationSeconds, DisplayFromStr, SpaceSeparator, StringWithSeparator};
 use shakmaty::fen::Fen;
 use shakmaty::uci::Uci;
+use tokio_compat_02::FutureExt as _;
 use crate::configure::{Key, KeyError};
 use crate::ipc::BatchId;
 use crate::util::{WhateverExt as _, RandomizedBackoff};
@@ -321,7 +322,7 @@ impl ApiActor {
     pub async fn run(mut self) {
         debug!("Api actor started.");
         while let Some(msg) = self.rx.recv().await {
-            self.handle_mesage(msg).await;
+            self.handle_mesage(msg).compat().await;
         }
         debug!("Api actor exited.");
     }

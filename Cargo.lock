@@ -236,6 +236,7 @@ dependencies = [
  "structopt",
  "tempfile",
  "tokio 0.3.4",
+ "tokio-compat-02",
  "tracing",
  "tracing-subscriber",
  "url",
@@ -741,6 +742,12 @@ dependencies = [
  "hermit-abi",
  "libc",
 ]
+
+[[package]]
+name = "once_cell"
+version = "1.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13bd41f508810a131401606d54ac32a467c97172d74ba7662562ebba5ad07fa0"
 
 [[package]]
 name = "openssl"
@@ -1366,6 +1373,7 @@ dependencies = [
  "lazy_static",
  "memchr",
  "mio 0.6.22",
+ "num_cpus",
  "pin-project-lite 0.1.11",
  "slab",
 ]
@@ -1390,6 +1398,19 @@ dependencies = [
  "slab",
  "tokio-macros",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "tokio-compat-02"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb4cec419b8b6f06c32e74aae6d8c5e79646d038a38e5ea2b36045f2c3296e22"
+dependencies = [
+ "bytes 0.5.6",
+ "once_cell",
+ "pin-project-lite 0.1.11",
+ "tokio 0.2.23",
+ "tokio 0.3.4",
 ]
 
 [[package]]
