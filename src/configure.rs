@@ -266,11 +266,17 @@ pub async fn parse_and_configure() -> Opt {
     (match opt.command {
         Some(Command::Systemd) | Some(Command::SystemdUser) => {
             tracing::subscriber::set_global_default(
-                tracing_subscriber::fmt().with_writer(io::stderr).finish())
+                tracing_subscriber::fmt()
+                    .without_time()
+                    .with_writer(io::stderr)
+                    .finish())
         },
         _ => {
             intro();
-            tracing::subscriber::set_global_default(tracing_subscriber::fmt().finish())
+            tracing::subscriber::set_global_default(
+                tracing_subscriber::fmt()
+                    .without_time()
+                    .finish())
         }
     }).expect("set global tracing subsriber");
 
