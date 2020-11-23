@@ -1,5 +1,56 @@
 use std::collections::{VecDeque, HashMap};
+use tokio::sync::{mpsc, oneshot};
+use crate::api::ApiStub;
 use crate::ipc::{BatchId, Position, PositionResponse};
+
+pub fn channel(api: ApiStub) -> (QueueStub, QueueActor) {
+    let (tx, rx) = mpsc::unbounded_channel();
+    (QueueStub::new(tx), QueueActor::new(rx, api))
+}
+
+#[derive(Clone)]
+pub struct QueueStub {
+    tx: mpsc::UnboundedSender<QueueMessage>,
+}
+
+impl QueueStub {
+    fn new(tx: mpsc::UnboundedSender<QueueMessage>) -> QueueStub {
+        QueueStub { tx }
+    }
+
+    pub fn pull(&mut self, callback: oneshot::Sender<Position>) {
+        self.tx.send(QueueMessage::Pull { callback });
+    }
+}
+
+#[derive(Debug)]
+enum QueueMessage {
+    Pull {
+        callback: oneshot::Sender<Position>,
+    }
+}
+
+pub struct QueueActor {
+    rx: mpsc::UnboundedReceiver<QueueMessage>,
+    api: ApiStub,
+}
+
+impl QueueActor {
+    fn new(rx: mpsc::UnboundedReceiver<QueueMessage>, api: ApiStub) -> QueueActor {
+        QueueActor {
+            rx,
+            api,
+        }
+    }
+
+    pub async fn run(mut self) {
+        while let Some(msg) = self.rx.recv().await {
+            match msg {
+                QueueMessage::Pull { callback } => todo!("impl pull"),
+            }
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 enum Skip<T> {

@@ -3,7 +3,7 @@ mod assets;
 mod systemd;
 mod api;
 mod ipc;
-//mod queue;
+mod queue;
 mod util;
 
 use std::mem;
@@ -39,20 +39,6 @@ async fn run(opt: Opt) {
     let cores = usize::from(opt.cores.unwrap_or(Cores::Auto));
     info!("Cores: {}", cores);
 
-    let endpoint = opt.endpoint();
-    info!("Endpoint: {}", endpoint);
-
-    let mut api = api::spawn(endpoint);
-    if let Some(status) = api.status().await {
-        info!("Queue status: {:?}", status);
-    }
-
-    if let Some(Acquired::Accepted(batch)) = dbg!(api.acquire(opt.key.clone(), AcquireQuery {
-        slow: false,
-    }).await) {
-        api.abort(opt.key.clone(), batch.work.id);
-    }
-
     // Install handler for SIGTERM.
     //#[cfg(unix)]
     //let mut sig_term = signal::unix::signal(signal::unix::SignalKind::terminate()).expect("install handler for sigterm");
@@ -84,9 +70,36 @@ async fn run(opt: Opt) {
         sig_int
     };
 
+    // Shut down when each worker, the API actor, the queue actor, and the
+    // main loop have finished.
+    let shutdown_barrier = Arc::new(Barrier::new(cores + 3));
+
+    // Spawn API actor.
+    let endpoint = opt.endpoint();
+    info!("Endpoint: {}", endpoint);
+    let api = {
+        let shutdown_barrier = shutdown_barrier.clone();
+        let (api, api_actor) = api::channel(endpoint);
+        tokio::spawn(async move {
+            api_actor.run().await;
+            shutdown_barrier.wait().await;
+        });
+        api
+    };
+
+    // Spawn queue actor.
+    let queue = {
+        let shutdown_barrier = shutdown_barrier.clone();
+        let (queue, queue_actor) = queue::channel(api);
+        tokio::spawn(async move {
+            queue_actor.run().await;
+            shutdown_barrier.wait().await;
+        });
+        queue
+    };
+
     // Spawn workers. Workers handle engine processes and send their results
     // to tx, thereby requesting more work.
-    let shutdown_barrier = Arc::new(Barrier::new(cores + 1));
     let mut rx = {
         let (tx, rx) = mpsc::channel::<Pull>(cores);
         for _ in 0..cores {
@@ -127,13 +140,14 @@ async fn run(opt: Opt) {
                 if let Some(res) = res {
                 } else {
                     // All workers dropped their tx.
-                    // TODO: Actively abort jobs.
-                    warn!("Aborting remaining jobs.");
                     break;
                 }
             }
         }
     }
+
+    // Drop queue to abort remaining jobs.
+    drop(queue);
 
     shutdown_barrier.wait().await;
 }

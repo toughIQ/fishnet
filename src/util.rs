@@ -21,7 +21,7 @@ impl RandomizedBackoff {
 }
 
 pub trait WhateverExt: Sized {
-    fn whatever(self, msg: &str) {}
+    fn whatever(self, _msg: &str) {}
 }
 
 impl<T, E> WhateverExt for Result<T, E> {}
