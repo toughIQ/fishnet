@@ -38,7 +38,10 @@ async fn run(opt: Opt) {
     let cores = usize::from(opt.cores.unwrap_or(Cores::Auto));
     info!("Cores: {}", cores);
 
-    let mut api = api::spawn(opt.endpoint());
+    let endpoint = opt.endpoint();
+    info!("Endpoint: {}", endpoint);
+
+    let mut api = api::spawn(endpoint);
     if let Some(status) = api.status().await {
         info!("Queue status: {:?}", status);
     }

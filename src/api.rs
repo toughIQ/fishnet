@@ -40,6 +40,7 @@ enum ApiMessage {
     },
     Acquire {
         key: Option<Key>,
+        slow: bool,
         callback: oneshot::Sender<Option<()>>,
     },
     Submit {
@@ -118,6 +119,11 @@ impl Default for StockfishOptions {
             threads: 1,
         }
     }
+}
+
+#[derive(Debug, Serialize)]
+struct AcquireQuery {
+    slow: bool,
 }
 
 /* struct Acquire {
@@ -250,32 +256,36 @@ impl ApiActor {
 
     pub async fn run(mut self) {
         while let Some(msg) = self.rx.recv().await {
-            if let Err(err) = self.handle_message(msg).await {
-                match err.status() {
-                    Some(status) if status == StatusCode::TOO_MANY_REQUESTS => {
-                        let backoff = Duration::from_secs(60) + self.error_backoff.next();
-                        error!("Too many requests. Suspending requests for {:?}.", backoff);
-                        time::delay_for(backoff).await;
-                    }
-                    Some(status) if status.is_server_error() => {
-                        let backoff = self.error_backoff.next();
-                        error!("Server error: {}. Backing off {:?}.", status, backoff);
-                        time::delay_for(backoff).await;
-                    }
-                    Some(_) => self.error_backoff.reset(),
-                    None => {
-                        let backoff = self.error_backoff.next();
-                        error!("{}. Backing off {:?}.", err, backoff);
-                        time::delay_for(backoff).await;
-                    }
-                }
-            } else {
-                self.error_backoff.reset();
-            }
+            self.handle_mesage(msg).await;
         }
     }
 
-    async fn handle_message(&mut self, msg: ApiMessage) -> reqwest::Result<()> {
+    async fn handle_mesage(&mut self, msg: ApiMessage) {
+        if let Err(err) = self.handle_message_inner(msg).await {
+            match err.status() {
+                Some(status) if status == StatusCode::TOO_MANY_REQUESTS => {
+                    let backoff = Duration::from_secs(60) + self.error_backoff.next();
+                    error!("Too many requests. Suspending requests for {:?}.", backoff);
+                    time::delay_for(backoff).await;
+                }
+                Some(status) if status.is_server_error() => {
+                    let backoff = self.error_backoff.next();
+                    error!("Server error: {}. Backing off {:?}.", status, backoff);
+                    time::delay_for(backoff).await;
+                }
+                Some(_) => self.error_backoff.reset(),
+                None => {
+                    let backoff = self.error_backoff.next();
+                    error!("{}. Backing off {:?}.", err, backoff);
+                    time::delay_for(backoff).await;
+                }
+            }
+        } else {
+            self.error_backoff.reset();
+        }
+    }
+
+    async fn handle_message_inner(&mut self, msg: ApiMessage) -> reqwest::Result<()> {
         Ok(match msg {
             ApiMessage::CheckKey { key, callback } => {
                 let url = format!("{}/key/{}", self.endpoint, key.0);
@@ -300,12 +310,15 @@ impl ApiActor {
                     stockfish: Stockfish::default(),
                 }).send().await?.error_for_status()?;
             }
-            ApiMessage::Acquire { key, callback } => {
+            ApiMessage::Acquire { key, callback, slow } => {
                 let url = format!("{}/acquire", self.endpoint);
-                let res = self.client.post(&url).json(&VoidRequestBody {
+                let res = self.client.post(&url).query(&AcquireQuery {
+                    slow,
+                }).json(&VoidRequestBody {
                     fishnet: Fishnet::authenticated(key),
                     stockfish: Stockfish::default(),
                 }).send().await?.error_for_status()?;
+
                 match res.status() {
                     StatusCode::NO_CONTENT => callback.send(None).whatever("callback dropped"),
                     StatusCode::OK => {
@@ -314,6 +327,10 @@ impl ApiActor {
                         if let Err(_) = callback.send(Some((
                         ))) {
                             error!("Acquired a batch, but callback dropped. Please report this bug.");
+                            self.handle_mesage(ApiMessage::Abort {
+                                key,
+                                batch_id: todo!("which batch id to abort?"),
+                            });
                         }
                     }
                     status => warn!("Unexpected status for acquire: {}", status),
