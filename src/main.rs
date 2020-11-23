@@ -8,7 +8,7 @@ mod util;
 
 use std::mem;
 use std::sync::Arc;
-use tracing::{debug, info, warn};
+use tracing::{debug, info, warn, error};
 use tokio::signal;
 use tokio::sync::{Barrier, mpsc, oneshot};
 use crate::configure::{Opt, Command, Cores};
@@ -70,9 +70,9 @@ async fn run(opt: Opt) {
         sig_int
     };
 
-    // Shut down when each worker, the API actor, the queue actor, and the
+    // Shut down when each worker, the API actor, ~the queue actor~, and the
     // main loop have finished.
-    let shutdown_barrier = Arc::new(Barrier::new(cores + 3));
+    let shutdown_barrier = Arc::new(Barrier::new(cores + 2));
 
     // Spawn API actor.
     let endpoint = opt.endpoint();
@@ -93,7 +93,7 @@ async fn run(opt: Opt) {
         let (queue, queue_actor) = queue::channel(api);
         tokio::spawn(async move {
             queue_actor.run().await;
-            shutdown_barrier.wait().await;
+            //shutdown_barrier.wait().await;
         });
         queue
     };
@@ -117,17 +117,23 @@ async fn run(opt: Opt) {
                         response: None,
                         callback,
                     }).await {
-                        debug!("Worker was about to send result, but tx is dead.");
+                        error!("Worker was about to send result, but tx is dead.");
                         break;
                     }
 
-                    match waiter.await {
-                        Ok(_) => todo!("next job"),
-                        Err(_) => break,
+                    tokio::select! {
+                         _ = tokio::time::delay_for(std::time::Duration::from_millis(200)) => break,
+                        res = waiter => {
+                            match res {
+                                Ok(_) => todo!("next job"),
+                                Err(_) => break,
+                            }
+                        }
                     }
                 }
 
                 debug!("Stopped worker {}.", i);
+                drop(tx);
                 shutdown_barrier.wait().await;
             });
         }
@@ -144,7 +150,7 @@ async fn run(opt: Opt) {
                 res.expect("sigint handler installed");
                 if shutdown_soon {
                     info!("Stopping now.");
-                    rx.close();
+                    rx.close(); // will not do in tokio 0.2
                 } else {
                     info!("Stopping soon. Press ^C again to abort pending jobs ...");
                     queue.shutdown_soon().await;
@@ -155,11 +161,12 @@ async fn run(opt: Opt) {
                 res.expect("sigterm handler installed");
                 info!("Stopping now.");
                 shutdown_soon = true;
-                rx.close();
+                rx.close(); // will not do in tokio 0.2
             }
             res = rx.recv() => {
                 if let Some(res) = res {
-                    queue.pull(dbg!(res)).await;
+                    debug!("Forwarding pull.");
+                    queue.pull(res).await;
                 } else {
                     debug!("All workers dropped their tx.");
                     queue.shutdown().await;
