@@ -6,6 +6,8 @@ use tokio::time;
 use tokio::sync::{mpsc, oneshot};
 use tracing::{warn, error};
 use rand::Rng;
+use serde::Deserialize;
+use serde_with::{serde_as, DurationSeconds};
 use crate::configure::{Key, KeyError};
 use crate::util::WhateverExt as _;
 
@@ -22,7 +24,30 @@ enum ApiMessage {
     CheckKey {
         key: Key,
         callback: oneshot::Sender<Result<Key, KeyError>>,
-    }
+    },
+    Status {
+        callback: oneshot::Sender<AnalysisStatus>,
+    },
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Status {
+    analysis: AnalysisStatus,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AnalysisStatus {
+    user: QueueStatus,
+    system: QueueStatus,
+}
+
+#[serde_as]
+#[derive(Debug, Deserialize)]
+pub struct QueueStatus {
+    acquired: u64,
+    queued: u64,
+    #[serde_as(as = "DurationSeconds<u64>")]
+    oldest: Duration,
 }
 
 /* struct Acquire {
@@ -140,18 +165,7 @@ struct Abort {
 
 struct Status {
     analysis: AnalysisStatus,
-}
-
-struct AnalysisStatus {
-    user: QueueStatus,
-    system: QueueStatus,
-}
-
-struct QueueStatus {
-    acquired: u64,
-    queued: u64,
-    oldest: u64,
-} */
+}*/
 
 #[derive(Debug, Clone)]
 pub struct ApiStub {
@@ -163,6 +177,14 @@ impl ApiStub {
         let (req, res) = oneshot::channel();
         self.tx.send(ApiMessage::CheckKey {
             key,
+            callback: req,
+        }).expect("api actor alive");
+        res.await.ok()
+    }
+
+    pub async fn status(&mut self) -> Option<AnalysisStatus> {
+        let (req, res) = oneshot::channel();
+        self.tx.send(ApiMessage::Status {
             callback: req,
         }).expect("api actor alive");
         res.await.ok()
@@ -206,7 +228,7 @@ impl ApiActor {
                     Some(_) => self.error_backoff.reset(),
                     None => {
                         let backoff = self.error_backoff.next();
-                        error!("Network error: {}. Backing off {:?}.", err, backoff);
+                        error!("{}. Backing off {:?}.", err, backoff);
                         time::delay_for(backoff).await;
                     }
                 }
@@ -227,6 +249,11 @@ impl ApiActor {
                     status => warn!("Unexpected status while checking key: {}", status),
                 }
                 res.error_for_status()?;
+            }
+            ApiMessage::Status { callback } => {
+                let url = format!("{}/status", self.endpoint);
+                let res = self.client.get(&url).send().await?.error_for_status()?.json().await?;
+                // TODO
             }
         })
     }

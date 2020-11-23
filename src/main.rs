@@ -3,7 +3,7 @@ mod assets;
 mod systemd;
 mod api;
 mod ipc;
-mod queue;
+//mod queue;
 mod util;
 
 use std::mem;
@@ -37,6 +37,11 @@ async fn run(opt: Opt) {
 
     let cores = usize::from(opt.cores.unwrap_or(Cores::Auto));
     info!("Cores: {}", cores);
+
+    let mut api = api::spawn(opt.endpoint());
+    if let Some(status) = api.status().await {
+        info!("Queue status: {:?}", status);
+    }
 
     // Install handler for SIGTERM.
     //#[cfg(unix)]

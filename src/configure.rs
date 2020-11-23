@@ -62,6 +62,16 @@ pub struct Opt {
     pub command: Option<Command>,
 }
 
+impl Opt {
+    pub fn endpoint(&self) -> Url {
+        if let Some(ref endpoint) = self.endpoint {
+            endpoint.clone()
+        } else {
+            DEFAULT_ENDPOINT.parse().expect("default endpoint is valid")
+        }
+    }
+}
+
 #[derive(Debug, Default, StructOpt)]
 pub struct Verbose {
     /// Increase verbosity.
@@ -103,7 +113,7 @@ impl FromStr for Key {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum Cores {
     Auto,
     All,
