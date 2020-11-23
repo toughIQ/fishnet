@@ -9,21 +9,20 @@ use crate::ipc::{BatchId, Position, PositionResponse, Pull};
 use crate::util::WhateverExt as _ ;
 
 pub fn channel(api: ApiStub) -> (QueueStub, QueueActor) {
-    let state = Arc::new(Mutex::new(QueueState::default()));
+    let state = Arc::new(Mutex::new(QueueState::new(api)));
     let (tx, rx) = mpsc::unbounded_channel();
-    (QueueStub::new(tx, state.clone(), api.clone()), QueueActor::new(rx, state, api))
+    (QueueStub::new(tx, state.clone()), QueueActor::new(rx, state))
 }
 
 #[derive(Clone)]
 pub struct QueueStub {
     tx: mpsc::UnboundedSender<QueueMessage>,
     state: Arc<Mutex<QueueState>>,
-    api: ApiStub,
 }
 
 impl QueueStub {
-    fn new(tx: mpsc::UnboundedSender<QueueMessage>, state: Arc<Mutex<QueueState>>, api: ApiStub) -> QueueStub {
-        QueueStub { tx, state, api }
+    fn new(tx: mpsc::UnboundedSender<QueueMessage>, state: Arc<Mutex<QueueState>>) -> QueueStub {
+        QueueStub { tx, state }
     }
 
     pub async fn pull(&mut self, pull: Pull) {
@@ -31,7 +30,7 @@ impl QueueStub {
             let mut state = self.state.lock().await;
 
             if let Some(response) = pull.response {
-                state.add_position_response(&mut self.api, response);
+                state.add_position_response(response);
             }
 
             state.incoming.pop_front()
@@ -51,24 +50,35 @@ impl QueueStub {
         state.shutdown_soon = true;
     }
 
-    pub async fn shutdown(&mut self) {
+    pub async fn shutdown(self) {
         let mut state = self.state.lock().await;
         state.shutdown_soon = true;
         state.incoming.clear();
-        for (k, _) in state.pending.drain() {
-            self.api.abort(k);
+        if let Some(mut api) = state.api.take() {
+            for (k, _) in state.pending.drain() {
+                api.abort(k);
+            }
         }
     }
 }
 
-#[derive(Default)]
 struct QueueState {
+    api: Option<ApiStub>,
     shutdown_soon: bool,
     incoming: VecDeque<Position>,
     pending: HashMap<BatchId, PendingBatch>,
 }
 
 impl QueueState {
+    fn new(api: ApiStub) -> QueueState {
+        QueueState {
+            api: Some(api),
+            shutdown_soon: false,
+            incoming: VecDeque::new(),
+            pending: HashMap::new(),
+        }
+    }
+
     fn add_incoming_batch(&mut self, api: &mut ApiStub, batch: IncomingBatch) {
         let mut positions = Vec::with_capacity(batch.positions.len());
 
@@ -87,10 +97,10 @@ impl QueueState {
             positions,
         });
 
-        self.maybe_finished(api, batch.id);
+        self.maybe_finished(batch.id);
     }
 
-    fn add_position_response(&mut self, api: &mut ApiStub, res: PositionResponse) {
+    fn add_position_response(&mut self, res: PositionResponse) {
         let batch_id = res.batch_id;
         if let Some(pending) = self.pending.get_mut(&batch_id) {
             if let Some(pos) = pending.positions.get_mut(res.position_id.0) {
@@ -98,10 +108,10 @@ impl QueueState {
             }
         }
 
-        self.maybe_finished(api, batch_id);
+        self.maybe_finished(batch_id);
     }
 
-    fn maybe_finished(&mut self, api: &mut ApiStub, batch: BatchId) {
+    fn maybe_finished(&mut self, batch: BatchId) {
         if let Some(pending) = self.pending.remove(&batch) {
             match pending.try_into_completed() {
                 Ok(completed) => todo!("submit to api"),
@@ -122,20 +132,18 @@ enum QueueMessage {
 
 pub struct QueueActor {
     rx: mpsc::UnboundedReceiver<QueueMessage>,
-    api: ApiStub,
     state: Arc<Mutex<QueueState>>,
 }
 
 impl QueueActor {
-    fn new(rx: mpsc::UnboundedReceiver<QueueMessage>, state: Arc<Mutex<QueueState>>, api: ApiStub) -> QueueActor {
+    fn new(rx: mpsc::UnboundedReceiver<QueueMessage>, state: Arc<Mutex<QueueState>>) -> QueueActor {
         QueueActor {
             rx,
             state,
-            api,
         }
     }
 
-    pub async fn run(mut self) {
+    pub async fn run(self) {
         debug!("Queue actor started.");
         self.run_inner().await;
         debug!("Queue actor exited.");

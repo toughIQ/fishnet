@@ -169,15 +169,14 @@ async fn run(opt: Opt) {
                     queue.pull(res).await;
                 } else {
                     debug!("All workers dropped their tx.");
-                    queue.shutdown().await;
                     break;
                 }
             }
         }
     }
 
-    // Drop queue to abort remaining jobs.
-    drop(queue);
+    // Shutdown queue to abort remaining jobs.
+    queue.shutdown().await;
 
     debug!("Bye.");
     shutdown_barrier.wait().await;
