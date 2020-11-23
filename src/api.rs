@@ -45,8 +45,9 @@ enum ApiMessage {
         query: AcquireQuery,
         callback: oneshot::Sender<Acquired>,
     },
-    Submit {
-        key: Option<Key>,
+    SubmitAnalysis {
+        batch_id: BatchId,
+        body: AnalysisRequestBody,
     },
 }
 
@@ -152,7 +153,8 @@ pub struct AcquireResponseBody {
     pub game_id: Option<String>,
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub position: Option<Fen>,
-    pub variant: Option<String>,
+    #[serde(default)]
+    pub variant: LichessVariant,
     #[serde_as(as = "StringWithSeparator::<SpaceSeparator, Uci>")]
     pub moves: Vec<Uci>,
     pub nodes: Option<u64>,
@@ -184,57 +186,66 @@ pub enum LichessVariant {
     ThreeCheck,
 }
 
+impl Default for LichessVariant {
+    fn default() -> LichessVariant {
+        LichessVariant::Standard
+    }
+}
+
 #[derive(Debug)]
 pub enum Acquired {
     Accepted(AcquireResponseBody),
     NoContent,
 }
 
-/*
-struct Analysis {
+#[derive(Debug, Serialize)]
+pub struct AnalysisRequestBody {
     fishnet: Fishnet,
     stockfish: Stockfish,
     analysis: Vec<AnalysisPart>,
 }
 
-enum AnalysisPart {
+#[serde_as]
+#[derive(Debug, Serialize)]
+#[serde(untagged)]
+pub enum AnalysisPart {
+    Skipped {
+        skipped: bool,
+    },
     Complete {
-        pv: Option<String>,
+        #[serde_as(as = "StringWithSeparator::<SpaceSeparator, Uci>")]
+        pv: Vec<Uci>,
         depth: u64,
         score: Score,
         time: Option<u64>,
         nodes: Option<u64>,
         nps: Option<u64>,
     },
-    Skipped {
-        skipped: bool,
-    }
 }
 
-enum Score {
+#[derive(Debug, Serialize)]
+#[serde(untagged)]
+pub enum Score {
+    #[serde(rename = "cp")]
     Cp(i64),
+    #[serde(rename = "mate")]
     Mate(i64),
 }
 
-struct Move {
+#[serde_as]
+#[derive(Debug, Serialize)]
+pub struct MoveRequestBody {
     fishnet: Fishnet,
     stockfish: Stockfish,
-    bestmove: Option<String>,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    bestmove: Option<Uci>,
 }
 
-struct Query {
+#[derive(Debug, Serialize)]
+struct SubmitQuery {
     slow: bool,
     stop: bool,
 }
-
-struct Abort {
-    fishnet: Fishnet,
-    stockfish: Stockfish,
-}
-
-struct Status {
-    analysis: AnalysisStatus,
-}*/
 
 #[derive(Debug, Clone)]
 pub struct ApiStub {
@@ -278,6 +289,13 @@ impl ApiStub {
             callback: req,
         }).expect("api actor alive");
         res.await.ok()
+    }
+
+    pub fn submit_analysis(&mut self, batch_id: BatchId, body: AnalysisRequestBody) {
+        self.tx.send(ApiMessage::SubmitAnalysis {
+            batch_id,
+            body,
+        }).expect("api actor alive");
     }
 }
 
@@ -384,8 +402,16 @@ impl ApiActor {
                     status => warn!("Unexpected status for acquire: {}", status),
                 }
             }
-            ApiMessage::Submit { key } => {
-                todo!("submit")
+            ApiMessage::SubmitAnalysis { batch_id, body } => {
+                let url = format!("{}/analyis/{}", self.endpoint, batch_id);
+                let res = self.client.post(&url).query(&SubmitQuery {
+                    stop: true,
+                    slow: false,
+                }).json(&body).send().await?.error_for_status()?;
+
+                if res.status() != StatusCode::NO_CONTENT {
+                    warn!("Unexpected status for submitting analysis: {}", res.status());
+                }
             }
         })
     }
