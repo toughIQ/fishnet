@@ -12,7 +12,7 @@ Goals
 
 * Update to Stockfish 12 NNUE
 * Reproducible analysis
-* Fix some subtle edge wrt. threading in the current client
+* Fix some subtle edge cases wrt. threading in the current client
 * Modernize by rewriting in Rust or dropping old Python versions
 
 Roadmap
