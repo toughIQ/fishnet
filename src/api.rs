@@ -242,7 +242,7 @@ pub enum AnalysisPart {
     },
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Copy, Clone)]
 #[serde(untagged)]
 pub enum Score {
     #[serde(rename = "cp")]

@@ -6,6 +6,7 @@ use shakmaty::fen::Fen;
 use shakmaty::uci::Uci;
 use shakmaty::variants::Variant;
 use tokio::sync::oneshot;
+use crate::api::Score;
 
 /// Uniquely identifies a batch in this process.
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -42,12 +43,6 @@ pub struct Position {
     pub moves: Vec<Uci>,
     pub nodes: u64,
     pub skill: Option<Skill>,
-}
-
-#[derive(Debug, Clone)]
-pub enum Score {
-    Cp(i32),
-    Mate(i32),
 }
 
 #[derive(Debug, Clone)]

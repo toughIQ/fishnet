@@ -49,7 +49,7 @@ async fn run(opt: Opt) {
         moves: Vec::new(),
         nodes: 1_000_000,
         skill: None,
-    }).await).is_ok() {
+    }).await).is_err() {
         error!("Go failed!");
     }
     return;
@@ -108,7 +108,7 @@ async fn run(opt: Opt) {
                         Some(PositionResponse {
                             batch_id: job.batch_id,
                             position_id: job.position_id,
-                            score: crate::ipc::Score::Cp(50),
+                            score: crate::api::Score::Cp(50),
                             best_move: None,
                             pv: Vec::new(),
                             depth: 20,

@@ -6,7 +6,9 @@ use tokio::process::{Command, ChildStdin, ChildStdout};
 use tokio::io::{BufWriter, AsyncWriteExt as _, BufReader, AsyncBufReadExt as _, Lines};
 use tracing::{trace, debug, info, warn, error};
 use shakmaty::fen::Fen;
+use shakmaty::uci::Uci;
 use shakmaty::variants::VariantPosition;
+use crate::api::Score;
 use crate::ipc::{Position, PositionResponse};
 use crate::util::{NevermindExt as _};
 
@@ -205,6 +207,34 @@ impl StockfishActor {
                     time: time.unwrap_or(Duration::default()),
                     nps,
                 });
+            } else if command == "info" {
+                while let Some(part) = parts.next() {
+                    if part == "depth" {
+                        depth = parts.next().and_then(|d| d.parse().ok());
+                    } else if part == "nodes" {
+                        nodes = parts.next().and_then(|n| n.parse().ok());
+                    } else if part == "time" {
+                        time = parts.next().and_then(|t| t.parse().ok()).map(Duration::from_millis);
+                    } else if part == "nps" {
+                        nps = parts.next().and_then(|n| n.parse().ok());
+                    } else if part == "score" {
+                        score = match parts.next() {
+                            Some("cp") => parts.next().and_then(|cp| cp.parse().ok()).map(Score::Cp),
+                            Some("mate") => parts.next().and_then(|mate| mate.parse().ok()).map(Score::Mate),
+                            part => {
+                                warn!("Expected cp or mate, got {:?}.", part);
+                                continue;
+                            }
+                        }
+                    } else if part == "pv" {
+                        pv = Vec::new();
+                        while let Some(part) = parts.next() {
+                            pv.push(part.parse().map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid pv"))?);
+                        }
+                    }
+                }
+            } else {
+                warn!("Unexpected engine output: {}", line);
             }
         }
     }
