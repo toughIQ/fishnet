@@ -195,6 +195,7 @@ impl Default for LichessVariant {
 pub enum Acquired {
     Accepted(AcquireResponseBody),
     NoContent,
+    BadRequest,
 }
 
 #[derive(Debug, Serialize)]
@@ -391,17 +392,21 @@ impl ApiActor {
                 let res = self.client.post(&url).query(&query).json(&VoidRequestBody {
                     fishnet: Fishnet::authenticated(self.key.clone()),
                     stockfish: Stockfish::default(),
-                }).send().await?.error_for_status()?;
+                }).send().await?;
 
                 match res.status() {
                     StatusCode::NO_CONTENT => callback.send(Acquired::NoContent).whatever("callback dropped"),
+                    StatusCode::BAD_REQUEST => callback.send(Acquired::BadRequest).whatever("callback dropped"),
                     StatusCode::OK | StatusCode::ACCEPTED => {
                         if let Err(Acquired::Accepted(res)) = callback.send(Acquired::Accepted(res.json().await?)) {
                             error!("Acquired a batch, but callback dropped. Aborting.");
                             self.abort(res.work.id).await?;
                         }
                     }
-                    status => warn!("Unexpected status for acquire: {}", status),
+                    status => {
+                        warn!("Unexpected status for acquire: {}", status);
+                        res.error_for_status()?;
+                    }
                 }
             }
             ApiMessage::SubmitAnalysis { batch_id, body } => {
