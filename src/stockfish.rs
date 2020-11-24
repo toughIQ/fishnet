@@ -6,11 +6,10 @@ use tokio::process::{Command, ChildStdin, ChildStdout};
 use tokio::io::{BufWriter, AsyncWriteExt as _, BufReader, AsyncBufReadExt as _, Lines};
 use tracing::{trace, debug, info, warn, error};
 use shakmaty::fen::Fen;
-use shakmaty::uci::Uci;
 use shakmaty::variants::VariantPosition;
 use crate::api::Score;
 use crate::ipc::{Position, PositionResponse};
-use crate::util::{NevermindExt as _};
+use crate::util::NevermindExt as _;
 
 pub fn channel() -> (StockfishStub, StockfishActor) {
     let (tx, rx) = mpsc::channel(1);
@@ -22,12 +21,6 @@ pub struct StockfishStub {
 }
 
 impl StockfishStub {
-    pub async fn ping(&mut self) -> Result<(), StockfishError> {
-        let (pong, ping) = oneshot::channel();
-        self.tx.send(StockfishMessage::Ping { pong }).await.map_err(|_| StockfishError)?;
-        ping.await.map_err(|_| StockfishError)
-    }
-
     pub async fn go(&mut self, position: Position) -> Result<PositionResponse, StockfishError> {
         let (callback, response) = oneshot::channel();
         self.tx.send(StockfishMessage::Go { position, callback }).await.map_err(|_| StockfishError)?;
@@ -44,9 +37,6 @@ pub struct StockfishActor {
 
 #[derive(Debug)]
 enum StockfishMessage {
-    Ping {
-        pong: oneshot::Sender<()>,
-    },
     Go {
         position: Position,
         callback: oneshot::Sender<PositionResponse>,
@@ -150,12 +140,6 @@ impl StockfishActor {
 
     async fn handle_message(&mut self, stdout: &mut Stdout, stdin: &mut Stdin, msg: StockfishMessage) -> io::Result<()> {
         Ok(match msg {
-            StockfishMessage::Ping { mut pong } => {
-                tokio::select! {
-                    _ = pong.closed() => return Err(io::Error::new(io::ErrorKind::Other, "pong receiver dropped")),
-                    res = self.ping(stdout, stdin) => pong.send(res?).nevermind("pong receiver dropped"),
-                }
-            },
             StockfishMessage::Go { mut callback, position } => {
                 tokio::select! {
                     _ = callback.closed() => return Err(io::Error::new(io::ErrorKind::Other, "go receiver dropped")),
