@@ -2,7 +2,7 @@ use std::cmp::min;
 use std::time::Duration;
 use rand::Rng;
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct RandomizedBackoff {
     duration: Duration,
 }

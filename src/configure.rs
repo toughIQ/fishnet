@@ -170,7 +170,7 @@ impl From<Cores> for usize {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum Backlog {
     Short,
     Long,
@@ -216,7 +216,7 @@ impl fmt::Display for Backlog {
     }
 }
 
-#[derive(StructOpt, Debug, PartialEq, Eq)]
+#[derive(StructOpt, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Command {
     /// Donate CPU time by running analysis (default).
     Run,
@@ -228,7 +228,7 @@ pub enum Command {
     SystemdUser,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 enum Toggle {
     Yes,
     No,
