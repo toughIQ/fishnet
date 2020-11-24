@@ -87,7 +87,7 @@ async fn run(opt: Opt) {
 
                 loop {
                     let response = if let Some(job) = job.take() {
-                        debug!("Working on {:?}", job);
+                        debug!("Working on {} {:?}", job.batch_id, job.position_id);
 
                         let (mut sf, join_handle) = if let Some((sf, join_handle)) = engine.take() {
                             (sf, join_handle)

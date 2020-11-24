@@ -114,6 +114,7 @@ impl QueueState {
         let batch_id = res.batch_id;
         if let Some(pending) = self.pending.get_mut(&batch_id) {
             if let Some(pos) = pending.positions.get_mut(res.position_id.0) {
+                info!("Finished {} {:?}", res.batch_id, res.position_id);
                 *pos = Some(Skip::Present(res));
             }
         }
