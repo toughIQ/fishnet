@@ -231,7 +231,7 @@ impl QueueActor {
                             }
                             Some(Acquired::NoContent) => {
                                 let backoff = self.backoff.next();
-                                debug!("No job received. Backing off {:?}.", backoff);
+                                info!("No job received. Backing off {:?}.", backoff);
                                 tokio::select! {
                                     _ = callback.closed() => break,
                                     _ = self.interrupt.notified() => (),

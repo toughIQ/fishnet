@@ -80,8 +80,13 @@ async fn run(opt: Opt) {
             join_handles.push(tokio::spawn(async move {
                 debug!("Started worker {}.", i);
 
+                let mut job = None;
+
                 loop {
-                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                    if let Some(job) = job.take() {
+                        debug!("Working on {:?}", job);
+                        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                    }
 
                     let (callback, waiter) = oneshot::channel();
 
@@ -97,7 +102,7 @@ async fn run(opt: Opt) {
                         _ = tx.closed() => break,
                         res = waiter => {
                             match res {
-                                Ok(_) => todo!("next job"),
+                                Ok(j) => job = Some(j),
                                 Err(_) => break,
                             }
                         }

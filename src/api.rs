@@ -3,7 +3,7 @@ use url::Url;
 use reqwest::StatusCode;
 use tokio::time;
 use tokio::sync::{mpsc, oneshot};
-use tracing::{debug, warn, error};
+use tracing::{trace, debug, warn, error};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationSeconds, DisplayFromStr, SpaceSeparator, StringWithSeparator};
 use shakmaty::fen::Fen;
@@ -375,6 +375,7 @@ impl ApiActor {
     async fn abort(&mut self, batch_id: BatchId) -> reqwest::Result<()> {
         Ok({
             let url = format!("{}/abort/{}", self.endpoint, batch_id);
+            trace!("{}", url);
             warn!("Aborting batch {}.", batch_id);
             self.client.post(&url).json(&VoidRequestBody {
                 fishnet: Fishnet::authenticated(self.key.clone()),
@@ -387,6 +388,7 @@ impl ApiActor {
         Ok(match msg {
             ApiMessage::CheckKey { key, callback } => {
                 let url = format!("{}/key/{}", self.endpoint, key.0);
+                trace!("{}", url);
                 let res = self.client.get(&url).send().await?;
                 match res.status() {
                     StatusCode::NOT_FOUND => callback.send(Err(KeyError::AccessDenied)).nevermind("callback dropped"),
@@ -397,6 +399,7 @@ impl ApiActor {
             }
             ApiMessage::Status { callback } => {
                 let url = format!("{}/status", self.endpoint);
+                trace!("{}", url);
                 let res: StatusResponseBody = self.client.get(&url).send().await?.error_for_status()?.json().await?;
                 callback.send(res.analysis).nevermind("callback dropped");
             }
@@ -405,6 +408,7 @@ impl ApiActor {
             }
             ApiMessage::Acquire { callback, query } => {
                 let url = format!("{}/acquire", self.endpoint);
+                trace!("{}", url);
                 let res = self.client.post(&url).query(&query).json(&VoidRequestBody {
                     fishnet: Fishnet::authenticated(self.key.clone()),
                     stockfish: Stockfish::default(),
@@ -427,6 +431,7 @@ impl ApiActor {
             }
             ApiMessage::SubmitAnalysis { batch_id, body } => {
                 let url = format!("{}/analyis/{}", self.endpoint, batch_id);
+                trace!("{}", url);
                 let res = self.client.post(&url).query(&SubmitQuery {
                     stop: true,
                     slow: false,
