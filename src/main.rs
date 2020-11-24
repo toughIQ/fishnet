@@ -11,7 +11,7 @@ use tokio::signal;
 use tokio::sync::{mpsc, oneshot};
 use crate::configure::{Opt, Command, Cores};
 use crate::assets::Cpu;
-use crate::ipc::Pull;
+use crate::ipc::{Pull, PositionResponse};
 
 #[tokio::main]
 async fn main() {
@@ -80,18 +80,32 @@ async fn run(opt: Opt) {
             join_handles.push(tokio::spawn(async move {
                 debug!("Started worker {}.", i);
 
-                let mut job = None;
+                let mut job: Option<ipc::Position> = None;
 
                 loop {
-                    if let Some(job) = job.take() {
+                    let response = if let Some(job) = job.take() {
                         debug!("Working on {:?}", job);
-                        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-                    }
+                        let t = std::time::Duration::from_secs(5);
+                        tokio::time::sleep(t).await;
+                        Some(PositionResponse {
+                            batch_id: job.batch_id,
+                            position_id: job.position_id,
+                            score: crate::ipc::Score::Cp(50),
+                            best_move: None,
+                            pv: Vec::new(),
+                            depth: 20,
+                            nodes: 3_500_000,
+                            time: t,
+                            nps: Some(3_500_000 / 5),
+                        })
+                    } else {
+                        None
+                    };
 
                     let (callback, waiter) = oneshot::channel();
 
                     if let Err(_) = tx.send(Pull {
-                        response: None,
+                        response,
                         callback,
                     }).await {
                         error!("Worker was about to send result, but tx is dead.");

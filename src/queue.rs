@@ -39,7 +39,7 @@ impl QueueStub {
             let mut state = self.state.lock().await;
 
             if let Some(response) = pull.response {
-                state.add_position_response(response);
+                state.add_position_response(&mut self.api, response);
             }
 
             state.incoming.pop_front()
@@ -107,10 +107,10 @@ impl QueueState {
             positions,
         });
 
-        self.maybe_finished(batch.id);
+        self.maybe_finished(api, batch.id);
     }
 
-    fn add_position_response(&mut self, res: PositionResponse) {
+    fn add_position_response(&mut self, api: &mut ApiStub, res: PositionResponse) {
         let batch_id = res.batch_id;
         if let Some(pending) = self.pending.get_mut(&batch_id) {
             if let Some(pos) = pending.positions.get_mut(res.position_id.0) {
@@ -118,16 +118,19 @@ impl QueueState {
             }
         }
 
-        self.maybe_finished(batch_id);
+        self.maybe_finished(api, batch_id);
     }
 
-    fn maybe_finished(&mut self, batch: BatchId) {
+    fn maybe_finished(&mut self, api: &mut ApiStub, batch: BatchId) {
         if let Some(pending) = self.pending.remove(&batch) {
             match pending.try_into_completed() {
-                Ok(completed) => todo!("submit to api"),
+                Ok(completed) => {
+                    api.submit_analysis(batch, AnalysisRequestBody {
+                    });
+                }
                 Err(pending) => {
                     self.pending.insert(pending.id, pending);
-                },
+                }
             }
         }
     }
