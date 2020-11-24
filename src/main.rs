@@ -7,12 +7,15 @@ mod queue;
 mod util;
 mod stockfish;
 
+use std::time::Duration;
 use tracing::{debug, info};
+use tokio::time;
 use tokio::signal;
 use tokio::sync::{mpsc, oneshot};
 use crate::configure::{Opt, Command, Cores};
 use crate::assets::Cpu;
 use crate::ipc::{Pull, Position};
+use crate::util::RandomizedBackoff;
 
 #[tokio::main]
 async fn main() {
@@ -83,6 +86,7 @@ async fn run(opt: Opt) {
 
                 let mut job: Option<Position> = None;
                 let mut engine = None;
+                let mut engine_backoff = RandomizedBackoff::default();
 
                 loop {
                     let response = if let Some(job) = job.take() {
@@ -91,6 +95,19 @@ async fn run(opt: Opt) {
                         let (mut sf, join_handle) = if let Some((sf, join_handle)) = engine.take() {
                             (sf, join_handle)
                         } else {
+                            // Backoff before starting engine.
+                            let backoff = engine_backoff.next();
+                            if backoff >= Duration::from_secs(5) {
+                                info!("Waiting {:?} before attempting to starting engine.", backoff);
+                            } else {
+                                debug!("Waiting {:?} before attempting to starting engine.", backoff);
+                            }
+                            tokio::select! {
+                                _ = tx.closed() => break,
+                                _ = time::sleep(engine_backoff.next()) => (),
+                            }
+
+                            // Start engine and spawn actor.
                             let (sf, sf_actor) = stockfish::channel();
                             let join_handle = tokio::spawn(async move {
                                 sf_actor.run().await;
@@ -109,6 +126,7 @@ async fn run(opt: Opt) {
                                 match res {
                                     Ok(res) => {
                                         engine = Some((sf, join_handle));
+                                        engine_backoff.reset();
                                         Some(Ok(res))
                                     }
                                     Err(failed) => {

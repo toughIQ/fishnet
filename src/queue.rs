@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{mpsc, oneshot, Mutex, Notify};
 use tokio::time;
-use tracing::{debug, warn, info};
+use tracing::{debug, error, info};
 use crate::api::{AcquireQuery, AcquireResponseBody, Acquired, ApiStub, AnalysisPart};
 use crate::configure::BacklogOpt;
 use crate::ipc::{BatchId, Position, PositionResponse, PositionId, Pull};
