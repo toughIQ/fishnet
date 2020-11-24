@@ -100,6 +100,12 @@ async fn run(opt: Opt) {
                         };
 
                         tokio::select! {
+                            _ = tx.closed() => {
+                                debug!("Shutting down engine early.");
+                                drop(sf);
+                                join_handle.await.expect("join");
+                                break;
+                            }
                             res = sf.go(job) => {
                                 match res {
                                     Ok(res) => {
