@@ -17,13 +17,13 @@ Goals
 Roadmap
 -------
 
-* [*] Application structure
-* [*] Signal handler
-* [*] Logging
-* [*] cpuid
-* [*] Stockfish selection ~~and verification~~
-* [*] systemd helper
-* [*] Configuration
+* [x] Application structure
+* [x] Signal handler
+* [x] Logging
+* [x] cpuid
+* [x] Stockfish selection ~~and verification~~
+* [x] systemd helper
+* [x] Configuration
 * [ ] Incoming analysis
 * [ ] Implement worker
 * [ ] Outgoing analysis
