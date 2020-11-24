@@ -1,11 +1,12 @@
 use std::cmp::min;
+use std::convert::TryInto;
 use std::collections::{VecDeque, HashMap};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{mpsc, oneshot, Mutex, Notify};
 use tokio::time;
 use tracing::{debug, warn, info};
-use crate::api::{AcquireQuery, AcquireResponseBody, Acquired, ApiStub};
+use crate::api::{AcquireQuery, AcquireResponseBody, Acquired, ApiStub, AnalysisPart};
 use crate::configure::BacklogOpt;
 use crate::ipc::{BatchId, Position, PositionResponse, PositionId, Pull};
 use crate::util::{NevermindExt as _, RandomizedBackoff};
@@ -126,9 +127,7 @@ impl QueueState {
         if let Some(pending) = self.pending.remove(&batch) {
             match pending.try_into_completed() {
                 Ok(completed) => {
-                    todo!("submit analysis");
-                    /* api.submit_analysis(batch, AnalysisRequestBody {
-                    }); */
+                    api.submit_analysis(completed.id, completed.into_analysis());
                 }
                 Err(pending) => {
                     self.pending.insert(pending.id, pending);
@@ -341,4 +340,24 @@ impl PendingBatch {
 pub struct CompletedBatch {
     id: BatchId,
     positions: Vec<Skip<PositionResponse>>,
+}
+
+impl CompletedBatch {
+    fn into_analysis(self) -> Vec<AnalysisPart> {
+        self.positions.into_iter().map(|p| {
+            match p {
+                Skip::Skip => AnalysisPart::Skipped {
+                    skipped: true,
+                },
+                Skip::Present(pos) => AnalysisPart::Complete {
+                    pv: pos.pv,
+                    depth: pos.depth,
+                    score: pos.score,
+                    time: pos.time.as_millis().try_into().ok(),
+                    nodes: Some(pos.nodes),
+                    nps: pos.nps,
+                },
+            }
+        }).collect()
+    }
 }

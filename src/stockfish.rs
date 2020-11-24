@@ -149,18 +149,6 @@ impl StockfishActor {
         })
     }
 
-    async fn ping(&mut self, stdout: &mut Stdout, stdin: &mut Stdin) -> io::Result<()> {
-        stdin.write_line("quit").await?;
-        loop {
-            let line = stdout.read_line().await?;
-            if line == "readyok" {
-                return Ok(());
-            } else {
-                warn!("Unexpected engine output: {}", line);
-            }
-        }
-    }
-
     async fn go(&mut self, stdout: &mut Stdout, stdin: &mut Stdin, position: Position) -> io::Result<PositionResponse> {
         let fen = if let Some(fen) = position.fen {
             fen

@@ -45,7 +45,7 @@ enum ApiMessage {
     },
     SubmitAnalysis {
         batch_id: BatchId,
-        body: AnalysisRequestBody,
+        analysis: Vec<AnalysisPart>,
     },
 }
 
@@ -232,13 +232,13 @@ pub enum AnalysisPart {
         #[serde_as(as = "StringWithSeparator::<SpaceSeparator, Uci>")]
         #[serde(skip_serializing_if = "Vec::is_empty")]
         pv: Vec<Uci>,
-        depth: u64,
+        depth: u32,
         score: Score,
         #[serde(skip_serializing_if = "Option::is_none")]
         time: Option<u64>,
         #[serde(skip_serializing_if = "Option::is_none")]
         nodes: Option<u64>,
-        nps: Option<u64>,
+        nps: Option<u32>,
     },
 }
 
@@ -306,10 +306,10 @@ impl ApiStub {
         res.await.ok()
     }
 
-    pub fn submit_analysis(&mut self, batch_id: BatchId, body: AnalysisRequestBody) {
+    pub fn submit_analysis(&mut self, batch_id: BatchId, analysis: Vec<AnalysisPart>) {
         self.tx.send(ApiMessage::SubmitAnalysis {
             batch_id,
-            body,
+            analysis,
         }).expect("api actor alive");
     }
 }
@@ -429,13 +429,17 @@ impl ApiActor {
                     }
                 }
             }
-            ApiMessage::SubmitAnalysis { batch_id, body } => {
+            ApiMessage::SubmitAnalysis { batch_id, analysis } => {
                 let url = format!("{}/analyis/{}", self.endpoint, batch_id);
                 trace!("{}", url);
                 let res = self.client.post(&url).query(&SubmitQuery {
                     stop: true,
                     slow: false,
-                }).json(&body).send().await?.error_for_status()?;
+                }).json(&AnalysisRequestBody {
+                    fishnet: Fishnet::authenticated(self.key.clone()),
+                    stockfish: Stockfish::default(),
+                    analysis
+                }).send().await?.error_for_status()?;
 
                 if res.status() != StatusCode::NO_CONTENT {
                     warn!("Unexpected status for submitting analysis: {}", res.status());

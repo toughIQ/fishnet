@@ -12,7 +12,7 @@ use tokio::signal;
 use tokio::sync::{mpsc, oneshot};
 use crate::configure::{Opt, Command, Cores};
 use crate::assets::Cpu;
-use crate::ipc::{Pull, PositionResponse};
+use crate::ipc::Pull;
 
 #[tokio::main]
 async fn main() {
