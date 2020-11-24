@@ -1,9 +1,9 @@
 use std::io;
 use std::process::Stdio;
 use tokio::sync::{mpsc, oneshot};
-use tokio::process::{Command, ChildStdin};
-use tokio::io::{BufWriter, AsyncWriteExt as _, BufReader, AsyncBufReadExt as _};
-use tracing::{trace, info, error};
+use tokio::process::{Command, ChildStdin, ChildStdout};
+use tokio::io::{BufWriter, AsyncWriteExt as _, BufReader, AsyncBufReadExt as _, Lines};
+use tracing::{trace, info, warn, error};
 use crate::util::{NevermindExt as _};
 
 pub fn channel() -> (StockfishStub, StockfishActor) {
@@ -48,12 +48,34 @@ impl Stdin {
     }
 
     async fn write_line(&mut self, line: &str) -> io::Result<()> {
-        Ok({
-            trace!("{} << {}", self.pid, line);
-            self.inner.write_all(line.as_bytes()).await?;
-            self.inner.write_all(b"\n").await?;
-            self.inner.flush().await?;
-        })
+        trace!("{} << {}", self.pid, line);
+        self.inner.write_all(line.as_bytes()).await?;
+        self.inner.write_all(b"\n").await?;
+        self.inner.flush().await?;
+        Ok(())
+    }
+}
+
+struct Stdout {
+    pid: u32,
+    inner: Lines<BufReader<ChildStdout>>,
+}
+
+impl Stdout {
+    fn new(pid: u32, inner: ChildStdout) -> Stdout {
+        Stdout {
+            pid,
+            inner: BufReader::new(inner).lines(),
+        }
+    }
+
+    async fn read_line(&mut self) -> io::Result<String> {
+        if let Some(line) = self.inner.next_line().await? {
+            trace!("{} >> {}", self.pid, line);
+            Ok(line)
+        } else {
+            Err(io::ErrorKind::UnexpectedEof.into())
+        }
     }
 }
 
@@ -65,7 +87,7 @@ impl StockfishActor {
             .spawn().expect("failed to spawn stockfish");
 
         let pid = child.id().expect("pid");
-        let mut stdout = BufReader::new(child.stdout.take().expect("pipe stdout")).lines();
+        let mut stdout = Stdout::new(pid, child.stdout.take().expect("pipe stdout"));
         let mut stdin = Stdin::new(pid, child.stdin.take().expect("pipe stdin"));
 
         let join_handle = tokio::spawn(async move {
@@ -83,20 +105,29 @@ impl StockfishActor {
         });
 
         while let Some(msg) = self.rx.recv().await {
-            match msg {
-                StockfishMessage::Ping { pong } => {
-                    stdin.write_line("isready").await.expect("write isready"); // TODO
-                    while let Ok(Some(line)) = stdout.next_line().await {
-                        trace!("{} >> {} ", pid, line);
-                        if line == "readyok" {
-                            pong.send(()).nevermind("pong receiver dropped");
-                            break;
-                        }
-                    }
-                }
+            if let Err(err) = self.handle_message(&mut stdout, &mut stdin, msg).await {
+                error!("Engine error: {}", err);
+                return; // TODO: restart engine
             }
         }
 
         join_handle.await.expect("join");
+    }
+
+    async fn handle_message(&mut self, stdout: &mut Stdout, stdin: &mut Stdin, msg: StockfishMessage) -> io::Result<()> {
+        Ok(match msg {
+            StockfishMessage::Ping { pong } => {
+                stdin.write_line("isready").await?;
+                loop {
+                    let line = stdout.read_line().await?;
+                    if line == "readyok" {
+                        pong.send(()).nevermind("pong receiver dropped");
+                        break;
+                    } else {
+                        warn!("Unexpected engine output: {}", line);
+                    }
+                }
+            }
+        })
     }
 }
