@@ -128,23 +128,21 @@ impl StockfishActor {
             StockfishMessage::Ping { mut pong } => {
                 tokio::select! {
                     _ = pong.closed() => return Err(io::Error::new(io::ErrorKind::Other, "pong receiver dropped")),
-                    res = stdin.write_line("quit") => res?,
-                }
-
-                loop {
-                    let line = tokio::select! {
-                        _ = pong.closed() => return Err(io::Error::new(io::ErrorKind::Other, "pong receiver dropped")),
-                        line = stdout.read_line() => line?,
-                    };
-
-                    if line == "readyok" {
-                        pong.send(()).nevermind("pong receiver dropped");
-                        break;
-                    } else {
-                        warn!("Unexpected engine output: {}", line);
-                    }
+                    res = self.ping(stdout, stdin) => pong.send(res?).nevermind("pong receiver dropped"),
                 }
             }
         })
+    }
+
+    async fn ping(&mut self, stdout: &mut Stdout, stdin: &mut Stdin) -> io::Result<()> {
+        stdin.write_line("quit").await?;
+        loop {
+            let line = stdout.read_line().await?;
+            if line == "readyok" {
+                return Ok(());
+            } else {
+                warn!("Unexpected engine output: {}", line);
+            }
+        }
     }
 }
