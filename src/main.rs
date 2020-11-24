@@ -6,15 +6,13 @@ mod ipc;
 mod queue;
 mod util;
 
-use std::mem;
 use std::sync::Arc;
-use tracing::{debug, info, warn, error};
+use tracing::{debug, info, error};
 use tokio::signal;
 use tokio::sync::{Barrier, mpsc, oneshot};
 use crate::configure::{Opt, Command, Cores};
 use crate::assets::Cpu;
-use crate::ipc::{BatchId, Pull};
-use crate::api::{Acquired, AcquireQuery};
+use crate::ipc::Pull;
 
 #[tokio::main]
 async fn main() {
@@ -40,35 +38,16 @@ async fn run(opt: Opt) {
     info!("Cores: {}", cores);
 
     // Install handler for SIGTERM.
-    //#[cfg(unix)]
-    //let mut sig_term = signal::unix::signal(signal::unix::SignalKind::terminate()).expect("install handler for sigterm");
-    //#[cfg(not(unix))]
-    let mut sig_term = {
-        let (sig_term_tx, sig_term) = mpsc::channel::<Option<()>>(1);
-        mem::forget(sig_term_tx);
-        sig_term
-    };
+    #[cfg(unix)]
+    let mut sig_term = signal::unix::signal(signal::unix::SignalKind::terminate()).expect("install handler for sigterm");
+    #[cfg(not(unix))]
+    let mut sig_term = signal::windows::ctrl_break().expect("install handler for ctrl+break");
 
     // Install handler for SIGINT.
-    //#[cfg(unix)]
-    //let mut sig_int = signal::unix::signal(signal::unix::SignalKind::interrupt()).expect("install handler for sigint");
-    //#[cfg(not(unix))]
-    let mut sig_int = {
-        let (sig_int_tx, sig_int) = mpsc::channel::<Option<()>>(1);
-        tokio::spawn(async move {
-            loop {
-                match signal::ctrl_c().await {
-                    Ok(_) => (),
-                    Err(_) => break,
-                }
-                match sig_int_tx.send(Some(())).await {
-                    Ok(_) => (),
-                    Err(_) => break,
-                }
-            }
-        });
-        sig_int
-    };
+    #[cfg(unix)]
+    let mut sig_int = signal::unix::signal(signal::unix::SignalKind::interrupt()).expect("install handler for sigint");
+    #[cfg(not(unix))]
+    let mut sig_int = signal::windows::ctrl_c().expect("install handler for ctrl+c");
 
     // Shut down when each worker, the API actor, ~the queue actor~, and the
     // main loop have finished.
