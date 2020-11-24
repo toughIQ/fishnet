@@ -12,6 +12,7 @@ Goals
 
 * Update to Stockfish 12 NNUE
 * Reproducible analysis
+* Fix some subtle edge wrt. threading in the current client
 * Modernize by rewriting in Rust or dropping old Python versions
 
 Roadmap
@@ -24,7 +25,7 @@ Roadmap
 * [x] Stockfish selection ~~and verification~~
 * [x] systemd helper
 * [x] Configuration
-* [*] Incoming analysis
+* [x] Incoming analysis
 * [ ] Implement worker
 * [ ] Outgoing analysis
 * [ ] Backwards compatibility?
