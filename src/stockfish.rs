@@ -4,11 +4,11 @@ use std::process::Stdio;
 use tokio::sync::{mpsc, oneshot};
 use tokio::process::{Command, ChildStdin, ChildStdout};
 use tokio::io::{BufWriter, AsyncWriteExt as _, BufReader, AsyncBufReadExt as _, Lines};
-use tracing::{trace, debug, info, warn, error};
+use tracing::{trace, debug, warn, error};
 use shakmaty::fen::Fen;
 use shakmaty::variants::VariantPosition;
 use crate::api::Score;
-use crate::ipc::{BatchId, Position, PositionResponse};
+use crate::ipc::{BatchId, Position, PositionResponse, PositionFailed};
 use crate::util::NevermindExt as _;
 
 pub fn channel() -> (StockfishStub, StockfishActor) {
@@ -21,21 +21,16 @@ pub struct StockfishStub {
 }
 
 impl StockfishStub {
-    pub async fn go(&mut self, position: Position) -> Result<PositionResponse, StockfishError> {
+    pub async fn go(&mut self, position: Position) -> Result<PositionResponse, PositionFailed> {
         let (callback, response) = oneshot::channel();
         let batch_id = position.batch_id;
-        self.tx.send(StockfishMessage::Go { position, callback }).await.map_err(|_| StockfishError {
+        self.tx.send(StockfishMessage::Go { position, callback }).await.map_err(|_| PositionFailed {
             batch_id,
         })?;
-        response.await.map_err(|_| StockfishError {
+        response.await.map_err(|_| PositionFailed {
             batch_id,
         })
     }
-}
-
-#[derive(Debug)]
-pub struct StockfishError {
-    batch_id: BatchId,
 }
 
 pub struct StockfishActor {

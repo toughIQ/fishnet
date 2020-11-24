@@ -7,6 +7,7 @@ use shakmaty::uci::Uci;
 use shakmaty::variants::Variant;
 use tokio::sync::oneshot;
 use crate::api::Score;
+use crate::stockfish::StockfishError;
 
 /// Uniquely identifies a batch in this process.
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -60,7 +61,12 @@ pub struct PositionResponse {
 }
 
 #[derive(Debug)]
+pub struct PositionFailed {
+    batch_id: BatchId,
+}
+
+#[derive(Debug)]
 pub struct Pull {
-    pub response: Option<PositionResponse>,
+    pub response: Option<Result<PositionResponse, PositionFailed>>,
     pub callback: oneshot::Sender<Position>,
 }
