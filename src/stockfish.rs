@@ -8,7 +8,7 @@ use tracing::{trace, debug, warn, error};
 use shakmaty::fen::Fen;
 use shakmaty::variants::VariantPosition;
 use crate::api::Score;
-use crate::ipc::{BatchId, Position, PositionResponse, PositionFailed};
+use crate::ipc::{Position, PositionResponse, PositionFailed};
 use crate::util::NevermindExt as _;
 
 pub fn channel() -> (StockfishStub, StockfishActor) {

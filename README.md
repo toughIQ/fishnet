@@ -33,6 +33,10 @@ Roadmap
   * [ ] Use bundled Stockfish
   * [x] Protect engine from signals
   * [ ] Backoff before restarting engine
+* [ ] Performance based backoff
+* [ ] Ouput for humans
+  * [ ] Game links
+  * [ ] TUI?
 * [x] Outgoing analysis
 * [ ] Backwards compatibility?
 * [ ] Optimize submit/acquire?

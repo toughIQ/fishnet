@@ -1,5 +1,4 @@
 use std::cmp::min;
-use std::convert::TryInto;
 use std::collections::{VecDeque, HashMap};
 use std::sync::Arc;
 use std::time::Duration;
@@ -36,25 +35,13 @@ impl QueueStub {
     }
 
     pub async fn pull(&mut self, pull: Pull) {
-        let position = {
-            let mut state = self.state.lock().await;
-
-            if let Some(response) = pull.response {
-                state.add_position_response(&mut self.api, response);
+        let mut state = self.state.lock().await;
+        if let Err(pull) = state.respond(&mut self.api, pull) {
+            if let Some(ref mut tx) = self.tx {
+                tx.send(QueueMessage::Pull {
+                    callback: pull.callback,
+                }).nevermind("queue dropped");
             }
-
-            state.incoming.pop_front()
-        };
-
-        if let Some(position) = position {
-            if let Err(err) = pull.callback.send(position) {
-                let mut state = self.state.lock().await;
-                state.incoming.push_front(err);
-            }
-        } else if let Some(ref mut tx) = self.tx {
-            tx.send(QueueMessage::Pull {
-                callback: pull.callback,
-            }).nevermind("queue dropped");
         }
     }
 
@@ -111,16 +98,35 @@ impl QueueState {
         self.maybe_finished(api, batch.id);
     }
 
-    fn add_position_response(&mut self, api: &mut ApiStub, res: PositionResponse) {
-        let batch_id = res.batch_id;
-        if let Some(pending) = self.pending.get_mut(&batch_id) {
-            if let Some(pos) = pending.positions.get_mut(res.position_id.0) {
-                info!("Finished {} {:?}", res.batch_id, res.position_id);
-                *pos = Some(Skip::Present(res));
+    fn respond(&mut self, api: &mut ApiStub, mut pull: Pull) -> Result<(), Pull> {
+        // Handle response.
+        match pull.response.take() {
+            Some(Ok(res)) => {
+                let batch_id = res.batch_id;
+                if let Some(pending) = self.pending.get_mut(&batch_id) {
+                    if let Some(pos) = pending.positions.get_mut(res.position_id.0) {
+                        info!("Finished {} {:?}", res.batch_id, res.position_id);
+                        *pos = Some(Skip::Present(res));
+                    }
+                }
+                self.maybe_finished(api, batch_id);
             }
+            Some(Err(failed)) => {
+                self.pending.remove(&failed.batch_id);
+                self.incoming.retain(|p| p.batch_id != failed.batch_id);
+            }
+            None => (),
         }
 
-        self.maybe_finished(api, batch_id);
+        // Try to satisfy pull.
+        if let Some(position) = self.incoming.pop_front() {
+            if let Err(err) = pull.callback.send(position) {
+                self.incoming.push_front(err);
+            }
+            Ok(())
+        } else {
+            Err(pull)
+        }
     }
 
     fn maybe_finished(&mut self, api: &mut ApiStub, batch: BatchId) {
@@ -197,20 +203,23 @@ impl QueueActor {
             match msg {
                 QueueMessage::Pull { mut callback } => {
                     loop {
-                        {
+                        callback = {
                             let mut state = self.state.lock().await;
 
-                            if let Some(pos) = state.incoming.pop_front() {
-                                if let Err(pos) = callback.send(pos) {
-                                    state.incoming.push_front(pos);
-                                }
-                                break;
-                            }
+                            let done = state.respond(&mut self.api, Pull {
+                                response: None, // always handled in the stub
+                                callback,
+                            });
 
                             if state.shutdown_soon {
                                 break;
                             }
-                        }
+
+                            match done {
+                                Ok(()) => break,
+                                Err(pull) => pull.callback,
+                            }
+                        };
 
                         let (wait, query) = self.backlog_wait_time().await;
 

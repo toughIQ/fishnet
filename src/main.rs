@@ -7,12 +7,12 @@ mod queue;
 mod util;
 mod stockfish;
 
-use tracing::{debug, info, error};
+use tracing::{debug, info};
 use tokio::signal;
 use tokio::sync::{mpsc, oneshot};
 use crate::configure::{Opt, Command, Cores};
 use crate::assets::Cpu;
-use crate::ipc::Pull;
+use crate::ipc::{Pull, Position};
 
 #[tokio::main]
 async fn main() {
@@ -81,13 +81,12 @@ async fn run(opt: Opt) {
             join_handles.push(tokio::spawn(async move {
                 debug!("Started worker {}.", i);
 
-                let mut job: Option<ipc::Position> = None;
-
+                let mut job: Option<Position> = None;
                 let mut engine = None;
 
                 loop {
                     let response = if let Some(job) = job.take() {
-                        debug!("Working on {} {:?}", job.batch_id, job.position_id);
+                        debug!("Worker {} running on {} {:?}", i, job.batch_id, job.position_id);
 
                         let (mut sf, join_handle) = if let Some((sf, join_handle)) = engine.take() {
                             (sf, join_handle)
@@ -101,7 +100,7 @@ async fn run(opt: Opt) {
 
                         tokio::select! {
                             _ = tx.closed() => {
-                                debug!("Shutting down engine early.");
+                                debug!("Worker {} shutting down engine early.", i);
                                 drop(sf);
                                 join_handle.await.expect("join");
                                 break;
@@ -110,14 +109,13 @@ async fn run(opt: Opt) {
                                 match res {
                                     Ok(res) => {
                                         engine = Some((sf, join_handle));
-                                        Some(res)
+                                        Some(Ok(res))
                                     }
-                                    Err(_) => {
+                                    Err(failed) => {
                                         drop(sf);
-                                        debug!("Waiting for engine to shut down after error.");
+                                        debug!("Worker {} waiting for engine to shut down after error.", i);
                                         join_handle.await.expect("join");
-                                        error!("A failed job will remain pending forever");
-                                        None // TODO: consider cancelling
+                                        Some(Err(failed))
                                     },
                                 }
                             }
@@ -132,7 +130,7 @@ async fn run(opt: Opt) {
                         response,
                         callback,
                     }).await {
-                        error!("Worker was about to send result, but tx is dead.");
+                        debug!("Worker {} was about to send result, but shutting down.", i);
                         break;
                     }
 
@@ -140,7 +138,7 @@ async fn run(opt: Opt) {
                         _ = tx.closed() => break,
                         res = waiter => {
                             match res {
-                                Ok(j) => job = Some(j),
+                                Ok(next_job) => job = Some(next_job),
                                 Err(_) => break,
                             }
                         }
@@ -148,7 +146,7 @@ async fn run(opt: Opt) {
                 }
 
                 if let Some((sf, join_handle)) = engine.take() {
-                    debug!("Stopped worker, but waiting for engine.");
+                    debug!("Worker {} waiting for engine to shut down.", i);
                     drop(sf);
                     join_handle.await.expect("join");
                 }
@@ -185,10 +183,9 @@ async fn run(opt: Opt) {
             }
             res = rx.recv() => {
                 if let Some(res) = res {
-                    debug!("Forwarding pull.");
                     queue.pull(res).await;
                 } else {
-                    debug!("All workers dropped their tx.");
+                    debug!("About to exit.");
                     break;
                 }
             }
@@ -198,7 +195,7 @@ async fn run(opt: Opt) {
     // Shutdown queue to abort remaining jobs.
     queue.shutdown().await;
 
-    debug!("Bye.");
+    info!("Bye.");
     for join_handle in join_handles.into_iter() {
         join_handle.await.expect("join");
     }
