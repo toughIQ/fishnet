@@ -353,8 +353,8 @@ impl CompletedBatch {
                     pv: pos.pv,
                     depth: pos.depth,
                     score: pos.score,
-                    time: pos.time.as_millis().try_into().ok(),
-                    nodes: Some(pos.nodes),
+                    time: pos.time.as_millis() as u64,
+                    nodes: pos.nodes,
                     nps: pos.nps,
                 },
             }

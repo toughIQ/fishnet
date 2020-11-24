@@ -236,11 +236,10 @@ pub enum AnalysisPart {
         #[serde(skip_serializing_if = "Vec::is_empty")]
         pv: Vec<Uci>,
         depth: u32,
+        nodes: u64,
         score: Score,
+        time: u64,
         #[serde(skip_serializing_if = "Option::is_none")]
-        time: Option<u64>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        nodes: Option<u64>,
         nps: Option<u32>,
     },
 }
