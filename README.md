@@ -17,14 +17,21 @@ Goals
 Roadmap
 -------
 
-* [ ] Application structure
-* [ ] Signal handler
-* [ ] Logging
-* [ ] cpuid
-* [ ] Stockfish selection and verification
-* [ ] systemd helper
-* [ ] Configuration
-* [ ] Warn about Python versions on old fishnet
-* [ ] Backwards compatibility
+* [*] Application structure
+* [*] Signal handler
+* [*] Logging
+* [*] cpuid
+* [*] Stockfish selection ~~and verification~~
+* [*] systemd helper
+* [*] Configuration
+* [ ] Incoming analysis
+* [ ] Implement worker
+* [ ] Outgoing analysis
+* [ ] Backwards compatibility?
+* [ ] Optimize submit/acquire?
+* [ ] Move requests?
+* [ ] Shut down when outdated
+* [ ] Auto update
+* [ ] ~~Warn about Python versions on old fishnet~~
 * [ ] Test run
 * [ ] Publish to main repository
