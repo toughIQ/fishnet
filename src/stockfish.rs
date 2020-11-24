@@ -125,11 +125,18 @@ impl StockfishActor {
 
     async fn handle_message(&mut self, stdout: &mut Stdout, stdin: &mut Stdin, msg: StockfishMessage) -> io::Result<()> {
         Ok(match msg {
-            StockfishMessage::Ping { pong } => {
-                //stdin.write_line("isready").await?;
-                stdin.write_line("quit").await?;
+            StockfishMessage::Ping { mut pong } => {
+                tokio::select! {
+                    _ = pong.closed() => return Ok(()),
+                    res = stdin.write_line("quit") => res?,
+                }
+
                 loop {
-                    let line = stdout.read_line().await?;
+                    let line = tokio::select! {
+                        _ = pong.closed() => return Ok(()),
+                        line = stdout.read_line() => line?,
+                    };
+
                     if line == "readyok" {
                         pong.send(()).nevermind("pong receiver dropped");
                         break;
