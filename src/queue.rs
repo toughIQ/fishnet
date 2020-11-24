@@ -6,7 +6,7 @@ use tokio::time;
 use tracing::debug;
 use crate::api::ApiStub;
 use crate::ipc::{BatchId, Position, PositionResponse, Pull};
-use crate::util::WhateverExt as _ ;
+use crate::util::NevermindExt as _ ;
 
 pub fn channel(api: ApiStub) -> (QueueStub, QueueActor) {
     let state = Arc::new(Mutex::new(QueueState::new()));
@@ -51,7 +51,7 @@ impl QueueStub {
         } else if let Some(ref mut tx) = self.tx {
             tx.send(QueueMessage::Pull {
                 callback: pull.callback,
-            }).whatever("queue dropped");
+            }).nevermind("queue dropped");
         }
     }
 

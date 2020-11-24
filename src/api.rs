@@ -11,7 +11,7 @@ use shakmaty::uci::Uci;
 use tokio_compat_02::FutureExt as _;
 use crate::configure::{Key, KeyError};
 use crate::ipc::BatchId;
-use crate::util::{WhateverExt as _, RandomizedBackoff};
+use crate::util::{NevermindExt as _, RandomizedBackoff};
 
 pub fn channel(endpoint: Url, key: Option<Key>) -> (ApiStub, ApiActor) {
     let (tx, rx) = mpsc::unbounded_channel();
@@ -373,8 +373,8 @@ impl ApiActor {
                 let url = format!("{}/key/{}", self.endpoint, key.0);
                 let res = self.client.get(&url).send().await?;
                 match res.status() {
-                    StatusCode::NOT_FOUND => callback.send(Err(KeyError::AccessDenied)).whatever("callback dropped"),
-                    StatusCode::OK => callback.send(Ok(key)).whatever("callback dropped"),
+                    StatusCode::NOT_FOUND => callback.send(Err(KeyError::AccessDenied)).nevermind("callback dropped"),
+                    StatusCode::OK => callback.send(Ok(key)).nevermind("callback dropped"),
                     status => warn!("Unexpected status while checking key: {}", status),
                 }
                 res.error_for_status()?;
@@ -382,7 +382,7 @@ impl ApiActor {
             ApiMessage::Status { callback } => {
                 let url = format!("{}/status", self.endpoint);
                 let res: StatusResponseBody = self.client.get(&url).send().await?.error_for_status()?.json().await?;
-                callback.send(res.analysis).whatever("callback dropped");
+                callback.send(res.analysis).nevermind("callback dropped");
             }
             ApiMessage::Abort { batch_id } => {
                 self.abort(batch_id).await?;
@@ -395,8 +395,8 @@ impl ApiActor {
                 }).send().await?;
 
                 match res.status() {
-                    StatusCode::NO_CONTENT => callback.send(Acquired::NoContent).whatever("callback dropped"),
-                    StatusCode::BAD_REQUEST => callback.send(Acquired::BadRequest).whatever("callback dropped"),
+                    StatusCode::NO_CONTENT => callback.send(Acquired::NoContent).nevermind("callback dropped"),
+                    StatusCode::BAD_REQUEST => callback.send(Acquired::BadRequest).nevermind("callback dropped"),
                     StatusCode::OK | StatusCode::ACCEPTED => {
                         if let Err(Acquired::Accepted(res)) = callback.send(Acquired::Accepted(res.json().await?)) {
                             error!("Acquired a batch, but callback dropped. Aborting.");

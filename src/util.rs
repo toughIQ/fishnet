@@ -20,8 +20,8 @@ impl RandomizedBackoff {
     }
 }
 
-pub trait WhateverExt: Sized {
-    fn whatever(self, _msg: &str) {}
+pub trait NevermindExt: Sized {
+    fn nevermind(self, _msg: &str) {}
 }
 
-impl<T, E> WhateverExt for Result<T, E> {}
+impl<T, E> NevermindExt for Result<T, E> {}
