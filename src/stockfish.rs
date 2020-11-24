@@ -3,7 +3,7 @@ use std::process::Stdio;
 use tokio::sync::{mpsc, oneshot};
 use tokio::process::{Command, ChildStdin, ChildStdout};
 use tokio::io::{BufWriter, AsyncWriteExt as _, BufReader, AsyncBufReadExt as _, Lines};
-use tracing::{trace, info, warn, error};
+use tracing::{trace, debug, info, warn, error};
 use crate::util::{NevermindExt as _};
 
 pub fn channel() -> (StockfishStub, StockfishActor) {
@@ -90,28 +90,37 @@ impl StockfishActor {
         let mut stdout = Stdout::new(pid, child.stdout.take().expect("pipe stdout"));
         let mut stdin = Stdin::new(pid, child.stdin.take().expect("pipe stdin"));
 
-        let join_handle = tokio::spawn(async move {
-            match child.wait().await {
-                Ok(status) if status.success() => {
-                    info!("Stockfish process exited with status {}", status);
+        loop {
+            tokio::select! {
+                msg = self.rx.recv() => {
+                    if let Some(msg) = msg {
+                        if let Err(err) = self.handle_message(&mut stdout, &mut stdin, msg).await {
+                            error!("Engine error: {}", err);
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
                 }
-                Ok(status) => {
-                    error!("Stockfish process exited with status {}", status);
+                status = child.wait() => {
+                    match status {
+                        Ok(status) if status.success() => {
+                            info!("Stockfish process exited with status {}", status);
+                        }
+                        Ok(status) => {
+                            error!("Stockfish process exited with status {}", status);
+                        }
+                        Err(err) => {
+                            error!("Stockfish process dead: {}", err);
+                        }
+                    }
+                    break;
                 }
-                Err(err) => {
-                    error!("Stockfish process dead: {}", err);
-                }
-            }
-        });
-
-        while let Some(msg) = self.rx.recv().await {
-            if let Err(err) = self.handle_message(&mut stdout, &mut stdin, msg).await {
-                error!("Engine error: {}", err);
-                return; // TODO: restart engine
             }
         }
 
-        join_handle.await.expect("join");
+        debug!("Shutting down Stockfish process {}.", pid);
+        child.kill().await.nevermind("kill");
     }
 
     async fn handle_message(&mut self, stdout: &mut Stdout, stdin: &mut Stdin, msg: StockfishMessage) -> io::Result<()> {
