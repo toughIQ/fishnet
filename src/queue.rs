@@ -125,8 +125,9 @@ impl QueueState {
         if let Some(pending) = self.pending.remove(&batch) {
             match pending.try_into_completed() {
                 Ok(completed) => {
-                    api.submit_analysis(batch, AnalysisRequestBody {
-                    });
+                    todo!("submit analysis");
+                    /* api.submit_analysis(batch, AnalysisRequestBody {
+                    }); */
                 }
                 Err(pending) => {
                     self.pending.insert(pending.id, pending);

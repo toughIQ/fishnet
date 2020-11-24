@@ -5,6 +5,7 @@ mod api;
 mod ipc;
 mod queue;
 mod util;
+mod stockfish;
 
 use tracing::{debug, info, error};
 use tokio::signal;
@@ -35,6 +36,15 @@ async fn run(opt: Opt) {
 
     let cores = usize::from(opt.cores.unwrap_or(Cores::Auto));
     info!("Cores: {}", cores);
+
+    let (mut sf, sf_actor) = stockfish::channel();
+    tokio::spawn(async move {
+        sf_actor.run().await;
+    });
+    if sf.ping().await.is_none() {
+        error!("Ping failed!");
+    }
+    return;
 
     // Install handler for SIGTERM.
     #[cfg(unix)]
