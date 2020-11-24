@@ -138,8 +138,8 @@ impl StockfishActor {
                 }
                 status = child.wait() => {
                     match status? {
-                        status if status.success() => debug!("Stockfish process exited with status {}", status),
-                        status => error!("Stockfish process exited with status {}", status),
+                        status if status.success() => debug!("Stockfish process {} exited with status {}", pid, status),
+                        status => error!("Stockfish process {} exited with status {}", pid, status),
                     }
                     break;
                 }
@@ -223,10 +223,7 @@ impl StockfishActor {
                                 score = match parts.next() {
                                     Some("cp") => parts.next().and_then(|cp| cp.parse().ok()).map(Score::Cp),
                                     Some("mate") => parts.next().and_then(|mate| mate.parse().ok()).map(Score::Mate),
-                                    part => {
-                                        warn!("Expected cp or mate, got {:?}.", part);
-                                        continue;
-                                    }
+                                    _ => return Err(io::Error::new(io::ErrorKind::InvalidData, "expected cp or mate")),
                                 }
                             }
                             "pv" => {

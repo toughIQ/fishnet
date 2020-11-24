@@ -252,7 +252,7 @@ impl QueueActor {
                                 }
                             }
                             Some(Acquired::BadRequest) => {
-                                warn!("Client update might be required. Stopping queue.");
+                                error!("Client update might be required. Stopping queue.");
                                 let mut state = self.state.lock().await;
                                 state.shutdown_soon = true;
                             },
