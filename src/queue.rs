@@ -9,20 +9,24 @@ use crate::ipc::{BatchId, Position, PositionResponse, Pull};
 use crate::util::WhateverExt as _ ;
 
 pub fn channel(api: ApiStub) -> (QueueStub, QueueActor) {
-    let state = Arc::new(Mutex::new(QueueState::new(api)));
+    let state = Arc::new(Mutex::new(QueueState::new()));
     let (tx, rx) = mpsc::unbounded_channel();
-    (QueueStub::new(tx, state.clone()), QueueActor::new(rx, state))
+    (QueueStub::new(tx, state.clone(), api.clone()), QueueActor::new(rx, state, api))
 }
 
-#[derive(Clone)]
 pub struct QueueStub {
-    tx: mpsc::UnboundedSender<QueueMessage>,
+    tx: Option<mpsc::UnboundedSender<QueueMessage>>,
     state: Arc<Mutex<QueueState>>,
+    api: ApiStub,
 }
 
 impl QueueStub {
-    fn new(tx: mpsc::UnboundedSender<QueueMessage>, state: Arc<Mutex<QueueState>>) -> QueueStub {
-        QueueStub { tx, state }
+    fn new(tx: mpsc::UnboundedSender<QueueMessage>, state: Arc<Mutex<QueueState>>, api: ApiStub) -> QueueStub {
+        QueueStub {
+            tx: Some(tx),
+            state,
+            api,
+        }
     }
 
     pub async fn pull(&mut self, pull: Pull) {
@@ -37,9 +41,12 @@ impl QueueStub {
         };
 
         if let Some(position) = position {
-            pull.callback.send(position);
-        } else {
-            self.tx.send(QueueMessage::Pull {
+            if let Err(err) = pull.callback.send(position) {
+                let mut state = self.state.lock().await;
+                state.incoming.push_front(err);
+            }
+        } else if let Some(ref mut tx) = self.tx {
+            tx.send(QueueMessage::Pull {
                 callback: pull.callback,
             }).whatever("queue dropped");
         }
@@ -48,31 +55,29 @@ impl QueueStub {
     pub async fn shutdown_soon(&mut self) {
         let mut state = self.state.lock().await;
         state.shutdown_soon = true;
+        self.tx.take();
     }
 
-    pub async fn shutdown(self) {
+    pub async fn shutdown(mut self) {
         let mut state = self.state.lock().await;
         state.shutdown_soon = true;
+        self.tx.take();
         state.incoming.clear();
-        if let Some(mut api) = state.api.take() {
-            for (k, _) in state.pending.drain() {
-                api.abort(k);
-            }
+        for (k, _) in state.pending.drain() {
+            self.api.abort(k);
         }
     }
 }
 
 struct QueueState {
-    api: Option<ApiStub>,
     shutdown_soon: bool,
     incoming: VecDeque<Position>,
     pending: HashMap<BatchId, PendingBatch>,
 }
 
 impl QueueState {
-    fn new(api: ApiStub) -> QueueState {
+    fn new() -> QueueState {
         QueueState {
-            api: Some(api),
             shutdown_soon: false,
             incoming: VecDeque::new(),
             pending: HashMap::new(),
@@ -133,20 +138,21 @@ enum QueueMessage {
 pub struct QueueActor {
     rx: mpsc::UnboundedReceiver<QueueMessage>,
     state: Arc<Mutex<QueueState>>,
+    api: ApiStub,
 }
 
 impl QueueActor {
-    fn new(rx: mpsc::UnboundedReceiver<QueueMessage>, state: Arc<Mutex<QueueState>>) -> QueueActor {
+    fn new(rx: mpsc::UnboundedReceiver<QueueMessage>, state: Arc<Mutex<QueueState>>, api: ApiStub) -> QueueActor {
         QueueActor {
             rx,
             state,
+            api,
         }
     }
 
     pub async fn run(self) {
         debug!("Queue actor started.");
         self.run_inner().await;
-        debug!("Queue actor exited.");
     }
 
     async fn run_inner(mut self) {
@@ -174,6 +180,12 @@ impl QueueActor {
             }
         }
 
+    }
+}
+
+impl Drop for QueueActor {
+    fn drop(&mut self) {
+        debug!("Queue actor exited.");
     }
 }
 
