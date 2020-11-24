@@ -27,7 +27,7 @@ pub fn systemd_system(opt: Opt) {
         println!("ProtectSystem=full");
     }
     println!("NoNewPrivileges=true");
-    println!("Restart=always");
+    println!("Restart=on-failure");
     println!();
     println!("[Install]");
     println!("WantedBy=multi-user.target");
@@ -63,7 +63,7 @@ pub fn systemd_user(opt: Opt) {
     } else {
         println!("ProtectSystem=full");
     }
-    println!("Restart=always");
+    println!("Restart=on-failure");
     println!();
     println!("[Install]");
     println!("WantedBy=default.target");
