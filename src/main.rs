@@ -6,10 +6,9 @@ mod ipc;
 mod queue;
 mod util;
 
-use std::sync::Arc;
 use tracing::{debug, info, error};
 use tokio::signal;
-use tokio::sync::{Barrier, mpsc, oneshot};
+use tokio::sync::{mpsc, oneshot};
 use crate::configure::{Opt, Command, Cores};
 use crate::assets::Cpu;
 use crate::ipc::Pull;
@@ -49,20 +48,17 @@ async fn run(opt: Opt) {
     #[cfg(not(unix))]
     let mut sig_int = signal::windows::ctrl_c().expect("install handler for ctrl+c");
 
-    // Shut down when each worker, the API actor, ~the queue actor~, and the
-    // main loop have finished.
-    let shutdown_barrier = Arc::new(Barrier::new(cores + 2));
+    // To wait for workers and API actor before shutdown.
+    let mut join_handles = Vec::new();
 
     // Spawn API actor.
     let endpoint = opt.endpoint();
     info!("Endpoint: {}", endpoint);
     let api = {
-        let shutdown_barrier = shutdown_barrier.clone();
         let (api, api_actor) = api::channel(endpoint, opt.key);
-        tokio::spawn(async move {
+        join_handles.push(tokio::spawn(async move {
             api_actor.run().await;
-            shutdown_barrier.wait().await;
-        });
+        }));
         api
     };
 
@@ -81,8 +77,7 @@ async fn run(opt: Opt) {
         let (tx, rx) = mpsc::channel::<Pull>(cores);
         for i in 0..cores {
             let tx = tx.clone();
-            let shutdown_barrier = shutdown_barrier.clone();
-            tokio::spawn(async move {
+            join_handles.push(tokio::spawn(async move {
                 debug!("Started worker {}.", i);
 
                 loop {
@@ -111,8 +106,7 @@ async fn run(opt: Opt) {
 
                 debug!("Stopped worker {}.", i);
                 drop(tx);
-                shutdown_barrier.wait().await;
-            });
+            }));
         }
         rx
     };
@@ -156,5 +150,7 @@ async fn run(opt: Opt) {
     queue.shutdown().await;
 
     debug!("Bye.");
-    shutdown_barrier.wait().await;
+    for join_handle in join_handles.into_iter() {
+        join_handle.await.expect("join");
+    }
 }
