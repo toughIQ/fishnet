@@ -127,13 +127,13 @@ impl StockfishActor {
         Ok(match msg {
             StockfishMessage::Ping { mut pong } => {
                 tokio::select! {
-                    _ = pong.closed() => return Ok(()),
+                    _ = pong.closed() => return Err(io::Error::new(io::ErrorKind::Other, "pong receiver dropped")),
                     res = stdin.write_line("quit") => res?,
                 }
 
                 loop {
                     let line = tokio::select! {
-                        _ = pong.closed() => return Ok(()),
+                        _ = pong.closed() => return Err(io::Error::new(io::ErrorKind::Other, "pong receiver dropped")),
                         line = stdout.read_line() => line?,
                     };
 
