@@ -102,6 +102,27 @@ impl From<io::Error> for EngineError {
     }
 }
 
+#[cfg(unix)]
+fn new_process_group(command: &mut Command) -> &mut Command {
+    // Stop SIGINT from propagating to child process.
+    unsafe {
+        // Safety: The closure is run in a fork, and is not allowed to break
+        // invariants by using raw handles.
+        command.pre_exec(|| {
+            libc::setpgid(0, 0);
+            Ok(())
+        })
+    }
+}
+
+#[cfg(windows)]
+fn new_process_group(command: &mut Command) -> &mut Command {
+    // Stop CTRL+C from propagating to child process:
+    // https://docs.microsoft.com/en-us/windows/win32/procthread/process-creation-flags
+    let create_new_process_group = 0x00000200;
+    command.creation_flags(create_new_process_group)
+}
+
 impl StockfishActor {
     pub async fn run(self) {
         if let Err(EngineError::IoError(err)) = self.run_inner().await {
@@ -110,18 +131,11 @@ impl StockfishActor {
     }
 
     async fn run_inner(mut self) -> Result<(), EngineError> {
-        let mut child = unsafe {
+        let mut child = new_process_group(
             Command::new("stockfish")
                 .stdout(Stdio::piped())
                 .stdin(Stdio::piped())
-                .kill_on_drop(true)
-                .pre_exec(|| {
-                    // Prevent SIGINT from propagating directly to child process.
-                    #[cfg(unix)]
-                    libc::setpgid(0, 0);
-                    Ok(())
-                })
-        }.spawn()?;
+                .kill_on_drop(true)).spawn()?;
 
         let pid = child.id().expect("pid");
         let mut stdout = Stdout::new(pid, child.stdout.take().ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "stdout closed"))?);
