@@ -30,10 +30,10 @@ Roadmap
   * [x] Standard analysis
   * [ ] Failed work
   * [ ] Variant analysis
-  * [ ] Use bundles Stockfish
+  * [ ] Use bundled Stockfish
   * [x] Protect engine from signals
   * [ ] Backoff before restarting engine
-* [ ] Outgoing analysis
+* [x] Outgoing analysis
 * [ ] Backwards compatibility?
 * [ ] Optimize submit/acquire?
 * [ ] Move requests?
