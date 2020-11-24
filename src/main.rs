@@ -54,7 +54,7 @@ async fn run(opt: Opt) {
     //let mut sig_int = signal::unix::signal(signal::unix::SignalKind::interrupt()).expect("install handler for sigint");
     //#[cfg(not(unix))]
     let mut sig_int = {
-        let (mut sig_int_tx, sig_int) = mpsc::channel::<Option<()>>(1);
+        let (sig_int_tx, sig_int) = mpsc::channel::<Option<()>>(1);
         tokio::spawn(async move {
             loop {
                 match signal::ctrl_c().await {
@@ -89,11 +89,9 @@ async fn run(opt: Opt) {
 
     // Spawn queue actor.
     let mut queue = {
-        let shutdown_barrier = shutdown_barrier.clone();
         let (queue, queue_actor) = queue::channel(api);
         tokio::spawn(async move {
             queue_actor.run().await;
-            //shutdown_barrier.wait().await;
         });
         queue
     };
@@ -103,7 +101,7 @@ async fn run(opt: Opt) {
     let mut rx = {
         let (tx, rx) = mpsc::channel::<Pull>(cores);
         for i in 0..cores {
-            let mut tx = tx.clone();
+            let tx = tx.clone();
             let shutdown_barrier = shutdown_barrier.clone();
             tokio::spawn(async move {
                 debug!("Started worker {}.", i);
@@ -150,7 +148,7 @@ async fn run(opt: Opt) {
                 res.expect("sigint handler installed");
                 if shutdown_soon {
                     info!("Stopping now.");
-                    rx.close(); // will not do in tokio 0.2
+                    rx.close();
                 } else {
                     info!("Stopping soon. Press ^C again to abort pending jobs ...");
                     queue.shutdown_soon().await;
@@ -161,7 +159,7 @@ async fn run(opt: Opt) {
                 res.expect("sigterm handler installed");
                 info!("Stopping now.");
                 shutdown_soon = true;
-                rx.close(); // will not do in tokio 0.2
+                rx.close();
             }
             res = rx.recv() => {
                 if let Some(res) = res {

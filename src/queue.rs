@@ -63,10 +63,9 @@ impl QueueStub {
     }
 
     pub async fn shutdown(mut self) {
+        self.shutdown_soon().await;
+
         let mut state = self.state.lock().await;
-        state.shutdown_soon = true;
-        self.tx.take();
-        state.incoming.clear();
         for (k, _) in state.pending.drain() {
             self.api.abort(k);
         }
