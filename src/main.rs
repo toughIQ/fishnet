@@ -41,7 +41,7 @@ async fn run(opt: Opt) {
     tokio::spawn(async move {
         sf_actor.run().await;
     });
-    if sf.go(ipc::Position {
+    if dbg!(sf.go(ipc::Position {
         batch_id: "abc".parse().expect("batch id"),
         position_id: ipc::PositionId(0),
         variant: shakmaty::variants::Variant::Chess,
@@ -49,7 +49,7 @@ async fn run(opt: Opt) {
         moves: Vec::new(),
         nodes: 1_000_000,
         skill: None,
-    }).await.is_ok() {
+    }).await).is_ok() {
         error!("Go failed!");
     }
     return;

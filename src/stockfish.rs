@@ -1,4 +1,5 @@
 use std::io;
+use std::time::Duration;
 use std::process::Stdio;
 use tokio::sync::{mpsc, oneshot};
 use tokio::process::{Command, ChildStdin, ChildStdout};
@@ -180,8 +181,31 @@ impl StockfishActor {
         let go = format!("go nodes {}", position.nodes);
         stdin.write_line(&go).await?;
 
+        let mut score = None;
+        let mut pv = Vec::new();
+        let mut depth = None;
+        let mut nodes = None;
+        let mut time = None;
+        let mut nps = None;
+
         loop {
             let line = stdout.read_line().await?;
+            let mut parts = line.split(" ");
+            let command = parts.next().expect("non-empty split");
+            if command == "bestmove" {
+                let best_move = parts.next().and_then(|m| m.parse().ok());
+                return Ok(PositionResponse {
+                    batch_id: position.batch_id,
+                    position_id: position.position_id,
+                    score: score.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "missing score"))?,
+                    best_move,
+                    pv,
+                    depth: depth.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "missing depth"))?,
+                    nodes: nodes.unwrap_or(0),
+                    time: time.unwrap_or(Duration::default()),
+                    nps,
+                });
+            }
         }
     }
 }
