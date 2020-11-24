@@ -4,6 +4,9 @@ use tokio::sync::{mpsc, oneshot};
 use tokio::process::{Command, ChildStdin, ChildStdout};
 use tokio::io::{BufWriter, AsyncWriteExt as _, BufReader, AsyncBufReadExt as _, Lines};
 use tracing::{trace, debug, info, warn, error};
+use shakmaty::fen::Fen;
+use shakmaty::variants::VariantPosition;
+use crate::ipc::{Position, PositionResponse};
 use crate::util::{NevermindExt as _};
 
 pub fn channel() -> (StockfishStub, StockfishActor) {
@@ -16,12 +19,21 @@ pub struct StockfishStub {
 }
 
 impl StockfishStub {
-    pub async fn ping(&mut self) -> Option<()> {
+    pub async fn ping(&mut self) -> Result<(), StockfishError> {
         let (pong, ping) = oneshot::channel();
-        self.tx.send(StockfishMessage::Ping { pong }).await.expect("stockfish actor alive");
-        ping.await.ok()
+        self.tx.send(StockfishMessage::Ping { pong }).await.map_err(|_| StockfishError)?;
+        ping.await.map_err(|_| StockfishError)
+    }
+
+    pub async fn go(&mut self, position: Position) -> Result<PositionResponse, StockfishError> {
+        let (callback, response) = oneshot::channel();
+        self.tx.send(StockfishMessage::Go { position, callback }).await.map_err(|_| StockfishError)?;
+        response.await.map_err(|_| StockfishError)
     }
 }
+
+#[derive(Debug)]
+pub struct StockfishError;
 
 pub struct StockfishActor {
     rx: mpsc::Receiver<StockfishMessage>,
@@ -31,6 +43,10 @@ pub struct StockfishActor {
 enum StockfishMessage {
     Ping {
         pong: oneshot::Sender<()>,
+    },
+    Go {
+        position: Position,
+        callback: oneshot::Sender<PositionResponse>,
     },
 }
 
@@ -130,6 +146,12 @@ impl StockfishActor {
                     _ = pong.closed() => return Err(io::Error::new(io::ErrorKind::Other, "pong receiver dropped")),
                     res = self.ping(stdout, stdin) => pong.send(res?).nevermind("pong receiver dropped"),
                 }
+            },
+            StockfishMessage::Go { mut callback, position } => {
+                tokio::select! {
+                    _ = callback.closed() => return Err(io::Error::new(io::ErrorKind::Other, "go receiver dropped")),
+                    res = self.go(stdout, stdin, position) => callback.send(res?).nevermind("go receiver dropped"),
+                }
             }
         })
     }
@@ -143,6 +165,23 @@ impl StockfishActor {
             } else {
                 warn!("Unexpected engine output: {}", line);
             }
+        }
+    }
+
+    async fn go(&mut self, stdout: &mut Stdout, stdin: &mut Stdin, position: Position) -> io::Result<PositionResponse> {
+        let fen = if let Some(fen) = position.fen {
+            fen
+        } else {
+            Fen::from_setup(&VariantPosition::new(position.variant))
+        };
+        let moves = position.moves.iter().map(|m| m.to_string()).collect::<Vec<_>>().join(" ");
+        stdin.write_line(&format!("position fen {} moves {}", fen, moves)).await?;
+
+        let go = format!("go nodes {}", position.nodes);
+        stdin.write_line(&go).await?;
+
+        loop {
+            let line = stdout.read_line().await?;
         }
     }
 }
