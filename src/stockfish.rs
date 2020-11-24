@@ -8,7 +8,7 @@ use tracing::{trace, debug, info, warn, error};
 use shakmaty::fen::Fen;
 use shakmaty::variants::VariantPosition;
 use crate::api::Score;
-use crate::ipc::{Position, PositionResponse};
+use crate::ipc::{BatchId, Position, PositionResponse};
 use crate::util::NevermindExt as _;
 
 pub fn channel() -> (StockfishStub, StockfishActor) {
@@ -23,13 +23,20 @@ pub struct StockfishStub {
 impl StockfishStub {
     pub async fn go(&mut self, position: Position) -> Result<PositionResponse, StockfishError> {
         let (callback, response) = oneshot::channel();
-        self.tx.send(StockfishMessage::Go { position, callback }).await.map_err(|_| StockfishError)?;
-        response.await.map_err(|_| StockfishError)
+        let batch_id = position.batch_id;
+        self.tx.send(StockfishMessage::Go { position, callback }).await.map_err(|_| StockfishError {
+            batch_id,
+        })?;
+        response.await.map_err(|_| StockfishError {
+            batch_id,
+        })
     }
 }
 
 #[derive(Debug)]
-pub struct StockfishError;
+pub struct StockfishError {
+    batch_id: BatchId,
+}
 
 pub struct StockfishActor {
     rx: mpsc::Receiver<StockfishMessage>,
@@ -88,61 +95,68 @@ impl Stdout {
     }
 }
 
+#[derive(Debug)]
+enum EngineError {
+    IoError(io::Error),
+    Shutdown,
+}
+
+impl From<io::Error> for EngineError {
+    fn from(error: io::Error) -> EngineError {
+        EngineError::IoError(error)
+    }
+}
+
 impl StockfishActor {
-    pub async fn run(mut self) {
+    pub async fn run(self) {
+        if let Err(EngineError::IoError(err)) = self.run_inner().await {
+            error!("Engine error: {}", err);
+        }
+    }
+
+    async fn run_inner(mut self) -> Result<(), EngineError> {
         let mut child = unsafe {
             Command::new("stockfish")
                 .stdout(Stdio::piped())
                 .stdin(Stdio::piped())
+                .kill_on_drop(true)
                 .pre_exec(|| {
+                    // Prevent SIGINT from propagating directly to child process.
                     #[cfg(unix)]
                     libc::setpgid(0, 0);
                     Ok(())
                 })
-        }.spawn().expect("failed to spawn stockfish");
+        }.spawn()?;
 
         let pid = child.id().expect("pid");
-        let mut stdout = Stdout::new(pid, child.stdout.take().expect("pipe stdout"));
-        let mut stdin = Stdin::new(pid, child.stdin.take().expect("pipe stdin"));
+        let mut stdout = Stdout::new(pid, child.stdout.take().ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "stdout closed"))?);
+        let mut stdin = Stdin::new(pid, child.stdin.take().ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "stdin closed"))?);
 
-        loop {
+        Ok(loop {
             tokio::select! {
                 msg = self.rx.recv() => {
                     if let Some(msg) = msg {
-                        if let Err(err) = self.handle_message(&mut stdout, &mut stdin, msg).await {
-                            error!("Engine error: {}", err);
-                            break;
-                        }
+                        self.handle_message(&mut stdout, &mut stdin, msg).await?;
                     } else {
                         break;
                     }
                 }
                 status = child.wait() => {
-                    match status {
-                        Ok(status) if status.success() => {
-                            info!("Stockfish process exited with status {}", status);
-                        }
-                        Ok(status) => {
-                            error!("Stockfish process exited with status {}", status);
-                        }
-                        Err(err) => {
-                            error!("Stockfish process dead: {}", err);
-                        }
+                    match status? {
+                        status if status.success() => debug!("Stockfish process exited with status {}", status),
+                        status => error!("Stockfish process exited with status {}", status),
                     }
                     break;
                 }
             }
-        }
-
-        debug!("Shutting down Stockfish process {}.", pid);
-        child.kill().await.nevermind("kill");
+        })
     }
 
-    async fn handle_message(&mut self, stdout: &mut Stdout, stdin: &mut Stdin, msg: StockfishMessage) -> io::Result<()> {
+    async fn handle_message(&mut self, stdout: &mut Stdout, stdin: &mut Stdin, msg: StockfishMessage) -> Result<(), EngineError> {
         Ok(match msg {
             StockfishMessage::Go { mut callback, position } => {
                 tokio::select! {
-                    _ = callback.closed() => return Err(io::Error::new(io::ErrorKind::Other, "go receiver dropped")),
+                    _ = callback.closed() => return Err(EngineError::Shutdown),
                     res = self.go(stdout, stdin, position) => callback.send(res?).nevermind("go receiver dropped"),
                 }
             }
@@ -155,64 +169,80 @@ impl StockfishActor {
         } else {
             Fen::from_setup(&VariantPosition::new(position.variant))
         };
+
         let moves = position.moves.iter().map(|m| m.to_string()).collect::<Vec<_>>().join(" ");
         stdin.write_line(&format!("position fen {} moves {}", fen, moves)).await?;
 
-        let go = format!("go nodes {}", position.nodes);
-        stdin.write_line(&go).await?;
+        stdin.write_line(&format!("go nodes {}", position.nodes)).await?;
 
         let mut score = None;
-        let mut pv = Vec::new();
         let mut depth = None;
-        let mut nodes = None;
-        let mut time = None;
+        let mut pv = Vec::new();
+        let mut time = Duration::default();
+        let mut nodes = 0;
         let mut nps = None;
 
         loop {
             let line = stdout.read_line().await?;
             let mut parts = line.split(" ");
-            let command = parts.next().expect("non-empty split");
-            if command == "bestmove" {
-                let best_move = parts.next().and_then(|m| m.parse().ok());
-                return Ok(PositionResponse {
-                    batch_id: position.batch_id,
-                    position_id: position.position_id,
-                    score: score.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "missing score"))?,
-                    best_move,
-                    pv,
-                    depth: depth.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "missing depth"))?,
-                    nodes: nodes.unwrap_or(0),
-                    time: time.unwrap_or(Duration::default()),
-                    nps,
-                });
-            } else if command == "info" {
-                while let Some(part) = parts.next() {
-                    if part == "depth" {
-                        depth = parts.next().and_then(|d| d.parse().ok());
-                    } else if part == "nodes" {
-                        nodes = parts.next().and_then(|n| n.parse().ok());
-                    } else if part == "time" {
-                        time = parts.next().and_then(|t| t.parse().ok()).map(Duration::from_millis);
-                    } else if part == "nps" {
-                        nps = parts.next().and_then(|n| n.parse().ok());
-                    } else if part == "score" {
-                        score = match parts.next() {
-                            Some("cp") => parts.next().and_then(|cp| cp.parse().ok()).map(Score::Cp),
-                            Some("mate") => parts.next().and_then(|mate| mate.parse().ok()).map(Score::Mate),
-                            part => {
-                                warn!("Expected cp or mate, got {:?}.", part);
-                                continue;
+            match parts.next() {
+                Some("bestmove") => {
+                    return Ok(PositionResponse {
+                        batch_id: position.batch_id,
+                        position_id: position.position_id,
+                        best_move: parts.next().and_then(|m| m.parse().ok()),
+                        score: score.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "missing score"))?,
+                        depth: depth.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "missing depth"))?,
+                        pv,
+                        time,
+                        nodes,
+                        nps,
+                    });
+                }
+                Some("info") => {
+                    while let Some(part) = parts.next() {
+                        match part {
+                            "depth" => {
+                                depth = Some(
+                                    parts.next()
+                                        .and_then(|t| t.parse().ok())
+                                        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected depth"))?);
                             }
-                        }
-                    } else if part == "pv" {
-                        pv = Vec::new();
-                        while let Some(part) = parts.next() {
-                            pv.push(part.parse().map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid pv"))?);
+                            "nodes" => {
+                                nodes = parts.next()
+                                    .and_then(|t| t.parse().ok())
+                                    .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected nodes"))?;
+                            }
+                            "time" => {
+                                time = parts.next()
+                                    .and_then(|t| t.parse().ok())
+                                    .map(Duration::from_millis)
+                                    .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected time"))?;
+                            }
+                            "nps" => {
+                                nps = parts.next().and_then(|n| n.parse().ok());
+                            }
+                            "score" => {
+                                score = match parts.next() {
+                                    Some("cp") => parts.next().and_then(|cp| cp.parse().ok()).map(Score::Cp),
+                                    Some("mate") => parts.next().and_then(|mate| mate.parse().ok()).map(Score::Mate),
+                                    part => {
+                                        warn!("Expected cp or mate, got {:?}.", part);
+                                        continue;
+                                    }
+                                }
+                            }
+                            "pv" => {
+                                pv.clear();
+                                while let Some(part) = parts.next() {
+                                    pv.push(part.parse().map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid pv"))?);
+                                }
+                            }
+                            _ => (),
                         }
                     }
                 }
-            } else {
-                warn!("Unexpected engine output: {}", line);
+                _ => warn!("Unexpected engine output: {}", line),
             }
         }
     }
