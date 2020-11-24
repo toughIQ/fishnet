@@ -37,23 +37,6 @@ async fn run(opt: Opt) {
     let cores = usize::from(opt.cores.unwrap_or(Cores::Auto));
     info!("Cores: {}", cores);
 
-    let (mut sf, sf_actor) = stockfish::channel();
-    tokio::spawn(async move {
-        sf_actor.run().await;
-    });
-    if dbg!(sf.go(ipc::Position {
-        batch_id: "abc".parse().expect("batch id"),
-        position_id: ipc::PositionId(0),
-        variant: shakmaty::variants::Variant::Chess,
-        fen: Some(shakmaty::fen::Fen::default()),
-        moves: Vec::new(),
-        nodes: 1_000_000,
-        skill: None,
-    }).await).is_err() {
-        error!("Go failed!");
-    }
-    return;
-
     // Install handler for SIGTERM.
     #[cfg(unix)]
     let mut sig_term = signal::unix::signal(signal::unix::SignalKind::terminate()).expect("install handler for sigterm");
@@ -100,22 +83,38 @@ async fn run(opt: Opt) {
 
                 let mut job: Option<ipc::Position> = None;
 
+                let mut engine = None;
+
                 loop {
                     let response = if let Some(job) = job.take() {
                         debug!("Working on {:?}", job);
-                        let t = std::time::Duration::from_secs(5);
-                        tokio::time::sleep(t).await;
-                        Some(PositionResponse {
-                            batch_id: job.batch_id,
-                            position_id: job.position_id,
-                            score: crate::api::Score::Cp(50),
-                            best_move: None,
-                            pv: Vec::new(),
-                            depth: 20,
-                            nodes: 3_500_000,
-                            time: t,
-                            nps: Some(3_500_000 / 5),
-                        })
+
+                        let (mut sf, join_handle) = if let Some((sf, join_handle)) = engine.take() {
+                            (sf, join_handle)
+                        } else {
+                            let (sf, sf_actor) = stockfish::channel();
+                            let join_handle = tokio::spawn(async move {
+                                sf_actor.run().await;
+                            });
+                            (sf, join_handle)
+                        };
+
+                        tokio::select! {
+                            res = sf.go(job) => {
+                                match res {
+                                    Ok(res) => {
+                                        engine = Some((sf, join_handle));
+                                        Some(res)
+                                    }
+                                    Err(_) => {
+                                        drop(sf);
+                                        join_handle.await.expect("join");
+                                        error!("A failed job will remain pending forever");
+                                        None // TODO: consider cancelling
+                                    },
+                                }
+                            }
+                        }
                     } else {
                         None
                     };
@@ -139,6 +138,10 @@ async fn run(opt: Opt) {
                             }
                         }
                     }
+                }
+
+                if let Some((_, join_handle)) = engine.take() {
+                    join_handle.await.expect("join");
                 }
 
                 debug!("Stopped worker {}.", i);
