@@ -108,6 +108,7 @@ async fn run(opt: Opt) {
                                     }
                                     Err(_) => {
                                         drop(sf);
+                                        debug!("Waiting for engine to shut down after error.");
                                         join_handle.await.expect("join");
                                         error!("A failed job will remain pending forever");
                                         None // TODO: consider cancelling
@@ -140,7 +141,9 @@ async fn run(opt: Opt) {
                     }
                 }
 
-                if let Some((_, join_handle)) = engine.take() {
+                if let Some((sf, join_handle)) = engine.take() {
+                    debug!("Stopped worker, but waiting for engine.");
+                    drop(sf);
                     join_handle.await.expect("join");
                 }
 
