@@ -100,10 +100,16 @@ impl Stdout {
 
 impl StockfishActor {
     pub async fn run(mut self) {
-        let mut child = Command::new("stockfish")
-            .stdout(Stdio::piped())
-            .stdin(Stdio::piped())
-            .spawn().expect("failed to spawn stockfish");
+        let mut child = unsafe {
+            Command::new("stockfish")
+                .stdout(Stdio::piped())
+                .stdin(Stdio::piped())
+                .pre_exec(|| {
+                    #[cfg(unix)]
+                    libc::setpgid(0, 0);
+                    Ok(())
+                })
+        }.spawn().expect("failed to spawn stockfish");
 
         let pid = child.id().expect("pid");
         let mut stdout = Stdout::new(pid, child.stdout.take().expect("pipe stdout"));

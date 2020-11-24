@@ -225,6 +225,7 @@ dependencies = [
  "atty",
  "bitflags",
  "configparser",
+ "libc",
  "num_cpus",
  "rand",
  "raw-cpuid",

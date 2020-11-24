@@ -30,11 +30,15 @@ Roadmap
   * [x] Standard analysis
   * [ ] Failed work
   * [ ] Variant analysis
+  * [ ] Use bundles Stockfish
+  * [x] Protect engine from signals
+  * [ ] Backoff before restarting engine
 * [ ] Outgoing analysis
 * [ ] Backwards compatibility?
 * [ ] Optimize submit/acquire?
 * [ ] Move requests?
 * [x] Shut down when outdated
+* [ ] Fix Windows support
 * [ ] Auto update
 * [ ] ~~Warn about Python versions on old fishnet~~
 * [ ] Test run
