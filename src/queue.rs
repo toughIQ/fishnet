@@ -1,7 +1,7 @@
 use std::collections::{VecDeque, HashMap};
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::{mpsc, oneshot, Mutex};
+use tokio::sync::{mpsc, oneshot, Mutex, Notify};
 use tokio::time;
 use tracing::debug;
 use crate::api::ApiStub;
@@ -11,19 +11,22 @@ use crate::util::WhateverExt as _ ;
 pub fn channel(api: ApiStub) -> (QueueStub, QueueActor) {
     let state = Arc::new(Mutex::new(QueueState::new()));
     let (tx, rx) = mpsc::unbounded_channel();
-    (QueueStub::new(tx, state.clone(), api.clone()), QueueActor::new(rx, state, api))
+    let interrupt = Arc::new(Notify::new());
+    (QueueStub::new(tx, interrupt.clone(), state.clone(), api.clone()), QueueActor::new(rx, interrupt, state, api))
 }
 
 pub struct QueueStub {
     tx: Option<mpsc::UnboundedSender<QueueMessage>>,
+    interrupt: Arc<Notify>,
     state: Arc<Mutex<QueueState>>,
     api: ApiStub,
 }
 
 impl QueueStub {
-    fn new(tx: mpsc::UnboundedSender<QueueMessage>, state: Arc<Mutex<QueueState>>, api: ApiStub) -> QueueStub {
+    fn new(tx: mpsc::UnboundedSender<QueueMessage>, interrupt: Arc<Notify>, state: Arc<Mutex<QueueState>>, api: ApiStub) -> QueueStub {
         QueueStub {
             tx: Some(tx),
+            interrupt,
             state,
             api,
         }
@@ -56,6 +59,7 @@ impl QueueStub {
         let mut state = self.state.lock().await;
         state.shutdown_soon = true;
         self.tx.take();
+        self.interrupt.notify_one();
     }
 
     pub async fn shutdown(mut self) {
@@ -137,14 +141,16 @@ enum QueueMessage {
 
 pub struct QueueActor {
     rx: mpsc::UnboundedReceiver<QueueMessage>,
+    interrupt: Arc<Notify>,
     state: Arc<Mutex<QueueState>>,
     api: ApiStub,
 }
 
 impl QueueActor {
-    fn new(rx: mpsc::UnboundedReceiver<QueueMessage>, state: Arc<Mutex<QueueState>>, api: ApiStub) -> QueueActor {
+    fn new(rx: mpsc::UnboundedReceiver<QueueMessage>, interrupt: Arc<Notify>, state: Arc<Mutex<QueueState>>, api: ApiStub) -> QueueActor {
         QueueActor {
             rx,
+            interrupt,
             state,
             api,
         }
@@ -173,6 +179,7 @@ impl QueueActor {
                         // Simulated backoff.
                         tokio::select! {
                             _ = callback.closed() => break,
+                            _ = self.interrupt.notified() => continue,
                             _ = time::sleep(Duration::from_millis(10_000)) => (),
                         }
                     }
