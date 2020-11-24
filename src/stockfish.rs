@@ -164,6 +164,8 @@ impl StockfishActor {
     }
 
     async fn go(&mut self, stdout: &mut Stdout, stdin: &mut Stdin, position: Position) -> io::Result<PositionResponse> {
+        stdin.write_line("ucinewgame").await?;
+
         let fen = if let Some(fen) = position.fen {
             fen
         } else {
