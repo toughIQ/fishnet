@@ -29,21 +29,23 @@ Roadmap
 * [ ] Implement worker
   * [x] Standard analysis
   * [x] Failed work
-  * [ ] Variant analysis
   * [ ] Use bundled Stockfish
   * [x] Protect engine from signals
   * [x] Backoff before restarting engine
+  * [ ] Variant analysis
+  * [ ] Hash size?
 * [ ] Performance based backoff
 * [ ] Ouput for humans
   * [ ] Game links
   * [ ] TUI?
 * [x] Outgoing analysis
-* [ ] Backwards compatibility?
-* [ ] Optimize submit/acquire?
+* [ ] Test run
+* [ ] Progress reports?
+* [x] ~~Optimize submit/acquire?~~
 * [ ] Move requests?
 * [x] Shut down when outdated
 * [ ] Fix Windows support
 * [ ] Auto update
+* [ ] Backwards compatibility?
 * [ ] ~~Warn about Python versions on old fishnet~~
-* [ ] Test run
 * [ ] Publish to main repository
