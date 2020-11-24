@@ -27,11 +27,14 @@ Roadmap
 * [x] Configuration
 * [x] Incoming analysis
 * [ ] Implement worker
+  * [x] Standard analysis
+  * [ ] Failed work
+  * [ ] Variant analysis
 * [ ] Outgoing analysis
 * [ ] Backwards compatibility?
 * [ ] Optimize submit/acquire?
 * [ ] Move requests?
-* [ ] Shut down when outdated
+* [x] Shut down when outdated
 * [ ] Auto update
 * [ ] ~~Warn about Python versions on old fishnet~~
 * [ ] Test run
