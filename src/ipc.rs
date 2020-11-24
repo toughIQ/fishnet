@@ -34,14 +34,14 @@ pub struct Skill(u32);
 
 #[derive(Debug, Clone)]
 pub struct Position {
-    batch_id: BatchId,
-    position_id: PositionId,
+    pub batch_id: BatchId,
+    pub position_id: PositionId,
 
-    variant: Variant,
-    fen: Fen,
-    moves: Vec<Uci>,
-    nodes: u64,
-    skill: Option<Skill>,
+    pub variant: Variant,
+    pub fen: Option<Fen>,
+    pub moves: Vec<Uci>,
+    pub nodes: u64,
+    pub skill: Option<Skill>,
 }
 
 #[derive(Debug, Clone)]
@@ -55,13 +55,13 @@ pub struct PositionResponse {
     pub batch_id: BatchId,
     pub position_id: PositionId,
 
-    score: Score,
-    best_move: Option<Uci>,
-    pv: Vec<Uci>,
-    depth: u32,
-    nodes: u64,
-    time: Duration,
-    nps: Option<u32>,
+    pub score: Score,
+    pub best_move: Option<Uci>,
+    pub pv: Vec<Uci>,
+    pub depth: u32,
+    pub nodes: u64,
+    pub time: Duration,
+    pub nps: Option<u32>,
 }
 
 #[derive(Debug)]

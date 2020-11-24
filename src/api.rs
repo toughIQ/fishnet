@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationSeconds, DisplayFromStr, SpaceSeparator, StringWithSeparator};
 use shakmaty::fen::Fen;
 use shakmaty::uci::Uci;
+use shakmaty::variants::Variant;
 use tokio_compat_02::FutureExt as _;
 use crate::configure::{Key, KeyError};
 use crate::ipc::BatchId;
@@ -183,6 +184,21 @@ pub enum LichessVariant {
     Standard,
     #[serde(rename = "threeCheck")]
     ThreeCheck,
+}
+
+impl From<LichessVariant> for Variant {
+    fn from(lichess: LichessVariant) -> Variant {
+        match lichess {
+            LichessVariant::Antichess => Variant::Giveaway,
+            LichessVariant::Atomic => Variant::Atomic,
+            LichessVariant::Chess960 | LichessVariant::Standard | LichessVariant::FromPosition => Variant::Chess,
+            LichessVariant::Crazyhouse => Variant::Crazyhouse,
+            LichessVariant::Horde => Variant::Horde,
+            LichessVariant::KingOfTheHill => Variant::KingOfTheHill,
+            LichessVariant::RacingKings => Variant::RacingKings,
+            LichessVariant::ThreeCheck => Variant::ThreeCheck,
+        }
+    }
 }
 
 impl Default for LichessVariant {

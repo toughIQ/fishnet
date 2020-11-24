@@ -1,18 +1,20 @@
+use std::cmp::min;
 use std::collections::{VecDeque, HashMap};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{mpsc, oneshot, Mutex, Notify};
 use tokio::time;
-use tracing::debug;
-use crate::api::ApiStub;
-use crate::ipc::{BatchId, Position, PositionResponse, Pull};
-use crate::util::NevermindExt as _ ;
+use tracing::{debug, warn, info};
+use crate::api::{AcquireQuery, AcquireResponseBody, Acquired, ApiStub};
+use crate::configure::BacklogOpt;
+use crate::ipc::{BatchId, Position, PositionResponse, PositionId, Pull};
+use crate::util::{NevermindExt as _, RandomizedBackoff};
 
-pub fn channel(api: ApiStub) -> (QueueStub, QueueActor) {
+pub fn channel(opt: BacklogOpt, api: ApiStub) -> (QueueStub, QueueActor) {
     let state = Arc::new(Mutex::new(QueueState::new()));
     let (tx, rx) = mpsc::unbounded_channel();
     let interrupt = Arc::new(Notify::new());
-    (QueueStub::new(tx, interrupt.clone(), state.clone(), api.clone()), QueueActor::new(rx, interrupt, state, api))
+    (QueueStub::new(tx, interrupt.clone(), state.clone(), api.clone()), QueueActor::new(rx, interrupt, state, opt, api))
 }
 
 pub struct QueueStub {
@@ -143,15 +145,19 @@ pub struct QueueActor {
     interrupt: Arc<Notify>,
     state: Arc<Mutex<QueueState>>,
     api: ApiStub,
+    opt: BacklogOpt,
+    backoff: RandomizedBackoff,
 }
 
 impl QueueActor {
-    fn new(rx: mpsc::UnboundedReceiver<QueueMessage>, interrupt: Arc<Notify>, state: Arc<Mutex<QueueState>>, api: ApiStub) -> QueueActor {
+    fn new(rx: mpsc::UnboundedReceiver<QueueMessage>, interrupt: Arc<Notify>, state: Arc<Mutex<QueueState>>, opt: BacklogOpt, api: ApiStub) -> QueueActor {
         QueueActor {
             rx,
             interrupt,
             state,
             api,
+            opt,
+            backoff: RandomizedBackoff::default(),
         }
     }
 
@@ -160,26 +166,84 @@ impl QueueActor {
         self.run_inner().await;
     }
 
+    pub async fn backlog_wait_time(&mut self) -> (Duration, AcquireQuery) {
+        let sec = Duration::from_secs(1);
+        let performance_based_backoff = Duration::default(); // TODO
+        let user_backlog = self.opt.user.map_or(Duration::default(), Duration::from) + performance_based_backoff;
+        let system_backlog = self.opt.system.map_or(Duration::default(), Duration::from);
+
+        if user_backlog >= sec || system_backlog >= sec {
+            if let Some(status) = self.api.status().await {
+                let user_wait = user_backlog.checked_sub(status.user.oldest).unwrap_or(Duration::default());
+                let system_wait = system_backlog.checked_sub(status.system.oldest).unwrap_or(Duration::default());
+                debug!("User wait: {:?} due to {:?} for oldest {:?}, system wait: {:?} due to {:?} for oldest {:?}",
+                       user_wait, user_backlog, status.user.oldest,
+                       system_wait, system_backlog, status.system.oldest);
+                let slow = user_wait >= system_wait + sec;
+                return (min(user_wait, system_wait), AcquireQuery { slow });
+            }
+        }
+
+        let slow = performance_based_backoff >= sec;
+        (Duration::default(), AcquireQuery { slow })
+    }
+
     async fn run_inner(mut self) {
         while let Some(msg) = self.rx.recv().await {
             match msg {
                 QueueMessage::Pull { mut callback } => {
                     loop {
                         {
-                            let state = self.state.lock().await;
+                            let mut state = self.state.lock().await;
+
+                            if let Some(pos) = state.incoming.pop_front() {
+                                if let Err(pos) = callback.send(pos) {
+                                    state.incoming.push_front(pos);
+                                }
+                                break;
+                            }
+
                             if state.shutdown_soon {
-                                return;
+                                break;
                             }
                         }
 
-                        // TODO: Simulated failed network request.
-                        time::sleep(Duration::from_millis(2000)).await;
+                        let (wait, query) = self.backlog_wait_time().await;
 
-                        // Simulated backoff.
+                        if wait >= Duration::from_secs(120) {
+                            info!("Going idle for {:?}.", wait);
+                        } else if wait >= Duration::from_secs(1) {
+                            debug!("Going idle for {:?}.", wait);
+                        }
+
                         tokio::select! {
                             _ = callback.closed() => break,
                             _ = self.interrupt.notified() => continue,
-                            _ = time::sleep(Duration::from_millis(10_000)) => (),
+                            _ = time::sleep(wait) => (),
+                        }
+
+                        match self.api.acquire(query).await {
+                            Some(Acquired::Accepted(body)) => {
+                                self.backoff.reset();
+
+                                let mut state = self.state.lock().await;
+                                state.add_incoming_batch(&mut self.api, IncomingBatch::from(body));
+                            }
+                            Some(Acquired::NoContent) => {
+                                let backoff = self.backoff.next();
+                                debug!("No job received. Backing off {:?}.", backoff);
+                                tokio::select! {
+                                    _ = callback.closed() => break,
+                                    _ = self.interrupt.notified() => (),
+                                    _ = time::sleep(backoff) => (),
+                                }
+                            }
+                            Some(Acquired::BadRequest) => {
+                                warn!("Client update might be required. Stopping queue.");
+                                let mut state = self.state.lock().await;
+                                state.shutdown_soon = true;
+                            },
+                            None => (),
                         }
                     }
                 }
@@ -205,6 +269,50 @@ enum Skip<T> {
 pub struct IncomingBatch {
     id: BatchId,
     positions: Vec<Skip<Position>>,
+}
+
+impl From<AcquireResponseBody> for IncomingBatch {
+    fn from(body: AcquireResponseBody) -> IncomingBatch {
+        let mut batch = IncomingBatch {
+            id: body.work.id,
+            positions: Vec::new(),
+        };
+
+        let variant = body.variant.into();
+        let nodes = body.nodes.unwrap_or(4_000_000);
+        let mut moves = Vec::new();
+
+        batch.positions.push(Skip::Present(Position {
+            batch_id: body.work.id,
+            position_id: PositionId(0),
+            variant,
+            fen: body.position.clone(),
+            moves: moves.clone(),
+            nodes,
+            skill: None,
+        }));
+
+        for (i, m) in body.moves.into_iter().enumerate() {
+            moves.push(m);
+            batch.positions.push(Skip::Present(Position {
+                batch_id: body.work.id,
+                position_id: PositionId(1 + i),
+                variant,
+                fen: body.position.clone(),
+                moves: moves.clone(),
+                nodes,
+                skill: None,
+            }));
+        }
+
+        for skip in body.skip_positions.into_iter() {
+            if let Some(pos) = batch.positions.get_mut(skip) {
+                *pos = Skip::Skip;
+            }
+        }
+
+        batch
+    }
 }
 
 #[derive(Debug, Clone)]

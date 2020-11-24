@@ -24,7 +24,7 @@ Roadmap
 * [x] Stockfish selection ~~and verification~~
 * [x] systemd helper
 * [x] Configuration
-* [ ] Incoming analysis
+* [*] Incoming analysis
 * [ ] Implement worker
 * [ ] Outgoing analysis
 * [ ] Backwards compatibility?

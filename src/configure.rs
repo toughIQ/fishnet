@@ -48,15 +48,8 @@ pub struct Opt {
     #[structopt(long, alias = "threads", global = true)]
     pub cores: Option<Cores>,
 
-    /// Prefer to run high-priority jobs only if older than this duration
-    /// (for example 120s).
-    #[structopt(long, global = true)]
-    pub user_backlog: Option<Backlog>,
-
-    /// Prefer to run low-priority jobs only if older than this duration
-    /// (for example 2h).
-    #[structopt(long, global = true)]
-    pub system_backlog: Option<Backlog>,
+    #[structopt(flatten)]
+    pub backlog: BacklogOpt,
 
     #[structopt(subcommand)]
     pub command: Option<Command>,
@@ -170,6 +163,19 @@ impl From<Cores> for usize {
     }
 }
 
+#[derive(Debug, Clone, StructOpt)]
+pub struct BacklogOpt {
+    /// Prefer to run high-priority jobs only if older than this duration
+    /// (for example 120s).
+    #[structopt(long = "user-backlog", global = true)]
+    pub user: Option<Backlog>,
+
+    /// Prefer to run low-priority jobs only if older than this duration
+    /// (for example 2h).
+    #[structopt(long = "system-backlog", global = true)]
+    pub system: Option<Backlog>,
+}
+
 #[derive(Debug, Copy, Clone)]
 pub enum Backlog {
     Short,
@@ -180,6 +186,16 @@ pub enum Backlog {
 impl Default for Backlog {
     fn default() -> Backlog {
         Backlog::Duration(Duration::default())
+    }
+}
+
+impl From<Backlog> for Duration {
+    fn from(backlog: Backlog) -> Duration {
+        match backlog {
+            Backlog::Short => Duration::from_secs(60),
+            Backlog::Long => Duration::from_secs(60 * 60),
+            Backlog::Duration(d) => d,
+        }
     }
 }
 
@@ -470,10 +486,10 @@ pub async fn parse_and_configure() -> Opt {
                     ini.get("Fishnet", "Cores").map(|c| c.parse().expect("valid cores"))
                 });
 
-                opt.user_backlog = opt.user_backlog.or_else(|| {
+                opt.backlog.user = opt.backlog.user.or_else(|| {
                     ini.get("Fishnet", "UserBacklog").map(|b| b.parse().expect("valid user backlog"))
                 });
-                opt.system_backlog = opt.system_backlog.or_else(|| {
+                opt.backlog.system = opt.backlog.system.or_else(|| {
                     ini.get("Fishnet", "SystemBacklog").map(|b| b.parse().expect("valid system backlog"))
                 });
             }

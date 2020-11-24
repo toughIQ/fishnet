@@ -109,11 +109,11 @@ fn exec_start(opt: &Opt) -> String {
         builder.push("--cores".to_owned());
         builder.push(escape(cores.to_string().into()).into_owned());
     }
-    if let Some(ref user_backlog) = opt.user_backlog {
+    if let Some(ref user_backlog) = opt.backlog.user {
         builder.push("--user-backlog".to_owned());
         builder.push(escape(user_backlog.to_string().into()).into_owned());
     }
-    if let Some(ref system_backlog) = opt.system_backlog {
+    if let Some(ref system_backlog) = opt.backlog.system {
         builder.push("--system_backlog".to_owned());
         builder.push(escape(system_backlog.to_string().into()).into_owned());
     }
