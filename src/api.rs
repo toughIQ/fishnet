@@ -107,9 +107,12 @@ impl Default for Stockfish {
     }
 }
 
+#[serde_as]
 #[derive(Debug, Serialize)]
 struct StockfishOptions {
+    #[serde_as(as = "DisplayFromStr")]
     hash: u32,
+    #[serde_as(as = "DisplayFromStr")]
     threads: usize,
 }
 
