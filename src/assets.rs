@@ -29,9 +29,9 @@ impl Asset {
     }
 
     #[cfg(not(unix))]
-    fn create(&self, base: PathBuf) -> io::Result<PathBuf> {
+    fn create(&self, base: &Path) -> io::Result<PathBuf> {
         let path = base.join(self.name);
-        std::fs::write_all(&path, self.data);
+        std::fs::write(&path, self.data)?;
         Ok(path)
     }
 }

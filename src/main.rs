@@ -45,14 +45,14 @@ async fn run(opt: Opt) {
     // Install handler for SIGTERM.
     #[cfg(unix)]
     let mut sig_term = signal::unix::signal(signal::unix::SignalKind::terminate()).expect("install handler for sigterm");
-    #[cfg(not(unix))]
+    #[cfg(windows)]
     let mut sig_term = signal::windows::ctrl_break().expect("install handler for ctrl+break");
 
     // Install handler for SIGINT.
     #[cfg(unix)]
     let mut sig_int = signal::unix::signal(signal::unix::SignalKind::interrupt()).expect("install handler for sigint");
-    #[cfg(not(unix))]
-    let mut sig_int = signal::windows::ctrl_c().expect("install handler for ctrl+c");
+    #[cfg(windows)]
+    let mut sig_term = signal::windows::ctrl_break().expect("install handler for ctrl+c"); // TODO: https://github.com/tokio-rs/tokio/issues/3178
 
     // To wait for workers and API actor before shutdown.
     let mut join_handles = Vec::new();
