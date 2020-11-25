@@ -155,6 +155,11 @@ impl QueueState {
                     api.submit_analysis(completed.id, completed.into_analysis());
                 }
                 Err(pending) => {
+                    let progress_report = pending.progress_report();
+                    if progress_report.iter().filter(|p| p.is_some()).count() % 5 == 0 {
+                        api.submit_analysis(pending.id, progress_report);
+                    }
+
                     self.pending.insert(pending.id, pending);
                 }
             }
@@ -247,7 +252,7 @@ impl QueueActor {
                             res = self.backlog_wait_time() => res,
                         };
 
-                        if wait >= Duration::from_secs(120) {
+                        if wait >= Duration::from_secs(60) {
                             info!("Going idle for {:?}.", wait);
                         } else if wait >= Duration::from_secs(1) {
                             debug!("Going idle for {:?}.", wait);
@@ -389,9 +394,19 @@ impl PendingBatch {
     }
 
     fn progress_report(&self) -> Vec<Option<AnalysisPart>> {
-        let report = Vec::new();
-        for pos in self.positions.iter() {
-        }
+        self.positions.iter().enumerate().map(|(i, p)| match p {
+            // Quirk: Lila distinguishes progress reports from complete analysis
+            // by looking at the first part.
+            Some(Skip::Present(pos)) if i > 0 => Some(AnalysisPart::Complete {
+                pv: pos.pv.clone(),
+                depth: pos.depth,
+                score: pos.score,
+                time: pos.time.as_millis() as u64,
+                nodes: pos.nodes,
+                nps: pos.nps,
+            }),
+            _ => None,
+        }).collect()
     }
 }
 
