@@ -16,6 +16,8 @@ Installation
 
    **From source**
 
+   Assuming you have [a recent Rust toolchain](https://rustup.rs/) installed:
+
    ```sh
    git clone --recursive https://github.com/niklasf/fishnet.git
    cd fishnet
@@ -26,7 +28,7 @@ Installation
 
    Not yet available for 2.x.
 
-3. Run to donate your CPU time.
+3. Run to donate CPU time:
 
    ```sh
    fishnet --auto-update
