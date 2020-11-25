@@ -11,8 +11,8 @@ use crate::configure::{BacklogOpt, Endpoint};
 use crate::ipc::{BatchId, Position, PositionResponse, PositionId, Pull};
 use crate::util::{NevermindExt as _, RandomizedBackoff};
 
-pub fn channel(endpoint: Endpoint, opt: BacklogOpt, api: ApiStub) -> (QueueStub, QueueActor) {
-    let state = Arc::new(Mutex::new(QueueState::new()));
+pub fn channel(endpoint: Endpoint, opt: BacklogOpt, cores: usize, api: ApiStub) -> (QueueStub, QueueActor) {
+    let state = Arc::new(Mutex::new(QueueState::new(cores)));
     let (tx, rx) = mpsc::unbounded_channel();
     let interrupt = Arc::new(Notify::new());
     (QueueStub::new(tx, interrupt.clone(), state.clone(), api.clone()), QueueActor::new(rx, interrupt, state, endpoint, opt, api))
@@ -65,14 +65,16 @@ impl QueueStub {
 
 struct QueueState {
     shutdown_soon: bool,
+    cores: usize,
     incoming: VecDeque<Position>,
     pending: HashMap<BatchId, PendingBatch>,
 }
 
 impl QueueState {
-    fn new() -> QueueState {
+    fn new(cores: usize) -> QueueState {
         QueueState {
             shutdown_soon: false,
+            cores: usize,
             incoming: VecDeque::new(),
             pending: HashMap::new(),
         }
@@ -156,7 +158,7 @@ impl QueueState {
                 }
                 Err(pending) => {
                     let progress_report = pending.progress_report();
-                    if progress_report.iter().filter(|p| p.is_some()).count() % 5 == 0 {
+                    if progress_report.iter().filter(|p| p.is_some()).count() % 5 == self.cores * 2 {
                         api.submit_analysis(pending.id, progress_report);
                     }
 

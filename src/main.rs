@@ -70,7 +70,7 @@ async fn run(opt: Opt) {
 
     // Spawn queue actor.
     let mut queue = {
-        let (queue, queue_actor) = queue::channel(endpoint, opt.backlog, api);
+        let (queue, queue_actor) = queue::channel(endpoint, opt.backlog, cores, api);
         join_handles.push(tokio::spawn(async move {
             queue_actor.run().await;
         }));
