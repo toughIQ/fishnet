@@ -6,8 +6,10 @@ on:
     - 'v*'
 
 jobs:
-  create-release:
+  release:
     runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
     - id: create_release
       uses: actions/create-release@v1
@@ -20,7 +22,7 @@ jobs:
         prerelease: true
   linux-x86-64:
     runs-on: ubuntu-18.04
-    needs: create-release
+    needs: release
     steps:
     - run: sudo apt-get update && sudo apt-get install -y musl-tools
     - uses: actions/checkout@v2
@@ -39,13 +41,13 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        upload_url: ${{ needs.release.outputs.upload_url }}
         asset_path: target/x86_64-unknown-linux-musl/release/fishnet
         asset_name: fishnet-linux-x86-64
         asset_content_type: application/octet-stream
   linux-aarch64:
     runs-on: ubuntu-18.04
-    needs: create-release
+    needs: release
     steps:
     - uses: actions/checkout@v2
       with:
@@ -64,13 +66,13 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        upload_url: ${{ needs.release.outputs.upload_url }}
         asset_path: target/xaarch64-unknown-linux-gnu/release/fishnet
         asset_name: fishnet-linux-aarch64
         asset_content_type: application/octet-stream
   windows-x86-64:
     runs-on: windows-2016
-    needs: create-release
+    needs: release
     steps:
     - uses: actions/checkout@v2
       with:
@@ -87,13 +89,13 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        upload_url: ${{ needs.release.outputs.upload_url }}
         asset_path: target/release/fishnet.exe
         asset_name: fishnet-windows-x86-64.exe
         asset_content_type: application/octet-stream
   macos-x86-64:
     runs-on: macos-10.15
-    needs: create-release
+    needs: release
     steps:
     - uses: actions/checkout@v2
       with:
@@ -110,7 +112,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        upload_url: ${{ needs.release.outputs.upload_url }}
         asset_path: target/release/fishnet
         asset_name: fishnet-macos-x86-64
         asset_content_type: application/octet-stream
