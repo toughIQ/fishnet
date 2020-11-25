@@ -74,7 +74,7 @@ impl QueueState {
     fn new(cores: usize) -> QueueState {
         QueueState {
             shutdown_soon: false,
-            cores: usize,
+            cores,
             incoming: VecDeque::new(),
             pending: HashMap::new(),
         }
@@ -158,7 +158,7 @@ impl QueueState {
                 }
                 Err(pending) => {
                     let progress_report = pending.progress_report();
-                    if progress_report.iter().filter(|p| p.is_some()).count() % 5 == self.cores * 2 {
+                    if progress_report.iter().filter(|p| p.is_some()).count() % (self.cores * 2) == 0 {
                         api.submit_analysis(pending.id, progress_report);
                     }
 
