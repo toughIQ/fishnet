@@ -1,5 +1,4 @@
 use std::time::Duration;
-use url::Url;
 use reqwest::StatusCode;
 use tokio::time;
 use tokio::sync::{mpsc, oneshot};
@@ -10,16 +9,16 @@ use shakmaty::fen::Fen;
 use shakmaty::uci::Uci;
 use shakmaty::variants::Variant;
 use tokio_compat_02::FutureExt as _;
-use crate::configure::{Key, KeyError};
+use crate::configure::{Endpoint, Key, KeyError};
 use crate::ipc::BatchId;
 use crate::util::{NevermindExt as _, RandomizedBackoff};
 
-pub fn channel(endpoint: Url, key: Option<Key>) -> (ApiStub, ApiActor) {
+pub fn channel(endpoint: Endpoint, key: Option<Key>) -> (ApiStub, ApiActor) {
     let (tx, rx) = mpsc::unbounded_channel();
     (ApiStub::new(tx), ApiActor::new(rx, endpoint, key))
 }
 
-pub fn spawn(endpoint: Url, key: Option<Key>) -> ApiStub {
+pub fn spawn(endpoint: Endpoint, key: Option<Key>) -> ApiStub {
     let (stub, actor) = channel(endpoint, key);
     tokio::spawn(async move {
         actor.run().await;
@@ -317,14 +316,14 @@ impl ApiStub {
 
 pub struct ApiActor {
     rx: mpsc::UnboundedReceiver<ApiMessage>,
-    endpoint: Url,
+    endpoint: Endpoint,
     key: Option<Key>,
     client: reqwest::Client,
     error_backoff: RandomizedBackoff,
 }
 
 impl ApiActor {
-    fn new(rx: mpsc::UnboundedReceiver<ApiMessage>, endpoint: Url, key: Option<Key>) -> ApiActor {
+    fn new(rx: mpsc::UnboundedReceiver<ApiMessage>, endpoint: Endpoint, key: Option<Key>) -> ApiActor {
         ApiActor {
             rx,
             endpoint,

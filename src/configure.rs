@@ -41,7 +41,7 @@ pub struct Opt {
 
     /// Lichess HTTP endpoint.
     #[structopt(long, global = true)]
-    pub endpoint: Option<Url>,
+    pub endpoint: Option<Endpoint>,
 
     /// Number of logical CPU cores to use for engine processes
     /// (or auto for n - 1, or all for n).
@@ -56,12 +56,43 @@ pub struct Opt {
 }
 
 impl Opt {
-    pub fn endpoint(&self) -> Url {
-        if let Some(ref endpoint) = self.endpoint {
-            endpoint.clone()
-        } else {
-            DEFAULT_ENDPOINT.parse().expect("default endpoint is valid")
+    pub fn endpoint(&self) -> Endpoint {
+        self.endpoint.clone().unwrap_or_default()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Endpoint {
+    pub url: Url,
+}
+
+impl Default for Endpoint {
+    fn default() -> Endpoint {
+        DEFAULT_ENDPOINT.parse().expect("default endpoint is valid")
+    }
+}
+
+impl fmt::Display for Endpoint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.url, f)
+    }
+}
+
+impl FromStr for Endpoint {
+    type Err = url::ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut url: Url = s.parse()?;
+        if let Some(stripped_path) = url.path().to_owned().strip_suffix("/") {
+            url.set_path(stripped_path);
         }
+        Ok(Endpoint { url })
+    }
+}
+
+impl Endpoint {
+    fn is_development(&self) -> bool {
+        self.url.host_str() != Some("lichess.org")
     }
 }
 
@@ -340,7 +371,7 @@ pub async fn parse_and_configure() -> Opt {
                     .or_else(|| ini.get("Fishnet", "Endpoint"))
                     .unwrap_or(DEFAULT_ENDPOINT.to_owned());
 
-                match Url::from_str(&endpoint) {
+                match endpoint.parse() {
                     Ok(url) => {
                         ini.setstr("Fishnet", "Endpoint", Some(&endpoint));
                         break opt.endpoint.clone().unwrap_or(url);
@@ -357,12 +388,12 @@ pub async fn parse_and_configure() -> Opt {
                 let required = if let Some(current) = ini.get("Fishnet", "Key") {
                     eprint!("Personal fishnet key (append ! to force, default: keep {}): ", "*".repeat(current.chars().count()));
                     false
-                } else if endpoint.host_str() == Some("lichess.org") {
-                    eprint!("Personal fishnet key (append ! to force, https://lichess.org/get-fishnet): ");
-                    true
-                } else {
+                } else if endpoint.is_development() {
                     eprint!("Personal fishnet key (append ! to force, probably not required): ");
                     false
+                } else {
+                    eprint!("Personal fishnet key (append ! to force, https://lichess.org/get-fishnet): ");
+                    true
                 };
 
                 io::stderr().flush().expect("flush stderr");

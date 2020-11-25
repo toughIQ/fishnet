@@ -7,11 +7,11 @@ use tokio::sync::{mpsc, oneshot, Mutex, Notify};
 use tokio::time;
 use tracing::{debug, error, info};
 use crate::api::{AcquireQuery, AcquireResponseBody, Acquired, ApiStub, AnalysisPart};
-use crate::configure::BacklogOpt;
+use crate::configure::{BacklogOpt, Endpoint};
 use crate::ipc::{BatchId, Position, PositionResponse, PositionId, Pull};
 use crate::util::{NevermindExt as _, RandomizedBackoff};
 
-pub fn channel(endpoint: Url, opt: BacklogOpt, api: ApiStub) -> (QueueStub, QueueActor) {
+pub fn channel(endpoint: Endpoint, opt: BacklogOpt, api: ApiStub) -> (QueueStub, QueueActor) {
     let state = Arc::new(Mutex::new(QueueState::new()));
     let (tx, rx) = mpsc::unbounded_channel();
     let interrupt = Arc::new(Notify::new());
@@ -174,13 +174,13 @@ pub struct QueueActor {
     interrupt: Arc<Notify>,
     state: Arc<Mutex<QueueState>>,
     api: ApiStub,
-    endpoint: Url,
+    endpoint: Endpoint,
     opt: BacklogOpt,
     backoff: RandomizedBackoff,
 }
 
 impl QueueActor {
-    fn new(rx: mpsc::UnboundedReceiver<QueueMessage>, interrupt: Arc<Notify>, state: Arc<Mutex<QueueState>>, endpoint: Url, opt: BacklogOpt, api: ApiStub) -> QueueActor {
+    fn new(rx: mpsc::UnboundedReceiver<QueueMessage>, interrupt: Arc<Notify>, state: Arc<Mutex<QueueState>>, endpoint: Endpoint, opt: BacklogOpt, api: ApiStub) -> QueueActor {
         QueueActor {
             rx,
             interrupt,
@@ -310,8 +310,8 @@ pub struct IncomingBatch {
 }
 
 impl IncomingBatch {
-    fn from_acquired(endpoint: Url, body: AcquireResponseBody) -> IncomingBatch {
-        let mut url = endpoint.clone();
+    fn from_acquired(endpoint: Endpoint, body: AcquireResponseBody) -> IncomingBatch {
+        let mut url = endpoint.url.clone();
         let mut batch = IncomingBatch {
             id: body.work.id,
             url: body.game_id.as_ref().map(|g| {
@@ -324,7 +324,7 @@ impl IncomingBatch {
         let nodes = body.nodes.unwrap_or(4_000_000);
         let mut moves = Vec::new();
 
-        let mut url = endpoint.clone();
+        let mut url = endpoint.url.clone();
         batch.positions.push(Skip::Present(Position {
             batch_id: body.work.id,
             position_id: PositionId(0),
@@ -341,7 +341,7 @@ impl IncomingBatch {
         }));
 
         for (i, m) in body.moves.into_iter().enumerate() {
-            let mut url = endpoint.clone();
+            let mut url = endpoint.url.clone();
             moves.push(m);
             batch.positions.push(Skip::Present(Position {
                 batch_id: body.work.id,
