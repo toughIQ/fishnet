@@ -1,7 +1,8 @@
 use std::cmp::min;
+use std::convert::TryInto;
 use std::collections::{VecDeque, HashMap};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use url::Url;
 use tokio::sync::{mpsc, oneshot, Mutex, Notify};
 use tokio::time;
@@ -104,6 +105,7 @@ impl QueueState {
             id: batch.id,
             positions,
             url: batch.url,
+            started_at: Instant::now(),
         });
 
         self.maybe_finished(api, batch.id);
@@ -381,6 +383,7 @@ struct PendingBatch {
     id: BatchId,
     positions: Vec<Option<Skip<PositionResponse>>>,
     url: Option<Url>,
+    started_at: Instant,
 }
 
 impl PendingBatch {
@@ -390,6 +393,8 @@ impl PendingBatch {
                 id: self.id,
                 positions,
                 url: self.url,
+                started_at: self.started_at,
+                completed_at: Instant::now(),
             }),
             None => Err(self),
         }
@@ -416,6 +421,8 @@ pub struct CompletedBatch {
     id: BatchId,
     positions: Vec<Skip<PositionResponse>>,
     url: Option<Url>,
+    started_at: Instant,
+    completed_at: Instant,
 }
 
 impl CompletedBatch {
@@ -435,5 +442,18 @@ impl CompletedBatch {
                 },
             })
         }).collect()
+    }
+
+    fn total_nodes(&self) -> u64 {
+        self.positions.iter().map(|p| match p {
+            Skip::Skip => 0,
+            Skip::Present(pos) => pos.nodes,
+        }).sum()
+    }
+
+    fn nps(&self) -> Option<u32> {
+        self.completed_at.checked_duration_since(self.started_at).and_then(|time| {
+            self.total_nodes().checked_div(time.as_secs())
+        }).and_then(|nps| nps.try_into().ok())
     }
 }

@@ -42,11 +42,11 @@ Roadmap
 * [x] Outgoing analysis
 * [ ] Test run
 * [x] Trim endpoint
-* [ ] Progress reports?
+* [x] Progress reports?
 * [x] ~~Optimize submit/acquire?~~
 * [ ] Move requests?
 * [x] Shut down when outdated
-* [ ] Fix Windows support
+* [ ] Test/fix Windows support
 * [ ] Auto update
 * [ ] Backwards compatibility?
 * [x] ~~Warn about Python versions on old fishnet~~
