@@ -15,10 +15,8 @@ arrayvec = "0.5.2"
 atty = "0.2"
 bitflags = "1.2"
 configparser = "1.0"
-libc = "0.2"
 num_cpus = "1.13"
 rand = "0.7"
-raw-cpuid = "8.1.2"
 reqwest = { version = "0.10", features = ["json", "rustls-tls"], default-features = false }
 serde = "1.0"
 serde_with = "1.6.0"
@@ -26,8 +24,14 @@ shakmaty = "0.16"
 shell-escape = "0.1"
 structopt = "0.3"
 tempfile = "3.1"
-tokio = { version = "0.3", features = ["full"] } # TODO: consider reducing features
-tokio-compat-02 = "0.1.2"
+tokio = { version = "0.3", features = ["full"] }
+tokio-compat-02 = "0.1"
 tracing = "0.1"
 tracing-subscriber = "0.2"
 url = "2.2"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(target_arch = "x86_64")'.dependencies]
+raw-cpuid = "8.1"
