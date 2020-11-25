@@ -26,13 +26,13 @@ Roadmap
 * [x] systemd helper
 * [x] Configuration
 * [x] Incoming analysis
-* [ ] Implement worker
+* [x] Implement worker
   * [x] Standard analysis
   * [x] Failed work
   * [x] Use bundled Stockfish
   * [x] Protect engine from signals
   * [x] Backoff before restarting engine
-  * [ ] Variant analysis
+  * [x] Variant analysis
   * [x] Hash size?
 * [x] ~~Check shutdown while API is backing off due to error~~
 * [ ] Performance based queue backoff

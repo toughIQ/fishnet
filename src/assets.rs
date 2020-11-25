@@ -272,12 +272,39 @@ const STOCKFISH_MV: &'static [Asset] = &[
     },
 ];
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum EngineFlavor {
+    Official,
+    MultiVariant,
+}
+
+#[derive(Debug)]
+pub struct ByEngineFlavor<T> {
+    pub official: T,
+    pub multi_variant: T,
+}
+
+impl<T> ByEngineFlavor<T> {
+    pub fn get(&self, flavor: EngineFlavor) -> &T {
+        match flavor {
+            EngineFlavor::Official => &self.official,
+            EngineFlavor::MultiVariant => &self.multi_variant,
+        }
+    }
+
+    pub fn get_mut(&mut self, flavor: EngineFlavor) -> &mut T {
+        match flavor {
+            EngineFlavor::Official => &mut self.official,
+            EngineFlavor::MultiVariant => &mut self.multi_variant,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Assets {
     dir: TempDir,
     pub nnue: String,
-    pub stockfish: PathBuf,
-    pub stockfish_mv: PathBuf,
+    pub stockfish: ByEngineFlavor<PathBuf>,
 }
 
 impl Assets {
@@ -285,8 +312,10 @@ impl Assets {
         let dir = tempfile::Builder::new().prefix("fishnet-").tempdir()?;
         Ok(Assets {
             nnue: NNUE.create(dir.path())?.to_str().expect("nnue path printable").to_owned(),
-            stockfish: STOCKFISH.iter().filter(|a| cpu.contains(a.needs)).next().expect("stockfish").create(dir.path())?,
-            stockfish_mv: STOCKFISH_MV.iter().filter(|a| cpu.contains(a.needs)).next().expect("stockfish").create(dir.path())?,
+            stockfish: ByEngineFlavor {
+                official: STOCKFISH.iter().filter(|a| cpu.contains(a.needs)).next().expect("stockfish").create(dir.path())?,
+                multi_variant: STOCKFISH_MV.iter().filter(|a| cpu.contains(a.needs)).next().expect("stockfish").create(dir.path())?,
+            },
             dir,
         })
     }

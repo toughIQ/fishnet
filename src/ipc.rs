@@ -7,6 +7,7 @@ use shakmaty::fen::Fen;
 use shakmaty::uci::Uci;
 use tokio::sync::oneshot;
 use crate::api::{Score, LichessVariant};
+use crate::assets::EngineFlavor;
 
 /// Uniquely identifies a batch in this process.
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -47,8 +48,11 @@ pub struct Position {
 }
 
 impl Position {
-    pub fn use_official_stockfish(&self) -> bool {
-        self.url.is_some() && (self.variant == LichessVariant::Standard || self.variant == LichessVariant::Chess960)
+    pub fn engine_flavor(&self) -> EngineFlavor {
+        match self.variant {
+            LichessVariant::Standard | LichessVariant::Chess960 if self.url.is_some() => EngineFlavor::Official,
+            _ => EngineFlavor::MultiVariant,
+        }
     }
 }
 

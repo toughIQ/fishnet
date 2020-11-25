@@ -10,6 +10,7 @@ use shakmaty::fen::Fen;
 use shakmaty::variants::{VariantPosition, Variant};
 use crate::api::{Score, LichessVariant};
 use crate::ipc::{Position, PositionResponse, PositionFailed};
+use crate::assets::EngineFlavor;
 use crate::util::NevermindExt as _;
 
 pub fn channel(exe: PathBuf, init: StockfishInit) -> (StockfishStub, StockfishActor) {
@@ -198,7 +199,7 @@ impl StockfishActor {
         stdin.write_line(&format!("setoption name UCI_Chess960 value {}", uci_chess960)).await?;
 
         // Set UCI_Variant.
-        if !position.use_official_stockfish() {
+        if position.engine_flavor() == EngineFlavor::MultiVariant {
             let uci_variant = match position.variant.into() {
                 Variant::Chess => "chess",
                 Variant::Giveaway => "giveaway",

@@ -14,7 +14,7 @@ use tokio::time;
 use tokio::signal;
 use tokio::sync::{mpsc, oneshot};
 use crate::configure::{Opt, Command, Cores};
-use crate::assets::{Assets, Cpu};
+use crate::assets::{Assets, Cpu, ByEngineFlavor, EngineFlavor};
 use crate::ipc::{Pull, Position};
 use crate::stockfish::StockfishInit;
 use crate::util::RandomizedBackoff;
@@ -89,14 +89,19 @@ async fn run(opt: Opt) {
                 debug!("Started worker {}.", i);
 
                 let mut job: Option<Position> = None;
-                let mut engine = None;
+                let mut engine = ByEngineFlavor {
+                    official: None,
+                    multi_variant: None,
+                };
                 let mut engine_backoff = RandomizedBackoff::default();
 
                 loop {
                     let response = if let Some(job) = job.take() {
                         debug!("Worker {} running on {} {:?}", i, job.batch_id, job.position_id);
 
-                        let (mut sf, join_handle) = if let Some((sf, join_handle)) = engine.take() {
+                        let flavor = job.engine_flavor();
+
+                        let (mut sf, join_handle) = if let Some((sf, join_handle)) = engine.get_mut(flavor).take() {
                             (sf, join_handle)
                         } else {
                             // Backoff before starting engine.
@@ -112,7 +117,7 @@ async fn run(opt: Opt) {
                             }
 
                             // Start engine and spawn actor.
-                            let (sf, sf_actor) = stockfish::channel(assets.stockfish.clone(), StockfishInit {
+                            let (sf, sf_actor) = stockfish::channel(assets.stockfish.get(flavor).clone(), StockfishInit {
                                 nnue: assets.nnue.clone(),
                             });
                             let join_handle = tokio::spawn(async move {
@@ -131,7 +136,7 @@ async fn run(opt: Opt) {
                             res = sf.go(job) => {
                                 match res {
                                     Ok(res) => {
-                                        engine = Some((sf, join_handle));
+                                        *engine.get_mut(flavor) = Some((sf, join_handle));
                                         engine_backoff.reset();
                                         Some(Ok(res))
                                     }
@@ -169,8 +174,14 @@ async fn run(opt: Opt) {
                     }
                 }
 
-                if let Some((sf, join_handle)) = engine.take() {
-                    debug!("Worker {} waiting for engine to shut down.", i);
+                if let Some((sf, join_handle)) = engine.get_mut(EngineFlavor::Official).take() {
+                    debug!("Worker {} waiting for standard engine to shut down.", i);
+                    drop(sf);
+                    join_handle.await.expect("join");
+                }
+
+                if let Some((sf, join_handle)) = engine.get_mut(EngineFlavor::MultiVariant).take() {
+                    debug!("Worker {} waiting for multi-variant engine to shut down.", i);
                     drop(sf);
                     join_handle.await.expect("join");
                 }
@@ -184,8 +195,8 @@ async fn run(opt: Opt) {
 
     let mut shutdown_soon = false;
 
-    // Main loop. Handles signals, forwards worker results from rx to the HTTP
-    // API and responds with more work.
+    // Main loop. Handles signals, forwards worker results from rx to the queue
+    // and responds with more work.
     loop {
         tokio::select! {
             res = sig_int.recv() => {
