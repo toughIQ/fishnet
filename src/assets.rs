@@ -1,6 +1,8 @@
 use std::fmt;
 use std::io;
+use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::io::Write as _;
 use bitflags::bitflags;
 use tempfile::TempDir;
 
@@ -9,21 +11,40 @@ struct Asset {
     data: &'static [u8],
     needs: Cpu,
     executable: bool,
+    gzip: bool,
 }
 
 impl Asset {
     #[cfg(unix)]
-    fn create(&self, base: &Path) -> io::Result<PathBuf> {
+    fn open(&self, path: &Path) -> io::Result<File> {
         use std::os::unix::fs::OpenOptionsExt as _;
-        let path = base.join(self.name);
-        let mut file = std::fs::OpenOptions::new()
+        std::fs::OpenOptions::new()
             .create(true)
             .write(true)
             .mode(0o700)
-            .open(&path)?;
+            .open(path)
+    }
 
-        use std::io::Write as _;
-        file.write_all(self.data)?;
+    #[cfg(not(unix))]
+    fn open(&self, path: &Path) -> io::Result<File> {
+        std::fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(path)
+    }
+
+    #[cfg(unix)]
+    fn create(&self, base: &Path) -> io::Result<PathBuf> {
+        let path = base.join(self.name);
+        let mut file = self.open(&path)?;
+
+        if self.gzip {
+            let mut decoder = libflate::gzip::Decoder::new(self.data)?;
+            io::copy(&mut decoder, &mut file)?;
+        } else {
+            file.write_all(self.data)?;
+        }
+
         file.sync_all()?;
         Ok(path)
     }
@@ -42,6 +63,8 @@ impl fmt::Debug for Asset {
             .field("name", &self.name)
             .field("needs", &self.needs)
             .field("executable", &self.executable)
+            .field("gzip", &self.gzip)
+            .field("data", &"..")
             .finish()
     }
 }
@@ -92,10 +115,11 @@ impl Cpu {
 }
 
 const NNUE: Asset = Asset {
-    name: "nn-c3ca321c51c9.nnue",
-    data: include_bytes!("../assets/nn-c3ca321c51c9.nnue"),
+    name: "nn-c3ca321c51c9.nnue.gz",
+    data: include_bytes!("../assets/nn-c3ca321c51c9.nnue.gz"),
     needs: Cpu::empty(),
     executable: false,
+    gzip: true,
 };
 
 #[cfg(all(unix, target_arch = "x86_64", not(target_os = "macos")))]
@@ -105,30 +129,35 @@ const STOCKFISH: &'static [Asset] = &[
         data: include_bytes!("../assets/stockfish-x86-64-bmi2"),
         needs: Cpu::SF_BMI2,
         executable: true,
+        gzip: false,
     },
     Asset {
         name: "stockfish-x86-64-avx2",
         data: include_bytes!("../assets/stockfish-x86-64-avx2"),
         needs: Cpu::SF_AVX2,
         executable: true,
+        gzip: false,
     },
     Asset {
         name: "stockfish-x86-64-sse41-popcnt",
         data: include_bytes!("../assets/stockfish-x86-64-sse41-popcnt"),
         needs: Cpu::SF_SSE41_POPCNT,
         executable: true,
+        gzip: false,
     },
     Asset {
         name: "stockfish-x86-64-ssse3",
         data: include_bytes!("../assets/stockfish-x86-64-ssse3"),
         needs: Cpu::SF_SSSE3,
         executable: true,
+        gzip: false,
     },
     Asset {
         name: "stockfish-x86-64",
         data: include_bytes!("../assets/stockfish-x86-64"),
         needs: Cpu::SF,
         executable: true,
+        gzip: false,
     },
 ];
 
@@ -139,30 +168,35 @@ const STOCKFISH_MV: &'static [Asset] = &[
         data: include_bytes!("../assets/stockfish-mv-x86-64-bmi2"),
         needs: Cpu::SF_BMI2,
         executable: true,
+        gzip: false,
     },
     Asset {
         name: "stockfish-mv-x86-64-avx2",
         data: include_bytes!("../assets/stockfish-mv-x86-64-avx2"),
         needs: Cpu::SF_AVX2,
         executable: true,
+        gzip: false,
     },
     Asset {
         name: "stockfish-mv-x86-64-sse41-popcnt",
         data: include_bytes!("../assets/stockfish-mv-x86-64-sse41-popcnt"),
         needs: Cpu::SF_SSE41_POPCNT,
         executable: true,
+        gzip: false,
     },
     Asset {
         name: "stockfish-mv-x86-64-ssse3",
         data: include_bytes!("../assets/stockfish-mv-x86-64-ssse3"),
         needs: Cpu::SF_SSSE3,
         executable: true,
+        gzip: false,
     },
     Asset {
         name: "stockfish-mv-x86-64",
         data: include_bytes!("../assets/stockfish-mv-x86-64"),
         needs: Cpu::SF,
         executable: true,
+        gzip: false,
     },
 ];
 
@@ -173,30 +207,35 @@ const STOCKFISH: &'static [Asset] = &[
         data: include_bytes!("../assets/stockfish-x86-64-bmi2.exe"),
         needs: Cpu::SF_BMI2,
         executable: true,
+        gzip: false,
     },
     Asset {
         name: "stockfish-x86-64-avx2.exe",
         data: include_bytes!("../assets/stockfish-x86-64-avx2.exe"),
         needs: Cpu::SF_AVX2,
         executable: true,
+        gzip: false,
     },
     Asset {
         name: "stockfish-x86-64-sse41-popcnt.exe",
         data: include_bytes!("../assets/stockfish-x86-64-sse41-popcnt.exe"),
         needs: Cpu::SF_SSE41_POPCNT,
         executable: true,
+        gzip: false,
     },
     Asset {
         name: "stockfish-x86-64-ssse3.exe",
         data: include_bytes!("../assets/stockfish-x86-64-ssse3.exe"),
         needs: Cpu::SF_SSSE3,
         executable: true,
+        gzip: false,
     },
     Asset {
         name: "stockfish-x86-64.exe",
         data: include_bytes!("../assets/stockfish-x86-64.exe"),
         needs: Cpu::SF,
         executable: true,
+        gzip: false,
     },
 ];
 
@@ -207,30 +246,35 @@ const STOCKFISH_MV: &'static [Asset] = &[
         data: include_bytes!("../assets/stockfish-mv-x86-64-bmi2.exe"),
         needs: Cpu::SF_BMI2,
         executable: true,
+        gzip: false,
     },
     Asset {
         name: "stockfish-mv-x86-64-avx2.exe",
         data: include_bytes!("../assets/stockfish-mv-x86-64-avx2.exe"),
         needs: Cpu::SF_AVX2,
         executable: true,
+        gzip: false,
     },
     Asset {
         name: "stockfish-mv-x86-64-sse41-popcnt.exe",
         data: include_bytes!("../assets/stockfish-mv-x86-64-sse41-popcnt.exe"),
         needs: Cpu::SF_SSE41_POPCNT,
         executable: true,
+        gzip: false,
     },
     Asset {
         name: "stockfish-mv-x86-64-ssse3.exe",
         data: include_bytes!("../assets/stockfish-mv-x86-64-ssse3.exe"),
         needs: Cpu::SF_SSSE3,
         executable: true,
+        gzip: false,
     },
     Asset {
         name: "stockfish-mv-x86-64.exe",
         data: include_bytes!("../assets/stockfish-mv-x86-64.exe"),
         needs: Cpu::SF,
         executable: true,
+        gzip: false,
     },
 ];
 
@@ -241,6 +285,7 @@ const STOCKFISH: &'static [Asset] = &[
         data: include_bytes!("../assets/stockfish-macos-x86-64"),
         needs: Cpu::SF,
         executable: true,
+        gzip: false,
     },
 ];
 
@@ -251,6 +296,7 @@ const STOCKFISH_MV: &'static [Asset] = &[
         data: include_bytes!("../assets/stockfish-mv-macos-x86-64"),
         needs: Cpu::SF,
         executable: true,
+        gzip: false,
     },
 ];
 
@@ -261,6 +307,7 @@ const STOCKFISH: &'static [Asset] = &[
         data: include_bytes!("../assets/stockfish-armv8"),
         needs: Cpu::SF,
         executable: true,
+        gzip: false,
     },
 ];
 
@@ -271,6 +318,7 @@ const STOCKFISH_MV: &'static [Asset] = &[
         data: include_bytes!("../assets/stockfish-mv-armv8"),
         needs: Cpu::SF,
         executable: true,
+        gzip: false,
     },
 ];
 
