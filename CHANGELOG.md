@@ -1,8 +1,8 @@
 Changelog for fishnet
 =====================
 
-Upcoming in v2.0.0-alpha1
--------------------------
+Upcoming in v2.0.0
+------------------
 
 * Fishnet is now distributed as a standalone binary instead of a Python module.
   To update, uninstall fishnet 1.x (`pip uninstall fishnet`) and install the
