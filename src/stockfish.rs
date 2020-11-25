@@ -181,7 +181,8 @@ impl StockfishActor {
 
     async fn go(&mut self, stdout: &mut Stdout, stdin: &mut Stdin, position: Position) -> io::Result<PositionResponse> {
         if let Some(init) = self.init.take() {
-            stdin.write_line(&format!("setoption name Eval File value {}", init.nnue)).await?;
+            stdout.read_line().await?; // discard preample
+            stdin.write_line(&format!("setoption name EvalFile value {}", init.nnue)).await?;
         }
 
         stdin.write_line("ucinewgame").await?;
