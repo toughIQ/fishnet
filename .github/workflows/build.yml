@@ -60,7 +60,7 @@ jobs:
       with:
         command: build
         args: --release
-    - run: mv target/release/fishnet fishnet-windows-x86-64.exe
+    - run: mv target/release/fishnet.exe fishnet-windows-x86-64.exe
     - uses: actions/upload-artifact@v2
       with:
         name: fishnet-windows-x86-64.zip
