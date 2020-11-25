@@ -9,6 +9,7 @@ authors = ["Niklas Fiekas <niklas.fiekas@backscattering.de>"]
 categories = ["command-line-utilities", "web-programming::http-client", "games"]
 keywords = ["chess"]
 edition = "2018"
+exclude = ["assets"]
 
 [dependencies]
 arrayvec = "0.5"
