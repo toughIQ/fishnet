@@ -242,7 +242,10 @@ impl QueueActor {
                             }
                         };
 
-                        let (wait, query) = self.backlog_wait_time().await;
+                        let (wait, query) = tokio::select! {
+                            _ = callback.closed() => break,
+                            res = self.backlog_wait_time() => res,
+                        };
 
                         if wait >= Duration::from_secs(120) {
                             info!("Going idle for {:?}.", wait);

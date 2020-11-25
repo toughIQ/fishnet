@@ -34,7 +34,7 @@ Roadmap
   * [x] Backoff before restarting engine
   * [ ] Variant analysis
   * [x] Hash size?
-* [ ] Check shutdown while API is backing off due to error
+* [x] ~~Check shutdown while API is backing off due to error~~
 * [ ] Performance based queue backoff
 * [x] Ouput for humans
   * [x] Game links
