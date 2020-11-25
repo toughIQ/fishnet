@@ -1,3 +1,3 @@
 [submodule "fishnet-assets"]
-	path = assets
+	path = alpha/assets
 	url = https://github.com/niklasf/fishnet-assets.git
