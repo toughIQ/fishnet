@@ -2,6 +2,7 @@ fishnet: distributed Stockfish analysis for lichess.org
 =======================================================
 
 [![crates.io](https://img.shields.io/crates/v/fishnet.svg)](https://crates.io/crates/fishnet)
+[![Build](https://github.com/niklasf/fishnet/workflows/Build/badge.svg?branch=2.x)](https://github.com/niklasf/fishnet/actions?query=workflow%3ABuild)
 
 Installation
 ------------
