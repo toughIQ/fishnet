@@ -165,7 +165,7 @@ pub struct AcquireResponseBody {
     pub skip_positions: Vec<usize>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Copy, Clone, Eq, PartialEq)]
 pub enum LichessVariant {
     #[serde(rename = "antichess")]
     Antichess,

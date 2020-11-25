@@ -321,7 +321,6 @@ impl IncomingBatch {
             positions: Vec::new(),
         };
 
-        let variant = body.variant.into();
         let nodes = body.nodes.unwrap_or(4_000_000);
         let mut moves = Vec::new();
 
@@ -334,7 +333,7 @@ impl IncomingBatch {
                 url.set_fragment(Some("0"));
                 url
             }),
-            variant,
+            variant: body.variant,
             fen: body.position.clone(),
             moves: moves.clone(),
             nodes,
@@ -352,7 +351,7 @@ impl IncomingBatch {
                     url.set_fragment(Some(&(1 + i).to_string()));
                     url
                 }),
-                variant,
+                variant: body.variant,
                 fen: body.position.clone(),
                 moves: moves.clone(),
                 nodes,

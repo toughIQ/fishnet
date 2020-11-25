@@ -7,8 +7,8 @@ use tokio::process::{Command, ChildStdin, ChildStdout};
 use tokio::io::{BufWriter, AsyncWriteExt as _, BufReader, AsyncBufReadExt as _, Lines};
 use tracing::{trace, debug, warn, error};
 use shakmaty::fen::Fen;
-use shakmaty::variants::VariantPosition;
-use crate::api::Score;
+use shakmaty::variants::{VariantPosition, Variant};
+use crate::api::{Score, LichessVariant};
 use crate::ipc::{Position, PositionResponse, PositionFailed};
 use crate::util::NevermindExt as _;
 
@@ -180,25 +180,51 @@ impl StockfishActor {
     }
 
     async fn go(&mut self, stdout: &mut Stdout, stdin: &mut Stdin, position: Position) -> io::Result<PositionResponse> {
+        // Set global options (once).
         if let Some(init) = self.init.take() {
             stdout.read_line().await?; // discard preample
             stdin.write_line("setoption name Hash value 32").await?;
             stdin.write_line(&format!("setoption name EvalFile value {}", init.nnue)).await?;
         }
 
+        // Clear hash.
         stdin.write_line("ucinewgame").await?;
 
+        // Set UCI_Chess960.
+        let uci_chess960 =
+            position.variant == LichessVariant::Chess960 ||
+            position.variant == LichessVariant::FromPosition ||
+            position.url.is_none();
+        stdin.write_line(&format!("setoption name UCI_Chess960 value {}", uci_chess960)).await?;
+
+        // Set UCI_Variant.
+        if !position.use_official_stockfish() {
+            let uci_variant = match position.variant.into() {
+                Variant::Chess => "chess",
+                Variant::Giveaway => "giveaway",
+                Variant::Atomic => "atomic",
+                Variant::ThreeCheck => "3check",
+                Variant::KingOfTheHill =>  "kingofthehill",
+                Variant::RacingKings => "racingkings",
+                Variant::Horde => "horde",
+                Variant::Crazyhouse => "crazyhouse",
+            };
+            stdin.write_line(&format!("setoption name UCI_Variant value {}", uci_variant)).await?;
+        }
+
+        // Setup position.
         let fen = if let Some(fen) = position.fen {
             fen
         } else {
-            Fen::from_setup(&VariantPosition::new(position.variant))
+            Fen::from_setup(&VariantPosition::new(position.variant.into()))
         };
-
         let moves = position.moves.iter().map(|m| m.to_string()).collect::<Vec<_>>().join(" ");
         stdin.write_line(&format!("position fen {} moves {}", fen, moves)).await?;
 
+        // Go.
         stdin.write_line(&format!("go nodes {}", position.nodes)).await?;
 
+        // Process response.
         let mut score = None;
         let mut depth = None;
         let mut pv = Vec::new();
