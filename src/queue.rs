@@ -158,7 +158,7 @@ impl QueueState {
                 }
                 Err(pending) => {
                     let progress_report = pending.progress_report();
-                    if progress_report.iter().filter(|p| p.is_some()).count() % (self.cores * 2) == 0 {
+                    if progress_report.iter().filter(|p| p.is_some()).count() % (self.cores * 2) == 1 {
                         api.submit_analysis(pending.id, progress_report);
                     }
 
