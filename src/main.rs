@@ -9,7 +9,7 @@ mod stockfish;
 
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{debug, info};
+use tracing::{debug, warn, info};
 use tokio::time;
 use tokio::signal;
 use tokio::sync::{mpsc, oneshot};
@@ -99,8 +99,8 @@ async fn run(opt: Opt) {
                     let response = if let Some(job) = job.take() {
                         debug!("Worker {} running on {} {:?}", i, job.batch_id, job.position_id);
 
+                        // Ensure engine process is ready.
                         let flavor = job.engine_flavor();
-
                         let (mut sf, join_handle) = if let Some((sf, join_handle)) = engine.get_mut(flavor).take() {
                             (sf, join_handle)
                         } else {
@@ -126,9 +126,16 @@ async fn run(opt: Opt) {
                             (sf, join_handle)
                         };
 
+                        // Analyse.
                         tokio::select! {
                             _ = tx.closed() => {
                                 debug!("Worker {} shutting down engine early.", i);
+                                drop(sf);
+                                join_handle.await.expect("join");
+                                break;
+                            }
+                            _ = time::sleep(Duration::from_secs(5 + job.nodes / 250_000)) => {
+                                warn!("Engine timed out in worker {}.", i);
                                 drop(sf);
                                 join_handle.await.expect("join");
                                 break;
