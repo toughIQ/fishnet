@@ -79,6 +79,12 @@ impl QueueState {
     }
 
     fn add_incoming_batch(&mut self, api: &mut ApiStub, batch: IncomingBatch) {
+        if let Some(ref url) = batch.url {
+            info!("Starting batch {}", url);
+        } else {
+            info!("Starting batch {}", batch.id);
+        }
+
         let mut positions = Vec::with_capacity(batch.positions.len());
 
         for pos in batch.positions {

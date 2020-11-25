@@ -102,9 +102,9 @@ async fn run(opt: Opt) {
                             // Backoff before starting engine.
                             let backoff = engine_backoff.next();
                             if backoff >= Duration::from_secs(5) {
-                                info!("Waiting {:?} before attempting to starting engine.", backoff);
+                                info!("Waiting {:?} before attempting to start engine.", backoff);
                             } else {
-                                debug!("Waiting {:?} before attempting to starting engine.", backoff);
+                                debug!("Waiting {:?} before attempting to start engine.", backoff);
                             }
                             tokio::select! {
                                 _ = tx.closed() => break,
