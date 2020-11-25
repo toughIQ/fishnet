@@ -387,6 +387,12 @@ impl PendingBatch {
             None => Err(self),
         }
     }
+
+    fn progress_report(&self) -> Vec<Option<AnalysisPart>> {
+        let report = Vec::new();
+        for pos in self.positions.iter() {
+        }
+    }
 }
 
 pub struct CompletedBatch {
@@ -396,9 +402,9 @@ pub struct CompletedBatch {
 }
 
 impl CompletedBatch {
-    fn into_analysis(self) -> Vec<AnalysisPart> {
+    fn into_analysis(self) -> Vec<Option<AnalysisPart>> {
         self.positions.into_iter().map(|p| {
-            match p {
+            Some(match p {
                 Skip::Skip => AnalysisPart::Skipped {
                     skipped: true,
                 },
@@ -410,7 +416,7 @@ impl CompletedBatch {
                     nodes: pos.nodes,
                     nps: pos.nps,
                 },
-            }
+            })
         }).collect()
     }
 }

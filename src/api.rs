@@ -44,7 +44,7 @@ enum ApiMessage {
     },
     SubmitAnalysis {
         batch_id: BatchId,
-        analysis: Vec<AnalysisPart>,
+        analysis: Vec<Option<AnalysisPart>>,
     },
 }
 
@@ -220,7 +220,7 @@ pub enum Acquired {
 pub struct AnalysisRequestBody {
     fishnet: Fishnet,
     stockfish: Stockfish,
-    analysis: Vec<AnalysisPart>,
+    analysis: Vec<Option<AnalysisPart>>,
 }
 
 #[serde_as]
@@ -306,7 +306,7 @@ impl ApiStub {
         res.await.ok()
     }
 
-    pub fn submit_analysis(&mut self, batch_id: BatchId, analysis: Vec<AnalysisPart>) {
+    pub fn submit_analysis(&mut self, batch_id: BatchId, analysis: Vec<Option<AnalysisPart>>) {
         self.tx.send(ApiMessage::SubmitAnalysis {
             batch_id,
             analysis,
