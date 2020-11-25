@@ -213,11 +213,11 @@ impl QueueActor {
 
     pub async fn backlog_wait_time(&mut self) -> (Duration, AcquireQuery) {
         let sec = Duration::from_secs(1);
-        let performance_based_backoff = Duration::default(); // TODO
-        let user_backlog = max(self.opt.user.map_or(Duration::default(), Duration::from), {
+        let min_user_backlog = {
             let state = self.state.lock().await;
             state.nps_recorder.min_user_backlog()
-        });
+        };
+        let user_backlog = max(self.opt.user.map_or(Duration::default(), Duration::from), min_user_backlog);
         let system_backlog = self.opt.system.map_or(Duration::default(), Duration::from);
 
         if user_backlog >= sec || system_backlog >= sec {
@@ -232,7 +232,7 @@ impl QueueActor {
             }
         }
 
-        let slow = performance_based_backoff >= sec;
+        let slow = min_user_backlog >= sec;
         (Duration::default(), AcquireQuery { slow })
     }
 
