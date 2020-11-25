@@ -120,6 +120,7 @@ impl QueueState {
             Some(Err(failed)) => {
                 self.pending.remove(&failed.batch_id);
                 self.incoming.retain(|p| p.batch_id != failed.batch_id);
+                api.abort(failed.batch_id);
             }
             None => (),
         }
