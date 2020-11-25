@@ -24,3 +24,22 @@ jobs:
       with:
         name: fishnet
         path: fishnet-linux-x86-64
+  windows:
+    runs-on: windows-2016
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+    - uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --release
+    - run: mv target/release/fishnet fishnet-windows-x86-64.exe
+    - uses: actions/upload-artifact@v2
+      with:
+        name: fishnet
+        path: fishnet-windows-x86-64.exe
