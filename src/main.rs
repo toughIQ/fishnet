@@ -7,14 +7,16 @@ mod queue;
 mod util;
 mod stockfish;
 
+use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, info};
 use tokio::time;
 use tokio::signal;
 use tokio::sync::{mpsc, oneshot};
 use crate::configure::{Opt, Command, Cores};
-use crate::assets::Cpu;
+use crate::assets::{Assets, Cpu};
 use crate::ipc::{Pull, Position};
+use crate::stockfish::StockfishInit;
 use crate::util::RandomizedBackoff;
 
 #[tokio::main]
@@ -78,8 +80,10 @@ async fn run(opt: Opt) {
     // Spawn workers. Workers handle engine processes and send their results
     // to tx, thereby requesting more work.
     let mut rx = {
+        let assets = Arc::new(Assets::prepare(cpu).expect("prepared bundled stockfish"));
         let (tx, rx) = mpsc::channel::<Pull>(cores);
         for i in 0..cores {
+            let assets = assets.clone();
             let tx = tx.clone();
             join_handles.push(tokio::spawn(async move {
                 debug!("Started worker {}.", i);
@@ -108,7 +112,9 @@ async fn run(opt: Opt) {
                             }
 
                             // Start engine and spawn actor.
-                            let (sf, sf_actor) = stockfish::channel();
+                            let (sf, sf_actor) = stockfish::channel(assets.stockfish.clone(), StockfishInit {
+                                nnue: assets.nnue.clone(),
+                            });
                             let join_handle = tokio::spawn(async move {
                                 sf_actor.run().await;
                             });

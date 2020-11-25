@@ -1,6 +1,7 @@
 use std::io;
 use std::time::Duration;
 use std::process::Stdio;
+use std::path::PathBuf;
 use tokio::sync::{mpsc, oneshot};
 use tokio::process::{Command, ChildStdin, ChildStdout};
 use tokio::io::{BufWriter, AsyncWriteExt as _, BufReader, AsyncBufReadExt as _, Lines};
@@ -11,9 +12,9 @@ use crate::api::Score;
 use crate::ipc::{Position, PositionResponse, PositionFailed};
 use crate::util::NevermindExt as _;
 
-pub fn channel() -> (StockfishStub, StockfishActor) {
+pub fn channel(exe: PathBuf, init: StockfishInit) -> (StockfishStub, StockfishActor) {
     let (tx, rx) = mpsc::channel(1);
-    (StockfishStub { tx }, StockfishActor { rx })
+    (StockfishStub { tx }, StockfishActor { rx, exe, init: Some(init) })
 }
 
 pub struct StockfishStub {
@@ -35,6 +36,8 @@ impl StockfishStub {
 
 pub struct StockfishActor {
     rx: mpsc::Receiver<StockfishMessage>,
+    exe: PathBuf,
+    init: Option<StockfishInit>,
 }
 
 #[derive(Debug)]
@@ -43,6 +46,10 @@ enum StockfishMessage {
         position: Position,
         callback: oneshot::Sender<PositionResponse>,
     },
+}
+
+pub struct StockfishInit {
+    pub nnue: String,
 }
 
 struct Stdin {
@@ -132,7 +139,7 @@ impl StockfishActor {
 
     async fn run_inner(mut self) -> Result<(), EngineError> {
         let mut child = new_process_group(
-            Command::new("stockfish")
+            Command::new(&self.exe)
                 .stdout(Stdio::piped())
                 .stdin(Stdio::piped())
                 .kill_on_drop(true)).spawn()?;
@@ -173,6 +180,10 @@ impl StockfishActor {
     }
 
     async fn go(&mut self, stdout: &mut Stdout, stdin: &mut Stdin, position: Position) -> io::Result<PositionResponse> {
+        if let Some(init) = self.init.take() {
+            stdin.write_line(&format!("setoption name Eval File value {}", init.nnue)).await?;
+        }
+
         stdin.write_line("ucinewgame").await?;
 
         let fen = if let Some(fen) = position.fen {

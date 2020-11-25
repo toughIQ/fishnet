@@ -276,7 +276,7 @@ const STOCKFISH_MV: &'static [Asset] = &[
 #[derive(Debug)]
 pub struct Assets {
     dir: TempDir,
-    pub nnue: PathBuf,
+    pub nnue: String,
     pub stockfish: PathBuf,
     pub stockfish_mv: PathBuf,
 }
@@ -285,7 +285,7 @@ impl Assets {
     pub fn prepare(cpu: Cpu) -> io::Result<Assets> {
         let dir = tempfile::Builder::new().prefix("fishnet-").tempdir()?;
         Ok(Assets {
-            nnue: NNUE.create(dir.path())?,
+            nnue: NNUE.create(dir.path())?.to_str().expect("nnue path printable").to_owned(),
             stockfish: STOCKFISH.iter().filter(|a| cpu.contains(a.needs)).next().expect("stockfish").create(dir.path())?,
             stockfish_mv: STOCKFISH_MV.iter().filter(|a| cpu.contains(a.needs)).next().expect("stockfish").create(dir.path())?,
             dir,

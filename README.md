@@ -29,14 +29,14 @@ Roadmap
 * [ ] Implement worker
   * [x] Standard analysis
   * [x] Failed work
-  * [ ] Use bundled Stockfish
+  * [x] Use bundled Stockfish
   * [x] Protect engine from signals
   * [x] Backoff before restarting engine
   * [ ] Variant analysis
   * [ ] Hash size?
 * [ ] Check shutdown while API is backing off due to error
 * [ ] Performance based backoff
-* [ ] Ouput for humans
+* [x] Ouput for humans
   * [x] Game links
   * [ ] TUI?
 * [x] Outgoing analysis
@@ -48,5 +48,5 @@ Roadmap
 * [ ] Fix Windows support
 * [ ] Auto update
 * [ ] Backwards compatibility?
-* [ ] ~~Warn about Python versions on old fishnet~~
+* [x] ~~Warn about Python versions on old fishnet~~
 * [ ] Publish to main repository
