@@ -3,7 +3,7 @@ name: Build
 on: [push, pull_request]
 
 jobs:
-  linux:
+  linux-x86-64:
     runs-on: ubuntu-18.04
     steps:
     - run: sudo apt-get update && sudo apt-get install -y musl-tools
@@ -22,9 +22,30 @@ jobs:
     - run: mv target/x86_64-unknown-linux-musl/release/fishnet fishnet-linux-x86-64
     - uses: actions/upload-artifact@v2
       with:
-        name: fishnet
+        name: fishnet-linux-x86-64.zip
         path: fishnet-linux-x86-64
-  windows:
+  linux-aarch64:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        target: aarch64-unknown-linux-gnu
+    - uses: actions-rs/cargo@v1
+      with:
+        use-cross: true
+        command: build
+        args: --release --target aarch64-unknown-linux-gnu
+    - run: mv target/aarch64-unknown-linux-gnu/release/fishnet fishnet-linux-aarch64
+    - uses: actions/upload-artifact@v2
+      with:
+        name: fishnet-linux-aarch64.zip
+        path: fishnet-linux-aarch64
+  windows-x86-64:
     runs-on: windows-2016
     steps:
     - uses: actions/checkout@v2
@@ -41,5 +62,24 @@ jobs:
     - run: mv target/release/fishnet fishnet-windows-x86-64.exe
     - uses: actions/upload-artifact@v2
       with:
-        name: fishnet
+        name: fishnet-windows-x86-64.zip
         path: fishnet-windows-x86-64.exe
+  macos-x86-64:
+    runs-on: macos-10.15
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+    - uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --release
+    - run: mv target/release/fishnet fishnet-macos-x86-64
+    - uses: actions/upload-artifact@v2
+      with:
+        name: fishnet-macos-x86-64.zip
+        path: fishnet-macos-x86-64
