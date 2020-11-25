@@ -41,6 +41,7 @@ Roadmap
   * [ ] TUI?
 * [x] Outgoing analysis
 * [ ] Test run
+* [ ] Trim endpoint
 * [ ] Progress reports?
 * [x] ~~Optimize submit/acquire?~~
 * [ ] Move requests?

@@ -89,13 +89,13 @@ impl QueueState {
 
         // Reversal only for cosmetics when displaying progress.
         for pos in batch.positions.into_iter().rev() {
-            match pos {
+            positions.insert(0, match pos {
                 Skip::Present(pos) => {
                     self.incoming.push_back(pos);
-                    positions.push(None);
+                    None
                 }
-                Skip::Skip => positions.push(Some(Skip::Skip)),
-            }
+                Skip::Skip => Some(Skip::Skip),
+            });
         }
 
         self.pending.insert(batch.id, PendingBatch {
