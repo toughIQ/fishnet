@@ -13,7 +13,15 @@ Installation
 
    **Download standalone binary**
 
-   Not yet available for 2.x.
+   Select the binary for your platform
+   [from the latest release](https://github.com/niklasf/fishnet/releases)
+   and run it.
+
+   ```sh
+   # After download:
+   chmod +x fishnet-linux-x86-64
+   ./fishnet-linux-x86-64 --auto-update
+   ```
 
    **From source**
 
@@ -119,7 +127,7 @@ is provided.
 Protocol
 --------
 
-![Sequence diagram](https://raw.githubusercontent.com/niklasf/fishnet/master/doc/sequence-diagram.png).
+![Sequence diagram](https://raw.githubusercontent.com/niklasf/fishnet/master/doc/sequence-diagram.png)
 
 See [protocol.md](https://github.com/niklasf/fishnet/blob/master/doc/protocol.md) for details.
 
