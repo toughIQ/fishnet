@@ -99,8 +99,8 @@ GitHub infrastructure when running with `--auto-update`.
 
 You can mitigate this by running fishnet as an unprivileged user.
 
-Builds are reproducible, so you can verify that the distributed binaries match
-the source.
+Stockfish builds are reproducible, so you can verify
+that the distributed binaries match the source.
 
 ### Is there a leaderboard of contributors?
 

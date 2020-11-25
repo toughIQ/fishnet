@@ -3,7 +3,6 @@ use std::io;
 use std::path::{Path, PathBuf};
 use bitflags::bitflags;
 use tempfile::TempDir;
-use raw_cpuid::CpuId;
 
 struct Asset {
     name: &'static str,
@@ -66,12 +65,18 @@ bitflags! {
     }
 }
 
+
+#[cfg(target_arch = "x86_64")]
 fn is_definitely_intel() -> bool {
-    match CpuId::new().get_vendor_info() {
+    match raw_cpuid::CpuId::new().get_vendor_info() {
         Some(vendor) => vendor.as_string() == "GenuineIntel",
         None => false,
     }
+}
 
+#[cfg(not(target_arch = "x86_64"))]
+fn is_definitely_intel() -> bool {
+    false
 }
 
 impl Cpu {
