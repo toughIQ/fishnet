@@ -201,6 +201,7 @@ impl StockfishActor {
                     return Ok(PositionResponse {
                         batch_id: position.batch_id,
                         position_id: position.position_id,
+                        url: position.url,
                         best_move: parts.next().and_then(|m| m.parse().ok()),
                         score: score.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "missing score"))?,
                         depth: depth.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "missing depth"))?,

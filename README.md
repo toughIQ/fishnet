@@ -36,7 +36,7 @@ Roadmap
   * [ ] Hash size?
 * [ ] Performance based backoff
 * [ ] Ouput for humans
-  * [ ] Game links
+  * [x] Game links
   * [ ] TUI?
 * [x] Outgoing analysis
 * [ ] Test run

@@ -1,4 +1,5 @@
 use arrayvec::ArrayString;
+use url::Url;
 use std::fmt;
 use std::time::Duration;
 use std::str::FromStr;
@@ -37,6 +38,7 @@ pub struct Skill(u32);
 pub struct Position {
     pub batch_id: BatchId,
     pub position_id: PositionId,
+    pub url: Option<Url>,
 
     pub variant: Variant,
     pub fen: Option<Fen>,
@@ -49,6 +51,7 @@ pub struct Position {
 pub struct PositionResponse {
     pub batch_id: BatchId,
     pub position_id: PositionId,
+    pub url: Option<Url>,
 
     pub score: Score,
     pub best_move: Option<Uci>,

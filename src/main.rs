@@ -59,7 +59,7 @@ async fn run(opt: Opt) {
     let endpoint = opt.endpoint();
     info!("Endpoint: {}", endpoint);
     let api = {
-        let (api, api_actor) = api::channel(endpoint, opt.key);
+        let (api, api_actor) = api::channel(endpoint.clone(), opt.key);
         join_handles.push(tokio::spawn(async move {
             api_actor.run().await;
         }));
@@ -68,7 +68,7 @@ async fn run(opt: Opt) {
 
     // Spawn queue actor.
     let mut queue = {
-        let (queue, queue_actor) = queue::channel(opt.backlog, api);
+        let (queue, queue_actor) = queue::channel(endpoint, opt.backlog, api);
         join_handles.push(tokio::spawn(async move {
             queue_actor.run().await;
         }));

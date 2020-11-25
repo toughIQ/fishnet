@@ -2,6 +2,7 @@ use std::cmp::min;
 use std::collections::{VecDeque, HashMap};
 use std::sync::Arc;
 use std::time::Duration;
+use url::Url;
 use tokio::sync::{mpsc, oneshot, Mutex, Notify};
 use tokio::time;
 use tracing::{debug, error, info};
@@ -10,11 +11,11 @@ use crate::configure::BacklogOpt;
 use crate::ipc::{BatchId, Position, PositionResponse, PositionId, Pull};
 use crate::util::{NevermindExt as _, RandomizedBackoff};
 
-pub fn channel(opt: BacklogOpt, api: ApiStub) -> (QueueStub, QueueActor) {
+pub fn channel(endpoint: Url, opt: BacklogOpt, api: ApiStub) -> (QueueStub, QueueActor) {
     let state = Arc::new(Mutex::new(QueueState::new()));
     let (tx, rx) = mpsc::unbounded_channel();
     let interrupt = Arc::new(Notify::new());
-    (QueueStub::new(tx, interrupt.clone(), state.clone(), api.clone()), QueueActor::new(rx, interrupt, state, opt, api))
+    (QueueStub::new(tx, interrupt.clone(), state.clone(), api.clone()), QueueActor::new(rx, interrupt, state, endpoint, opt, api))
 }
 
 pub struct QueueStub {
@@ -93,6 +94,7 @@ impl QueueState {
         self.pending.insert(batch.id, PendingBatch {
             id: batch.id,
             positions,
+            url: batch.url,
         });
 
         self.maybe_finished(api, batch.id);
@@ -105,7 +107,11 @@ impl QueueState {
                 let batch_id = res.batch_id;
                 if let Some(pending) = self.pending.get_mut(&batch_id) {
                     if let Some(pos) = pending.positions.get_mut(res.position_id.0) {
-                        info!("Finished {} {:?}", res.batch_id, res.position_id);
+                        if let Some(ref url) = res.url {
+                            info!("Finished position {}", url);
+                        } else {
+                            info!("Finished position {}#{}", batch_id, res.position_id.0);
+                        }
                         *pos = Some(Skip::Present(res));
                     }
                 }
@@ -133,6 +139,11 @@ impl QueueState {
         if let Some(pending) = self.pending.remove(&batch) {
             match pending.try_into_completed() {
                 Ok(completed) => {
+                    if let Some(ref url) = completed.url {
+                        info!("Finished batch {}", url);
+                    } else {
+                        info!("Finished batch {}", batch);
+                    }
                     api.submit_analysis(completed.id, completed.into_analysis());
                 }
                 Err(pending) => {
@@ -155,17 +166,19 @@ pub struct QueueActor {
     interrupt: Arc<Notify>,
     state: Arc<Mutex<QueueState>>,
     api: ApiStub,
+    endpoint: Url,
     opt: BacklogOpt,
     backoff: RandomizedBackoff,
 }
 
 impl QueueActor {
-    fn new(rx: mpsc::UnboundedReceiver<QueueMessage>, interrupt: Arc<Notify>, state: Arc<Mutex<QueueState>>, opt: BacklogOpt, api: ApiStub) -> QueueActor {
+    fn new(rx: mpsc::UnboundedReceiver<QueueMessage>, interrupt: Arc<Notify>, state: Arc<Mutex<QueueState>>, endpoint: Url, opt: BacklogOpt, api: ApiStub) -> QueueActor {
         QueueActor {
             rx,
             interrupt,
             state,
             api,
+            endpoint,
             opt,
             backoff: RandomizedBackoff::default(),
         }
@@ -240,7 +253,7 @@ impl QueueActor {
                                 self.backoff.reset();
 
                                 let mut state = self.state.lock().await;
-                                state.add_incoming_batch(&mut self.api, IncomingBatch::from(body));
+                                state.add_incoming_batch(&mut self.api, IncomingBatch::from_acquired(self.endpoint.clone(), body));
                             }
                             Some(Acquired::NoContent) => {
                                 let backoff = self.backoff.next();
@@ -282,12 +295,18 @@ enum Skip<T> {
 pub struct IncomingBatch {
     id: BatchId,
     positions: Vec<Skip<Position>>,
+    url: Option<Url>,
 }
 
-impl From<AcquireResponseBody> for IncomingBatch {
-    fn from(body: AcquireResponseBody) -> IncomingBatch {
+impl IncomingBatch {
+    fn from_acquired(endpoint: Url, body: AcquireResponseBody) -> IncomingBatch {
+        let mut url = endpoint.clone();
         let mut batch = IncomingBatch {
             id: body.work.id,
+            url: body.game_id.as_ref().map(|g| {
+                url.set_path(g);
+                url
+            }),
             positions: Vec::new(),
         };
 
@@ -295,9 +314,15 @@ impl From<AcquireResponseBody> for IncomingBatch {
         let nodes = body.nodes.unwrap_or(4_000_000);
         let mut moves = Vec::new();
 
+        let mut url = endpoint.clone();
         batch.positions.push(Skip::Present(Position {
             batch_id: body.work.id,
             position_id: PositionId(0),
+            url: body.game_id.as_ref().map(|g| {
+                url.set_path(g);
+                url.set_fragment(Some("0"));
+                url
+            }),
             variant,
             fen: body.position.clone(),
             moves: moves.clone(),
@@ -306,10 +331,16 @@ impl From<AcquireResponseBody> for IncomingBatch {
         }));
 
         for (i, m) in body.moves.into_iter().enumerate() {
+            let mut url = endpoint.clone();
             moves.push(m);
             batch.positions.push(Skip::Present(Position {
                 batch_id: body.work.id,
                 position_id: PositionId(1 + i),
+                url: body.game_id.as_ref().map(|g| {
+                    url.set_path(g);
+                    url.set_fragment(Some(&(1 + i).to_string()));
+                    url
+                }),
                 variant,
                 fen: body.position.clone(),
                 moves: moves.clone(),
@@ -332,6 +363,7 @@ impl From<AcquireResponseBody> for IncomingBatch {
 struct PendingBatch {
     id: BatchId,
     positions: Vec<Option<Skip<PositionResponse>>>,
+    url: Option<Url>,
 }
 
 impl PendingBatch {
@@ -339,7 +371,8 @@ impl PendingBatch {
         match self.positions.clone().into_iter().collect() {
             Some(positions) => Ok(CompletedBatch {
                 id: self.id,
-                positions
+                positions,
+                url: self.url,
             }),
             None => Err(self),
         }
@@ -349,6 +382,7 @@ impl PendingBatch {
 pub struct CompletedBatch {
     id: BatchId,
     positions: Vec<Skip<PositionResponse>>,
+    url: Option<Url>,
 }
 
 impl CompletedBatch {
