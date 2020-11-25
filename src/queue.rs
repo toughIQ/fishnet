@@ -121,9 +121,9 @@ impl QueueState {
                 if let Some(pending) = self.pending.get_mut(&batch_id) {
                     if let Some(pos) = pending.positions.get_mut(res.position_id.0) {
                         if let Some(ref url) = res.url {
-                            info!("Finished position {}", url);
+                            debug!("Finished position {}", url);
                         } else {
-                            info!("Finished position {}#{}", batch_id, res.position_id.0);
+                            debug!("Finished position {}#{}", batch_id, res.position_id.0);
                         }
                         *pos = Some(Skip::Present(res));
                     }
