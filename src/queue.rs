@@ -1,4 +1,4 @@
-use std::cmp::min;
+use std::cmp::{min, max};
 use std::convert::TryInto;
 use std::collections::{VecDeque, HashMap};
 use std::sync::Arc;
@@ -69,6 +69,7 @@ struct QueueState {
     cores: usize,
     incoming: VecDeque<Position>,
     pending: HashMap<BatchId, PendingBatch>,
+    nps_recorder: NpsRecorder,
 }
 
 impl QueueState {
@@ -78,6 +79,7 @@ impl QueueState {
             cores,
             incoming: VecDeque::new(),
             pending: HashMap::new(),
+            nps_recorder: NpsRecorder::new(),
         }
     }
 
@@ -156,6 +158,9 @@ impl QueueState {
                     } else {
                         info!("Finished batch {}", batch);
                     }
+                    if let Some(nps) = completed.nps() {
+                        self.nps_recorder.add(nps);
+                    }
                     api.submit_analysis(completed.id, completed.into_analysis());
                 }
                 Err(pending) => {
@@ -209,7 +214,10 @@ impl QueueActor {
     pub async fn backlog_wait_time(&mut self) -> (Duration, AcquireQuery) {
         let sec = Duration::from_secs(1);
         let performance_based_backoff = Duration::default(); // TODO
-        let user_backlog = self.opt.user.map_or(Duration::default(), Duration::from) + performance_based_backoff;
+        let user_backlog = max(self.opt.user.map_or(Duration::default(), Duration::from), {
+            let state = self.state.lock().await;
+            state.nps_recorder.min_user_backlog()
+        });
         let system_backlog = self.opt.system.map_or(Duration::default(), Duration::from);
 
         if user_backlog >= sec || system_backlog >= sec {
@@ -455,5 +463,36 @@ impl CompletedBatch {
         self.completed_at.checked_duration_since(self.started_at).and_then(|time| {
             self.total_nodes().checked_div(time.as_secs())
         }).and_then(|nps| nps.try_into().ok())
+    }
+}
+
+struct NpsRecorder {
+    nps: u32,
+}
+
+impl NpsRecorder {
+    fn new() -> NpsRecorder {
+        NpsRecorder {
+            nps: 1_500_000, // start low
+        }
+    }
+
+    fn add(&mut self, nps: u32) {
+        let alpha = 0.8;
+        self.nps = max(1, (f64::from(self.nps) * alpha + f64::from(nps) * (1.0 - alpha)) as u32);
+    }
+
+    fn min_user_backlog(&self) -> Duration {
+        // The average batch has 60 positions, analysed with 4_000_000 nodes
+        // each. Top end clients take no longer than 60 seconds.
+        let best_batch_seconds = 60;
+
+        // Estimate how long this client would take for the next batch,
+        // capped at timeout.
+        let estimated_batch_seconds = u64::from(min(6 * 60, 60 * 4_000_000 / self.nps));
+
+        // Its worth joining if queue wait time + estimated time < top client
+        // time on empty queue.
+        Duration::from_secs(estimated_batch_seconds.saturating_sub(best_batch_seconds))
     }
 }

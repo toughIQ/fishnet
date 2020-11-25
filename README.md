@@ -35,7 +35,7 @@ Roadmap
   * [x] Variant analysis
   * [x] Hash size?
 * [x] ~~Check shutdown while API is backing off due to error~~
-* [ ] Performance based queue backoff
+* [x] Performance based queue backoff
 * [x] Ouput for humans
   * [x] Game links
   * [ ] TUI?
