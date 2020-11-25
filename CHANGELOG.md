@@ -5,13 +5,15 @@ Upcoming in v2.0.0-alpha1
 -------------------------
 
 * Fishnet is now distributed as a standalone binary instead of a Python module.
+  To update, uninstall fishnet 1.x (`pip uninstall fishnet`) and install the
+  new version. You can keep using your `fishnet.ini`.
 * Removed `--memory`. All clients will now use the same setting for
   reproducibility.
 * Removed `--threads-per-process`. Analysis is now always single-threaded for
-  reproducibility, parallelizing instead over positions.
+  reproducibility, parallelizing over positions instead.
 * Removed `--stockfish-command` and `--engine-dir`.
   [Reproducible Stockfish builds](https://github.com/niklasf/fishnet-assets)
-  for various CPU models now come bundled in the fishnet binary.
+  for various CPU models now come bundled with the fishnet binary.
 * Removed deprecated `--fixed-backoff`, `--no-fixed-backoff`,
   and `--setoption`.
 
