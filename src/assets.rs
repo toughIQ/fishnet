@@ -15,17 +15,16 @@ struct Asset {
 impl Asset {
     #[cfg(unix)]
     fn create(&self, base: &Path) -> io::Result<PathBuf> {
+        use std::os::unix::fs::OpenOptionsExt as _;
         let path = base.join(self.name);
-        let mut file = std::fs::File::create(&path)?;
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .mode(0o700)
+            .open(&path)?;
 
         use std::io::Write as _;
         file.write_all(self.data)?;
-
-        if self.executable {
-            use std::os::unix::fs::PermissionsExt as _;
-            file.metadata()?.permissions().set_mode(700);
-        }
-
         file.sync_all()?;
         Ok(path)
     }
