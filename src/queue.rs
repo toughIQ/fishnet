@@ -80,14 +80,15 @@ impl QueueState {
 
     fn add_incoming_batch(&mut self, api: &mut ApiStub, batch: IncomingBatch) {
         if let Some(ref url) = batch.url {
-            info!("Starting batch {}", url);
+            info!("Starting batch {} ({})", url, batch.id);
         } else {
             info!("Starting batch {}", batch.id);
         }
 
         let mut positions = Vec::with_capacity(batch.positions.len());
 
-        for pos in batch.positions {
+        // Reversal only for cosmetics when displaying progress.
+        for pos in batch.positions.into_iter().rev() {
             match pos {
                 Skip::Present(pos) => {
                     self.incoming.push_back(pos);
