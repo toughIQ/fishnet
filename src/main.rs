@@ -6,6 +6,7 @@ mod ipc;
 mod queue;
 mod util;
 mod stockfish;
+mod logger;
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -26,6 +27,23 @@ use crate::util::RandomizedBackoff;
 
 #[tokio::main]
 async fn main() {
+    println!("{}", crate::logger::QueueStatusBar {
+        pending: 3,
+        cores: 10,
+    });
+    println!("{}", crate::logger::QueueStatusBar {
+        pending: 10,
+        cores: 10,
+    });
+    println!("{}", crate::logger::QueueStatusBar {
+        pending: 12,
+        cores: 10,
+    });
+    println!("{}", crate::logger::QueueStatusBar {
+        pending: 15,
+        cores: 10,
+    });
+    return;
     let opt = configure::parse_and_configure().await;
 
     if opt.auto_update {
