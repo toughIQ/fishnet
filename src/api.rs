@@ -331,7 +331,8 @@ impl ApiActor {
             key,
             client: reqwest::Client::builder()
                 .user_agent(concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION")))
-                .timeout(Duration::from_secs(15))
+                .timeout(Duration::from_secs(30))
+                .pool_idle_timeout(Duration::from_secs(25))
                 .build().expect("client"),
             error_backoff: RandomizedBackoff::default(),
             logger,
