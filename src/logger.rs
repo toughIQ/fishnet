@@ -3,6 +3,7 @@ use std::fmt;
 use std::io;
 use std::io::Write as _;
 use std::cmp::{min, max};
+use atty::Stream;
 use url::Url;
 use crate::ipc::{BatchId, PositionId, PositionResponse};
 use crate::configure::Verbose;
@@ -11,6 +12,7 @@ use crate::configure::Verbose;
 pub struct Logger {
     verbose: Verbose,
     stderr: bool,
+    atty: bool,
     state: Arc<Mutex<LoggerState>>,
 }
 
@@ -19,6 +21,7 @@ impl Logger {
         Logger {
             verbose,
             stderr,
+            atty: atty::is(Stream::Stdout),
             state: Arc::new(Mutex::new(LoggerState {
                 progress_line: 0,
             })),
@@ -48,7 +51,9 @@ impl Logger {
     }
 
     pub fn debug(&self, line: &str) {
-        self.println(&format!("D: {}", line));
+        if self.verbose.level > 0 {
+            self.println(&format!("D: {}", line));
+        }
     }
 
     pub fn info(&self, line: &str) {
@@ -70,11 +75,15 @@ impl Logger {
     pub fn progress<P>(&self, queue: QueueStatusBar, progress: P)
         where P: Into<ProgressAt>,
     {
-        let mut state = self.state.lock().expect("logger state");
-        let line = format!("\r{}, latest: {}", queue, progress.into());
-        print!("{}{}", line, " ".repeat(state.progress_line.saturating_sub(line.len())));
-        io::stdout().flush().expect("flush stdout");
-        state.progress_line = line.len();
+        let line = format!("{}, latest: {}", queue, progress.into());
+        if self.atty {
+            let mut state = self.state.lock().expect("logger state");
+            print!("\r{}{}", line, " ".repeat(state.progress_line.saturating_sub(line.len())));
+            io::stdout().flush().expect("flush stdout");
+            state.progress_line = line.len();
+        } else if self.verbose.level > 0 {
+            println!("{}", line);
+        }
     }
 }
 
