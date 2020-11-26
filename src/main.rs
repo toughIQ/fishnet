@@ -68,7 +68,7 @@ fn restart_process(current_exe: PathBuf) {
 }
 
 fn auto_update(verbose: bool) -> Result<self_update::Status, Box<dyn Error>> {
-    info!("Checking for updates ...");
+    info!("Checking for updates (--auto-update) ...");
     Ok(self_update::backends::github::Update::configure()
         .repo_owner("niklasf")
         .repo_name("fishnet")
@@ -257,7 +257,7 @@ async fn run(opt: Opt) {
             let inner_restart = restart.clone();
             tokio::task::spawn_blocking(move || {
                 let current_exe = env::current_exe().expect("current exe");
-                match auto_update(true) {
+                match auto_update(false) {
                     Err(err) => error!("Failed to update in the background: {}", err),
                     Ok(self_update::Status::UpToDate(version)) => {
                         info!("Fishnet {} is up to date.", version);
