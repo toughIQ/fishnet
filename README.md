@@ -19,8 +19,8 @@ Installation
 
    ```sh
    # After download:
-   chmod +x fishnet-linux-x86-64
-   ./x86_64-unknown-linux-musl --auto-update
+   chmod +x fishnet-x86_64-unknown-linux-musl
+   ./fishnet-x86_64-unknown-linux-musl --auto-update
    ```
 
    Other useful commands:
