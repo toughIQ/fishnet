@@ -68,7 +68,7 @@ that the compiled binary matches the source).
 * Available for
   - Linux on Intel, AMD, and ARMv8 CPUs
   - Windows on Intel and AMD CPUs
-  - OS X on Intel (and AMD CPUs)
+  - OS X on Intel (and AMD) CPUs
 * Will max out the number of configured CPU cores
 * Uses about 64 MiB RAM per CPU core
 * A small amount of disk space
