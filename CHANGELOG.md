@@ -4,6 +4,7 @@ Changelog for fishnet
 Upcoming in v2.0.0
 ------------------
 
+* Updated to Stockfish 12 NNUE.
 * Fishnet is now distributed as a standalone binary instead of a Python module.
   To update, uninstall fishnet 1.x (`pip uninstall fishnet`) and install the
   new version. You can keep using your `fishnet.ini`.
