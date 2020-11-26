@@ -21,6 +21,7 @@ jobs:
         command: build
         args: --release --target x86_64-unknown-linux-musl
     - run: mv target/x86_64-unknown-linux-musl/release/fishnet fishnet-x86_64-unknown-linux-musl
+    - run: strip fishnet-x86_64-unknown-linux-musl
     - uses: actions/upload-artifact@v2
       with:
         name: fishnet-x86_64-unknown-linux-musl.zip
@@ -42,6 +43,7 @@ jobs:
         command: build
         args: --release --target aarch64-unknown-linux-gnu
     - run: mv target/aarch64-unknown-linux-gnu/release/fishnet fishnet-aarch64-unknown-linux-gnu
+    - run: strip fishnet-aarch64-unknown-linux-gnu
     - uses: actions/upload-artifact@v2
       with:
         name: fishnet-aarch64-unknown-linux-gnu.zip
@@ -61,6 +63,7 @@ jobs:
         command: build
         args: --release
     - run: mv target/release/fishnet.exe fishnet-x86_64-pc-windows-msvc.exe
+    - run: strip fishnet-x86_64-pc-windows-msvc.exe
     - uses: actions/upload-artifact@v2
       with:
         name: fishnet-x86_64-pc-windows-msvc.zip
@@ -80,6 +83,7 @@ jobs:
         command: build
         args: --release
     - run: mv target/release/fishnet fishnet-x86_64-apple-darwin
+    - run: strip fishnet-x86_64-apple-darwin
     - uses: actions/upload-artifact@v2
       with:
         name: fishnet-x86_64-apple-darwin.zip

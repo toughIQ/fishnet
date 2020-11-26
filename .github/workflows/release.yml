@@ -37,6 +37,7 @@ jobs:
       with:
         command: build
         args: --release --target x86_64-unknown-linux-musl
+    - run: strip target/x86_64-unknown-linux-musl/release/fishnet
     - uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -62,6 +63,7 @@ jobs:
         use-cross: true
         command: build
         args: --release --target aarch64-unknown-linux-gnu
+    - run: strip target/aarch64-unknown-linux-gnu/release/fishnet
     - uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -85,6 +87,7 @@ jobs:
       with:
         command: build
         args: --release
+    - strip: target/release/fishnet.exe
     - uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -108,6 +111,7 @@ jobs:
       with:
         command: build
         args: --release
+    - run: strip target/release/fishnet
     - uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
