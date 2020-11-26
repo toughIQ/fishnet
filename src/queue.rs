@@ -87,7 +87,7 @@ impl QueueState {
 
     fn status_bar(&self) -> QueueStatusBar {
         QueueStatusBar {
-            pending: self.pending.len(),
+            pending: self.pending.values().map(|p| p.pending()).sum(),
             cores: self.cores,
         }
     }
@@ -122,17 +122,14 @@ impl QueueState {
         // Handle response.
         match pull.response.take() {
             Some(Ok(res)) => {
+                let progress_at = ProgressAt::from(&res);
                 let batch_id = res.batch_id;
                 if let Some(pending) = self.pending.get_mut(&batch_id) {
                     if let Some(pos) = pending.positions.get_mut(res.position_id.0) {
-                        if let Some(ref url) = res.url {
-                            self.logger.debug(&format!("Finished position {}", url));
-                        } else {
-                            self.logger.debug(&format!("Finished position {}#{}", batch_id, res.position_id.0));
-                        }
                         *pos = Some(Skip::Present(res));
                     }
                 }
+                self.logger.progress(self.status_bar(), progress_at);
                 self.maybe_finished(api, batch_id);
             }
             Some(Err(failed)) => {
@@ -439,6 +436,10 @@ impl PendingBatch {
             }),
             _ => None,
         }).collect()
+    }
+
+    fn pending(&self) -> usize {
+        self.positions.iter().filter(|p| p.is_none()).count()
     }
 }
 

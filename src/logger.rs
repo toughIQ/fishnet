@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 use std::fmt;
 use std::cmp::{max, min};
 use url::Url;
-use crate::ipc::{BatchId, PositionId, Position};
+use crate::ipc::{BatchId, PositionId, PositionResponse};
 use crate::configure::Verbose;
 
 #[derive(Clone)]
@@ -86,8 +86,8 @@ impl fmt::Display for ProgressAt {
     }
 }
 
-impl From<&Position> for ProgressAt {
-    fn from(pos: &Position) -> ProgressAt {
+impl From<&PositionResponse> for ProgressAt {
+    fn from(pos: &PositionResponse) -> ProgressAt {
         ProgressAt {
             batch_id: pos.batch_id,
             batch_url: pos.url.clone(),
