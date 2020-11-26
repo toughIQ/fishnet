@@ -64,6 +64,7 @@ fn restart_process(current_exe: PathBuf) {
 #[cfg(windows)]
 fn restart_process(current_exe: PathBuf) {
     info!("Waiting 5s before restarting {:?} ...", current_exe);
+    thread::sleep(Duration::from_secs(5));
     todo!("Restart on Windows");
 }
 
