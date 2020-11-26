@@ -6,6 +6,7 @@ mod ipc;
 mod queue;
 mod util;
 mod stockfish;
+mod frontend;
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -27,6 +28,8 @@ use crate::util::RandomizedBackoff;
 #[tokio::main]
 async fn main() {
     let opt = configure::parse_and_configure().await;
+    crate::frontend::frontend().await;
+    return;
 
     if opt.auto_update {
         let current_exe = env::current_exe().expect("current exe");
