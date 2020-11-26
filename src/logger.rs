@@ -30,20 +30,18 @@ impl Logger {
 
     fn println(&self, line: &str) {
         let mut state = self.state.lock().expect("logger state");
-        if state.progress_line > 0 {
-            if self.stderr {
-                eprintln!();
-            } else {
-                println!();
-            }
-        }
-        state.progress_line = 0;
+        state.line_feed();
 
         if self.stderr {
             eprintln!("{}", line);
         } else {
             println!("{}", line);
         }
+    }
+
+    pub fn clear_echo(&self) {
+        let mut state = self.state.lock().expect("logger state");
+        state.line_feed();
     }
 
     pub fn headline(&self, title: &str) {
@@ -123,6 +121,15 @@ impl From<&PositionResponse> for ProgressAt {
 
 struct LoggerState {
     pub progress_line: usize,
+}
+
+impl LoggerState {
+    fn line_feed(&mut self) {
+        if self.progress_line > 0 {
+            self.progress_line = 0;
+            println!();
+        }
+    }
 }
 
 pub struct QueueStatusBar {

@@ -288,11 +288,11 @@ async fn run(opt: Opt, logger: &Logger) {
             res = sig_int.recv() => {
                 res.expect("sigint handler installed");
                 if shutdown_soon {
-                    logger.info("");
-                    logger.fishnet_info("Stopping now");
+                    logger.clear_echo();
+                    logger.fishnet_info("Stopping now.");
                     rx.close();
                 } else {
-                    logger.info("");
+                    logger.clear_echo();
                     logger.headline("Stopping soon. Press ^C again to abort pending batches ...");
                     queue.shutdown_soon().await;
                     shutdown_soon = true;
@@ -300,7 +300,7 @@ async fn run(opt: Opt, logger: &Logger) {
             }
             res = sig_term.recv() => {
                 res.expect("sigterm handler installed");
-                logger.fishnet_info("Stopping now");
+                logger.fishnet_info("Stopping now.");
                 shutdown_soon = true;
                 rx.close();
             }
@@ -308,7 +308,7 @@ async fn run(opt: Opt, logger: &Logger) {
                 if let Some(res) = res {
                     queue.pull(res).await;
                 } else {
-                    logger.debug("About to exit");
+                    logger.debug("About to exit.");
                     break;
                 }
             }
@@ -319,7 +319,6 @@ async fn run(opt: Opt, logger: &Logger) {
     queue.shutdown().await;
 
     // Wait for all workers.
-    logger.fishnet_info("Bye");
     for join_handle in join_handles.into_iter() {
         join_handle.await.expect("join");
     }
