@@ -55,7 +55,7 @@ async fn main() {
 #[cfg(unix)]
 fn restart_process(current_exe: PathBuf, logger: &Logger) {
     use std::os::unix::process::CommandExt as _;
-    logger.info(&format!("Waiting 5s before restarting {:?} ...", current_exe));
+    logger.headline(&format!("Waiting 5s before restarting {:?} ...", current_exe));
     thread::sleep(Duration::from_secs(5));
     let err = std::process::Command::new(current_exe)
         .args(std::env::args().into_iter().skip(1))
@@ -65,13 +65,16 @@ fn restart_process(current_exe: PathBuf, logger: &Logger) {
 
 #[cfg(windows)]
 fn restart_process(current_exe: PathBuf, logger: &Logger) {
-    logger.info(&format!("Waiting 5s before restarting {:?} ...", current_exe));
+    logger.headline(&format!("Waiting 5s before restarting {:?} ...", current_exe));
     thread::sleep(Duration::from_secs(5));
     todo!("Restart on Windows");
 }
 
 fn auto_update(verbose: bool, logger: &Logger) -> Result<self_update::Status, Box<dyn Error>> {
-    logger.info("Checking for updates (--auto-update) ...");
+    if verbose {
+        logger.headline("Updating ...");
+    }
+    logger.fishnet_info("Checking for updates (--auto-update) ...");
     Ok(self_update::backends::github::Update::configure()
         .repo_owner("niklasf")
         .repo_name("fishnet")
