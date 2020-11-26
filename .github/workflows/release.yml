@@ -88,7 +88,7 @@ jobs:
       with:
         command: build
         args: --release
-    - strip: target/release/fishnet.exe
+    - run: strip target/release/fishnet.exe
     - uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
