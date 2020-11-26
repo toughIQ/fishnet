@@ -252,7 +252,6 @@ async fn run(opt: Opt, logger: &Logger) {
         rx
     };
 
-    let started = Instant::now();
     let restart = Arc::new(std::sync::Mutex::new(None));
     let mut up_to_date = Instant::now();
     let mut summarized = Instant::now();
@@ -289,9 +288,8 @@ async fn run(opt: Opt, logger: &Logger) {
         if now.duration_since(summarized) >= Duration::from_secs(120) {
             summarized = now;
             let stats = queue.stats().await;
-            logger.fishnet_info(&format!("fishnet/{}: {:?} up, {} batches, {} positions, {} total nodes",
+            logger.fishnet_info(&format!("fishnet/{}: {} batches, {} positions, {} total nodes",
                                          env!("CARGO_PKG_VERSION"),
-                                         now.duration_since(started),
                                          stats.total_batches, stats.total_positions, stats.total_nodes));
         }
 
