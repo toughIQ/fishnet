@@ -29,6 +29,7 @@ jobs:
   linux-aarch64:
     runs-on: ubuntu-18.04
     steps:
+    - run: sudo apt-get update && sudo apt-get install -y binutils-aarch64-linux-gnu
     - uses: actions/checkout@v2
       with:
         submodules: true
@@ -43,7 +44,7 @@ jobs:
         command: build
         args: --release --target aarch64-unknown-linux-gnu
     - run: mv target/aarch64-unknown-linux-gnu/release/fishnet fishnet-aarch64-unknown-linux-gnu
-    - run: strip fishnet-aarch64-unknown-linux-gnu
+    - run: aarch64-linux-gnu-strip fishnet-aarch64-unknown-linux-gnu
     - uses: actions/upload-artifact@v2
       with:
         name: fishnet-aarch64-unknown-linux-gnu.zip

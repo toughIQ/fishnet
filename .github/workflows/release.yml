@@ -50,6 +50,7 @@ jobs:
     runs-on: ubuntu-18.04
     needs: release
     steps:
+    - run: sudo apt-get update && sudo apt-get install -y binutils-aarch64-linux-gnu
     - uses: actions/checkout@v2
       with:
         submodules: true
@@ -63,7 +64,7 @@ jobs:
         use-cross: true
         command: build
         args: --release --target aarch64-unknown-linux-gnu
-    - run: strip target/aarch64-unknown-linux-gnu/release/fishnet
+    - run: aarch64-linux-gnu-strip target/aarch64-unknown-linux-gnu/release/fishnet
     - uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
