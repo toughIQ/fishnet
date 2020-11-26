@@ -73,7 +73,7 @@ impl Logger {
     pub fn progress<P>(&self, queue: QueueStatusBar, progress: P)
         where P: Into<ProgressAt>,
     {
-        let line = format!("{}, latest: {}", queue, progress.into());
+        let line = format!("{} {} cores, {} queued, latest: {}", queue, queue.cores, queue.pending, progress.into());
         if self.atty {
             let mut state = self.state.lock().expect("logger state");
             print!("\r{}{}", line, " ".repeat(state.progress_line.saturating_sub(line.len())));
@@ -151,6 +151,6 @@ impl fmt::Display for QueueStatusBar {
         f.write_str("|")?;
         f.write_str(&"=".repeat(overhang_width))?;
         f.write_str(&" ".repeat(width.saturating_sub(cores_width).saturating_sub(overhang_width)))?;
-        write!(f, "] {} cores / {} queued", self.cores, self.pending)
+        f.write_str("]")
     }
 }

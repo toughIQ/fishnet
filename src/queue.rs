@@ -168,8 +168,12 @@ impl QueueState {
                         None => "?".to_owned(),
                     };
                     match completed.url {
-                        Some(ref url) => self.logger.info(&format!("{} finished ({} nps)", url, nps_string)),
-                        None => self.logger.info(&format!("{} finished ({} nps)", batch, nps_string)),
+                        Some(ref url) => {
+                            self.logger.info(&format!("{} {} finished ({} nps)", self.status_bar(), url, nps_string));
+                        }
+                        None => {
+                            self.logger.info(&format!("{} {} finished ({} nps)", self.status_bar(), batch, nps_string));
+                        }
                     }
                     api.submit_analysis(completed.id, completed.into_analysis());
                 }
