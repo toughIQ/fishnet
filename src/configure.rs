@@ -10,7 +10,7 @@ use std::num::{ParseIntError, NonZeroUsize};
 use std::time::Duration;
 use url::Url;
 use configparser::ini::Ini;
-use tracing::{Level, warn};
+use crate::logger::Logger;
 use crate::api;
 
 const DEFAULT_ENDPOINT: &str = "https://lichess.org/fishnet";
@@ -101,16 +101,6 @@ pub struct Verbose {
     /// Increase verbosity.
     #[structopt(long = "verbose", short = "v", parse(from_occurrences), global = true)]
     pub level: usize,
-}
-
-impl From<Verbose> for Level {
-    fn from(Verbose { level }: Verbose) -> Level {
-        match level {
-            0 => Level::INFO,
-            1 => Level::DEBUG,
-            _ => Level::TRACE,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -313,31 +303,17 @@ fn intro() {
     println!(r#"#        / /\_   \ /      |     |_|   |_|___/_| |_|_| \_|\___|\__| {}"#, env!("CARGO_PKG_VERSION"));
     println!(r#"#        |/   \_  \|      /"#);
     println!(r#"#               \________/      Distributed Stockfish analysis for lichess.org"#);
-    println!();
 }
 
 pub async fn parse_and_configure() -> Opt {
     let mut opt = Opt::from_args();
+    let logger = Logger::new(opt.verbose);
 
     // Show intro and configure logger.
-    (match opt.command {
-        Some(Command::Systemd) | Some(Command::SystemdUser) => {
-            tracing::subscriber::set_global_default(
-                tracing_subscriber::fmt()
-                    .without_time()
-                    .with_writer(io::stderr)
-                    .with_max_level(Level::from(opt.verbose))
-                    .finish())
-        },
-        _ => {
-            intro();
-            tracing::subscriber::set_global_default(
-                tracing_subscriber::fmt()
-                    .without_time()
-                    .with_max_level(Level::from(opt.verbose))
-                    .finish())
-        }
-    }).expect("set global tracing subsriber");
+    match opt.command {
+        Some(Command::Systemd) | Some(Command::SystemdUser) => (),
+        _ => intro(),
+    }
 
     // Handle config file.
     if !opt.no_conf || opt.command == Some(Command::Configure) {
@@ -356,10 +332,9 @@ pub async fn parse_and_configure() -> Opt {
 
         // Configuration dialog.
         if (!file_found && opt.command != Some(Command::Run)) || opt.command == Some(Command::Configure) {
-            eprintln!("### Configuration");
+            logger.headline("Configuration");
 
             // Step 1: Endpoint.
-            eprintln!();
             let endpoint = loop {
                 let mut endpoint = String::new();
                 eprint!("Endpoint (default: {}): ", ini.get("Fishnet", "Endpoint").unwrap_or(DEFAULT_ENDPOINT.to_owned()));
@@ -381,7 +356,7 @@ pub async fn parse_and_configure() -> Opt {
             };
 
             // Step 2: Key.
-            let mut api = api::spawn(endpoint.clone(), None);
+            let mut api = api::spawn(endpoint.clone(), None, logger.clone());
             eprintln!();
             loop {
                 let mut key = String::new();
@@ -531,7 +506,7 @@ pub async fn parse_and_configure() -> Opt {
     let all = num_cpus::get();
     match opt.cores {
         Some(Cores::Number(n)) if usize::from(n) > all => {
-            warn!("Requested logical {} cores, but only {} available. Capped.", n, all);
+            logger.warn(&format!("Requested logical {} cores, but only {} available. Capped.", n, all));
             opt.cores = Some(Cores::All);
         }
         _ => (),

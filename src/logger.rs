@@ -1,5 +1,55 @@
+use std::sync::{Arc, Mutex};
 use std::fmt;
 use std::cmp::{max, min};
+use crate::configure::Verbose;
+
+#[derive(Clone)]
+pub struct Logger {
+    verbose: Verbose,
+    state: Arc<Mutex<LoggerState>>,
+}
+
+impl Logger {
+    pub fn new(verbose: Verbose) -> Logger {
+        Logger {
+            verbose,
+            state: Arc::new(Mutex::new(LoggerState { })),
+        }
+    }
+
+    pub fn headline(&self, title: &str) {
+        println!();
+        println!("### {}", title);
+        println!();
+    }
+
+    pub fn debug(&self, line: &str) {
+        println!("D: {}", line);
+    }
+
+    pub fn progress(&self, line: &str) {
+        println!("{}", line);
+    }
+
+    pub fn info(&self, line: &str) {
+        println!("{}", line);
+    }
+
+    pub fn fishnet_info(&self, line: &str) {
+        println!("><> {}", line);
+    }
+
+    pub fn warn(&self, line: &str) {
+        println!("W: {}", line);
+    }
+
+    pub fn error(&self, line: &str) {
+        println!("E: {}", line);
+    }
+}
+
+struct LoggerState {
+}
 
 pub struct QueueStatusBar {
     pub pending: usize,

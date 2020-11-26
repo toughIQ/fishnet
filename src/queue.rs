@@ -6,17 +6,17 @@ use std::time::{Duration, Instant};
 use url::Url;
 use tokio::sync::{mpsc, oneshot, Mutex, Notify};
 use tokio::time;
-use tracing::{debug, error, info};
 use crate::api::{AcquireQuery, AcquireResponseBody, Acquired, ApiStub, AnalysisPart};
 use crate::configure::{BacklogOpt, Endpoint};
 use crate::ipc::{BatchId, Position, PositionResponse, PositionId, Pull};
+use crate::logger::Logger;
 use crate::util::{NevermindExt as _, RandomizedBackoff};
 
-pub fn channel(endpoint: Endpoint, opt: BacklogOpt, cores: usize, api: ApiStub) -> (QueueStub, QueueActor) {
-    let state = Arc::new(Mutex::new(QueueState::new(cores)));
+pub fn channel(endpoint: Endpoint, opt: BacklogOpt, cores: usize, api: ApiStub, logger: Logger) -> (QueueStub, QueueActor) {
+    let state = Arc::new(Mutex::new(QueueState::new(cores, logger.clone())));
     let (tx, rx) = mpsc::unbounded_channel();
     let interrupt = Arc::new(Notify::new());
-    (QueueStub::new(tx, interrupt.clone(), state.clone(), api.clone()), QueueActor::new(rx, interrupt, state, endpoint, opt, api))
+    (QueueStub::new(tx, interrupt.clone(), state.clone(), api.clone()), QueueActor::new(rx, interrupt, state, endpoint, opt, api, logger))
 }
 
 pub struct QueueStub {
@@ -70,24 +70,26 @@ struct QueueState {
     incoming: VecDeque<Position>,
     pending: HashMap<BatchId, PendingBatch>,
     nps_recorder: NpsRecorder,
+    logger: Logger,
 }
 
 impl QueueState {
-    fn new(cores: usize) -> QueueState {
+    fn new(cores: usize, logger: Logger) -> QueueState {
         QueueState {
             shutdown_soon: false,
             cores,
             incoming: VecDeque::new(),
             pending: HashMap::new(),
             nps_recorder: NpsRecorder::new(),
+            logger,
         }
     }
 
     fn add_incoming_batch(&mut self, api: &mut ApiStub, batch: IncomingBatch) {
         if let Some(ref url) = batch.url {
-            info!("Starting batch {} ({})", url, batch.id);
+            self.logger.info(&format!("Starting batch {} ({})", url, batch.id));
         } else {
-            info!("Starting batch {}", batch.id);
+            self.logger.info(&format!("Starting batch {}", batch.id));
         }
 
         let mut positions = Vec::with_capacity(batch.positions.len());
@@ -121,9 +123,9 @@ impl QueueState {
                 if let Some(pending) = self.pending.get_mut(&batch_id) {
                     if let Some(pos) = pending.positions.get_mut(res.position_id.0) {
                         if let Some(ref url) = res.url {
-                            debug!("Finished position {}", url);
+                            self.logger.debug(&format!("Finished position {}", url));
                         } else {
-                            debug!("Finished position {}#{}", batch_id, res.position_id.0);
+                            self.logger.debug(&format!("Finished position {}#{}", batch_id, res.position_id.0));
                         }
                         *pos = Some(Skip::Present(res));
                     }
@@ -154,9 +156,9 @@ impl QueueState {
             match pending.try_into_completed() {
                 Ok(completed) => {
                     if let Some(ref url) = completed.url {
-                        info!("Finished batch {}", url);
+                        self.logger.info(&format!("Finished batch {}", url));
                     } else {
-                        info!("Finished batch {}", batch);
+                        self.logger.info(&format!("Finished batch {}", batch));
                     }
                     if let Some(nps) = completed.nps() {
                         self.nps_recorder.add(nps);
@@ -191,10 +193,11 @@ pub struct QueueActor {
     endpoint: Endpoint,
     opt: BacklogOpt,
     backoff: RandomizedBackoff,
+    logger: Logger,
 }
 
 impl QueueActor {
-    fn new(rx: mpsc::UnboundedReceiver<QueueMessage>, interrupt: Arc<Notify>, state: Arc<Mutex<QueueState>>, endpoint: Endpoint, opt: BacklogOpt, api: ApiStub) -> QueueActor {
+    fn new(rx: mpsc::UnboundedReceiver<QueueMessage>, interrupt: Arc<Notify>, state: Arc<Mutex<QueueState>>, endpoint: Endpoint, opt: BacklogOpt, api: ApiStub, logger: Logger) -> QueueActor {
         QueueActor {
             rx,
             interrupt,
@@ -203,11 +206,12 @@ impl QueueActor {
             endpoint,
             opt,
             backoff: RandomizedBackoff::default(),
+            logger,
         }
     }
 
     pub async fn run(self) {
-        debug!("Queue actor started.");
+        self.logger.debug("Queue actor started");
         self.run_inner().await;
     }
 
@@ -224,9 +228,9 @@ impl QueueActor {
             if let Some(status) = self.api.status().await {
                 let user_wait = user_backlog.checked_sub(status.user.oldest).unwrap_or(Duration::default());
                 let system_wait = system_backlog.checked_sub(status.system.oldest).unwrap_or(Duration::default());
-                debug!("User wait: {:?} due to {:?} for oldest {:?}, system wait: {:?} due to {:?} for oldest {:?}",
+                self.logger.debug(&format!("User wait: {:?} due to {:?} for oldest {:?}, system wait: {:?} due to {:?} for oldest {:?}",
                        user_wait, user_backlog, status.user.oldest,
-                       system_wait, system_backlog, status.system.oldest);
+                       system_wait, system_backlog, status.system.oldest));
                 let slow = user_wait >= system_wait + sec;
                 return (min(user_wait, system_wait), AcquireQuery { slow });
             }
@@ -265,9 +269,9 @@ impl QueueActor {
                         };
 
                         if wait >= Duration::from_secs(60) {
-                            info!("Going idle for {:?}.", wait);
+                            self.logger.info(&format!("Going idle for {:?}.", wait));
                         } else if wait >= Duration::from_secs(1) {
-                            debug!("Going idle for {:?}.", wait);
+                            self.logger.debug(&format!("Going idle for {:?}.", wait));
                         }
 
                         tokio::select! {
@@ -285,7 +289,7 @@ impl QueueActor {
                             }
                             Some(Acquired::NoContent) => {
                                 let backoff = self.backoff.next();
-                                info!("No job received. Backing off {:?}.", backoff);
+                                self.logger.debug(&format!("No job received. Backing off {:?}.", backoff));
                                 tokio::select! {
                                     _ = callback.closed() => break,
                                     _ = self.interrupt.notified() => (),
@@ -293,7 +297,7 @@ impl QueueActor {
                                 }
                             }
                             Some(Acquired::BadRequest) => {
-                                error!("Client update might be required. Stopping queue.");
+                                self.logger.error("Client update might be required. Stopping queue");
                                 let mut state = self.state.lock().await;
                                 state.shutdown_soon = true;
                             },
@@ -309,7 +313,7 @@ impl QueueActor {
 
 impl Drop for QueueActor {
     fn drop(&mut self) {
-        debug!("Queue actor exited.");
+        self.logger.debug("Queue actor exited");
     }
 }
 

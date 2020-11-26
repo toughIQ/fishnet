@@ -2,7 +2,6 @@ use std::time::Duration;
 use reqwest::StatusCode;
 use tokio::time;
 use tokio::sync::{mpsc, oneshot};
-use tracing::{debug, warn, error};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationSeconds, DisplayFromStr, SpaceSeparator, StringWithSeparator};
 use shakmaty::fen::Fen;
@@ -11,15 +10,16 @@ use shakmaty::variants::Variant;
 use tokio_compat_02::FutureExt as _;
 use crate::configure::{Endpoint, Key, KeyError};
 use crate::ipc::BatchId;
+use crate::logger::Logger;
 use crate::util::{NevermindExt as _, RandomizedBackoff};
 
-pub fn channel(endpoint: Endpoint, key: Option<Key>) -> (ApiStub, ApiActor) {
+pub fn channel(endpoint: Endpoint, key: Option<Key>, logger: Logger) -> (ApiStub, ApiActor) {
     let (tx, rx) = mpsc::unbounded_channel();
-    (ApiStub::new(tx), ApiActor::new(rx, endpoint, key))
+    (ApiStub::new(tx), ApiActor::new(rx, endpoint, key, logger))
 }
 
-pub fn spawn(endpoint: Endpoint, key: Option<Key>) -> ApiStub {
-    let (stub, actor) = channel(endpoint, key);
+pub fn spawn(endpoint: Endpoint, key: Option<Key>, logger: Logger) -> ApiStub {
+    let (stub, actor) = channel(endpoint, key, logger);
     tokio::spawn(async move {
         actor.run().await;
     });
@@ -320,10 +320,11 @@ pub struct ApiActor {
     key: Option<Key>,
     client: reqwest::Client,
     error_backoff: RandomizedBackoff,
+    logger: Logger,
 }
 
 impl ApiActor {
-    fn new(rx: mpsc::UnboundedReceiver<ApiMessage>, endpoint: Endpoint, key: Option<Key>) -> ApiActor {
+    fn new(rx: mpsc::UnboundedReceiver<ApiMessage>, endpoint: Endpoint, key: Option<Key>, logger: Logger) -> ApiActor {
         ApiActor {
             rx,
             endpoint,
@@ -333,15 +334,16 @@ impl ApiActor {
                 .timeout(Duration::from_secs(15))
                 .build().expect("client"),
             error_backoff: RandomizedBackoff::default(),
+            logger,
         }
     }
 
     pub async fn run(mut self) {
-        debug!("Api actor started.");
+        self.logger.debug("Api actor started");
         while let Some(msg) = self.rx.recv().await {
             self.handle_mesage(msg).compat().await;
         }
-        debug!("Api actor exited.");
+        self.logger.debug("Api actor exited");
     }
 
     async fn handle_mesage(&mut self, msg: ApiMessage) {
@@ -349,23 +351,23 @@ impl ApiActor {
             match err.status() {
                 Some(status) if status == StatusCode::TOO_MANY_REQUESTS => {
                     let backoff = Duration::from_secs(60) + self.error_backoff.next();
-                    error!("Too many requests. Suspending requests for {:?}.", backoff);
+                    self.logger.error(&format!("Too many requests. Suspending requests for {:?}.", backoff));
                     time::sleep(backoff).await;
                 }
                 Some(status) if status.is_client_error() => {
                     let backoff = self.error_backoff.next();
-                    error!("Client error: {}. Backing off {:?}.", status, backoff);
+                    self.logger.error(&format!("Client error: {}. Backing off {:?}.", status, backoff));
                     time::sleep(backoff).await;
                 },
                 Some(status) if status.is_server_error() => {
                     let backoff = self.error_backoff.next();
-                    error!("Server error: {}. Backing off {:?}.", status, backoff);
+                    self.logger.error(&format!("Server error: {}. Backing off {:?}.", status, backoff));
                     time::sleep(backoff).await;
                 }
                 Some(_) => self.error_backoff.reset(),
                 None => {
                     let backoff = self.error_backoff.next();
-                    error!("{}. Backing off {:?}.", err, backoff);
+                    self.logger.error(&format!("{}. Backing off {:?}.", err, backoff));
                     time::sleep(backoff).await;
                 }
             }
@@ -377,7 +379,7 @@ impl ApiActor {
     async fn abort(&mut self, batch_id: BatchId) -> reqwest::Result<()> {
         Ok({
             let url = format!("{}/abort/{}", self.endpoint, batch_id);
-            warn!("Aborting batch {}.", batch_id);
+            self.logger.warn(&format!("Aborting batch {}.", batch_id));
             self.client.post(&url).json(&VoidRequestBody {
                 fishnet: Fishnet::authenticated(self.key.clone()),
                 stockfish: Stockfish::default(),
@@ -394,7 +396,7 @@ impl ApiActor {
                     StatusCode::NOT_FOUND => callback.send(Err(KeyError::AccessDenied)).nevermind("callback dropped"),
                     StatusCode::OK => callback.send(Ok(key)).nevermind("callback dropped"),
                     status => {
-                        warn!("Unexpected status while checking key: {}", status);
+                        self.logger.warn(&format!("Unexpected status while checking key: {}", status));
                         res.error_for_status()?;
                     }
                 }
@@ -419,12 +421,12 @@ impl ApiActor {
                     StatusCode::BAD_REQUEST => callback.send(Acquired::BadRequest).nevermind("callback dropped"),
                     StatusCode::OK | StatusCode::ACCEPTED => {
                         if let Err(Acquired::Accepted(res)) = callback.send(Acquired::Accepted(res.json().await?)) {
-                            error!("Acquired a batch, but callback dropped. Aborting.");
+                            self.logger.error(&format!("Acquired a batch, but callback dropped. Aborting."));
                             self.abort(res.work.id).await?;
                         }
                     }
                     status => {
-                        warn!("Unexpected status for acquire: {}", status);
+                        self.logger.warn(&format!("Unexpected status for acquire: {}", status));
                         res.error_for_status()?;
                     }
                 }
@@ -441,7 +443,7 @@ impl ApiActor {
                 }).send().await?.error_for_status()?;
 
                 if res.status() != StatusCode::NO_CONTENT {
-                    warn!("Unexpected status for submitting analysis: {}", res.status());
+                    self.logger.warn(&format!("Unexpected status for submitting analysis: {}", res.status()));
                 }
             }
         })

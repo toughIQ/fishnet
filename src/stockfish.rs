@@ -5,17 +5,17 @@ use std::path::PathBuf;
 use tokio::sync::{mpsc, oneshot};
 use tokio::process::{Command, ChildStdin, ChildStdout};
 use tokio::io::{BufWriter, AsyncWriteExt as _, BufReader, AsyncBufReadExt as _, Lines};
-use tracing::{trace, debug, warn, error};
 use shakmaty::fen::Fen;
 use shakmaty::variants::{VariantPosition, Variant};
 use crate::api::{Score, LichessVariant};
 use crate::ipc::{Position, PositionResponse, PositionFailed};
 use crate::assets::EngineFlavor;
+use crate::logger::Logger;
 use crate::util::NevermindExt as _;
 
-pub fn channel(exe: PathBuf, init: StockfishInit) -> (StockfishStub, StockfishActor) {
+pub fn channel(exe: PathBuf, init: StockfishInit, logger: Logger) -> (StockfishStub, StockfishActor) {
     let (tx, rx) = mpsc::channel(1);
-    (StockfishStub { tx }, StockfishActor { rx, exe, init: Some(init) })
+    (StockfishStub { tx }, StockfishActor { rx, exe, init: Some(init), logger })
 }
 
 pub struct StockfishStub {
@@ -39,6 +39,7 @@ pub struct StockfishActor {
     rx: mpsc::Receiver<StockfishMessage>,
     exe: PathBuf,
     init: Option<StockfishInit>,
+    logger: Logger,
 }
 
 #[derive(Debug)]
@@ -54,20 +55,17 @@ pub struct StockfishInit {
 }
 
 struct Stdin {
-    pid: u32,
     inner: BufWriter<ChildStdin>,
 }
 
 impl Stdin {
-    fn new(pid: u32, inner: ChildStdin) -> Stdin {
+    fn new(inner: ChildStdin) -> Stdin {
         Stdin {
-            pid,
             inner: BufWriter::new(inner),
         }
     }
 
     async fn write_line(&mut self, line: &str) -> io::Result<()> {
-        trace!("{} << {}", self.pid, line);
         self.inner.write_all(line.as_bytes()).await?;
         self.inner.write_all(b"\n").await?;
         self.inner.flush().await?;
@@ -76,21 +74,18 @@ impl Stdin {
 }
 
 struct Stdout {
-    pid: u32,
     inner: Lines<BufReader<ChildStdout>>,
 }
 
 impl Stdout {
-    fn new(pid: u32, inner: ChildStdout) -> Stdout {
+    fn new(inner: ChildStdout) -> Stdout {
         Stdout {
-            pid,
             inner: BufReader::new(inner).lines(),
         }
     }
 
     async fn read_line(&mut self) -> io::Result<String> {
         if let Some(line) = self.inner.next_line().await? {
-            trace!("{} >> {}", self.pid, line);
             Ok(line)
         } else {
             Err(io::ErrorKind::UnexpectedEof.into())
@@ -133,8 +128,9 @@ fn new_process_group(command: &mut Command) -> &mut Command {
 
 impl StockfishActor {
     pub async fn run(self) {
+        let logger = self.logger.clone();
         if let Err(EngineError::IoError(err)) = self.run_inner().await {
-            error!("Engine error: {}", err);
+            logger.error(&format!("Engine error: {}", err));
         }
     }
 
@@ -146,8 +142,8 @@ impl StockfishActor {
                 .kill_on_drop(true)).spawn()?;
 
         let pid = child.id().expect("pid");
-        let mut stdout = Stdout::new(pid, child.stdout.take().ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "stdout closed"))?);
-        let mut stdin = Stdin::new(pid, child.stdin.take().ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "stdin closed"))?);
+        let mut stdout = Stdout::new(child.stdout.take().ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "stdout closed"))?);
+        let mut stdin = Stdin::new(child.stdin.take().ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "stdin closed"))?);
 
         Ok(loop {
             tokio::select! {
@@ -160,8 +156,12 @@ impl StockfishActor {
                 }
                 status = child.wait() => {
                     match status? {
-                        status if status.success() => debug!("Stockfish process {} exited with status {}", pid, status),
-                        status => error!("Stockfish process {} exited with status {}", pid, status),
+                        status if status.success() => {
+                            self.logger.debug(&format!("Stockfish process {} exited with status {}", pid, status));
+                        }
+                        status => {
+                            self.logger.error(&format!("Stockfish process {} exited with status {}", pid, status));
+                        }
                     }
                     break;
                 }
@@ -290,7 +290,7 @@ impl StockfishActor {
                         }
                     }
                 }
-                _ => warn!("Unexpected engine output: {}", line),
+                _ => self.logger.warn(&format!("Unexpected engine output: {}", line)),
             }
         }
     }
