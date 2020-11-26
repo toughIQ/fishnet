@@ -1,5 +1,7 @@
 use std::sync::{Arc, Mutex};
 use std::fmt;
+use std::io;
+use std::io::Write as _;
 use std::cmp::{min, max};
 use url::Url;
 use crate::ipc::{BatchId, PositionId, PositionResponse};
@@ -17,11 +19,23 @@ impl Logger {
         Logger {
             verbose,
             stderr,
-            state: Arc::new(Mutex::new(LoggerState { })),
+            state: Arc::new(Mutex::new(LoggerState {
+                progress_line: 0,
+            })),
         }
     }
 
     fn println(&self, line: &str) {
+        let mut state = self.state.lock().expect("logger state");
+        if state.progress_line > 0 {
+            if self.stderr {
+                eprintln!();
+            } else {
+                println!();
+            }
+        }
+        state.progress_line = 0;
+
         if self.stderr {
             eprintln!("{}", line);
         } else {
@@ -30,19 +44,11 @@ impl Logger {
     }
 
     pub fn headline(&self, title: &str) {
-        self.println("");
-        self.println(&format!("### {}", title));
-        self.println("");
+        self.println(&format!("\n### {}\n", title));
     }
 
     pub fn debug(&self, line: &str) {
         self.println(&format!("D: {}", line));
-    }
-
-    pub fn progress<P>(&self, queue: QueueStatusBar, progress: P)
-        where P: Into<ProgressAt>,
-    {
-        println!("{}, latest: {}", queue, progress.into());
     }
 
     pub fn info(&self, line: &str) {
@@ -59,6 +65,16 @@ impl Logger {
 
     pub fn error(&self, line: &str) {
         self.println(&format!("E: {}", line));
+    }
+
+    pub fn progress<P>(&self, queue: QueueStatusBar, progress: P)
+        where P: Into<ProgressAt>,
+    {
+        let mut state = self.state.lock().expect("logger state");
+        let line = format!("\r{}, latest: {}", queue, progress.into());
+        print!("{}{}", line, " ".repeat(state.progress_line.saturating_sub(line.len())));
+        io::stdout().flush().expect("flush stdout");
+        state.progress_line = line.len();
     }
 }
 
@@ -97,6 +113,7 @@ impl From<&PositionResponse> for ProgressAt {
 }
 
 struct LoggerState {
+    pub progress_line: usize,
 }
 
 pub struct QueueStatusBar {
