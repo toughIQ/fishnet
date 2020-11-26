@@ -155,13 +155,16 @@ impl QueueState {
         if let Some(pending) = self.pending.remove(&batch) {
             match pending.try_into_completed() {
                 Ok(completed) => {
-                    if let Some(ref url) = completed.url {
-                        self.logger.info(&format!("Finished batch {}", url));
-                    } else {
-                        self.logger.info(&format!("Finished batch {}", batch));
-                    }
-                    if let Some(nps) = completed.nps() {
-                        self.nps_recorder.add(nps);
+                    let nps_string = match completed.nps() {
+                        Some(nps) => {
+                            self.nps_recorder.add(nps);
+                            nps.to_string()
+                        }
+                        None => "?".to_owned(),
+                    };
+                    match completed.url {
+                        Some(ref url) => self.logger.info(&format!("{} finished ({} nps)", url, nps_string)),
+                        None => self.logger.info(&format!("{} finished ({} nps)", batch, nps_string)),
                     }
                     api.submit_analysis(completed.id, completed.into_analysis());
                 }
