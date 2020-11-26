@@ -8,10 +8,11 @@ mod util;
 mod stockfish;
 
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use std::error::Error;
 use std::thread;
 use std::path::PathBuf;
+use std::env;
 use atty::Stream;
 use tracing::{debug, warn, info, error};
 use tokio::time;
@@ -28,7 +29,7 @@ async fn main() {
     let opt = configure::parse_and_configure().await;
 
     if opt.auto_update {
-        let current_exe = std::env::current_exe().expect("current exe");
+        let current_exe = env::current_exe().expect("current exe");
         match auto_update(true) {
             Err(err) => error!("Failed to update: {}", err),
             Ok(self_update::Status::UpToDate(version)) => {
@@ -245,11 +246,37 @@ async fn run(opt: Opt) {
         rx
     };
 
+    let restart = Arc::new(std::sync::Mutex::new(None));
+    let mut up_to_date = Instant::now();
     let mut shutdown_soon = false;
 
-    // Main loop. Handles signals, forwards worker results from rx to the queue
-    // and responds with more work.
     loop {
+        // Check for updates from time to time.
+        if opt.auto_update && !shutdown_soon && Instant::now().duration_since(up_to_date) >= Duration::from_secs(60 * 60 * 12) {
+            up_to_date = Instant::now();
+            let inner_restart = restart.clone();
+            tokio::task::spawn_blocking(move || {
+                let current_exe = env::current_exe().expect("current exe");
+                match auto_update(true) {
+                    Err(err) => error!("Failed to update in the background: {}", err),
+                    Ok(self_update::Status::UpToDate(version)) => {
+                        info!("Fishnet {} is up to date.", version);
+                    }
+                    Ok(self_update::Status::Updated(version)) => {
+                        info!("Fishnet updated to {}. Will restart soon.", version);
+                        *inner_restart.lock().expect("restart mutex") = Some(current_exe);
+                    }
+                }
+            }).await.expect("spawn blocking update");
+
+            if restart.lock().expect("restart mutex").is_some() {
+                shutdown_soon = true;
+                queue.shutdown_soon().await;
+            }
+        }
+
+        // Main loop. Handles signals, forwards worker results from rx to the
+        // queue and responds with more work.
         tokio::select! {
             res = sig_int.recv() => {
                 res.expect("sigint handler installed");
@@ -282,8 +309,15 @@ async fn run(opt: Opt) {
     // Shutdown queue to abort remaining jobs.
     queue.shutdown().await;
 
+    // Wait for all workers.
     info!("Bye.");
     for join_handle in join_handles.into_iter() {
         join_handle.await.expect("join");
+    }
+
+    // Restart.
+    let mut restart = restart.lock().expect("restart mutex");
+    if let Some(restart) = restart.take() {
+        restart_process(restart);
     }
 }
