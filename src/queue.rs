@@ -9,7 +9,7 @@ use tokio::time;
 use crate::api::{AcquireQuery, AcquireResponseBody, Acquired, ApiStub, AnalysisPart};
 use crate::configure::{BacklogOpt, Endpoint};
 use crate::ipc::{BatchId, Position, PositionResponse, PositionId, Pull};
-use crate::logger::Logger;
+use crate::logger::{Logger, ProgressAt, QueueStatusBar};
 use crate::util::{NevermindExt as _, RandomizedBackoff};
 
 pub fn channel(endpoint: Endpoint, opt: BacklogOpt, cores: usize, api: ApiStub, logger: Logger) -> (QueueStub, QueueActor) {
@@ -85,16 +85,18 @@ impl QueueState {
         }
     }
 
-    fn add_incoming_batch(&mut self, api: &mut ApiStub, batch: IncomingBatch) {
-        if let Some(ref url) = batch.url {
-            self.logger.info(&format!("Starting batch {} ({})", url, batch.id));
-        } else {
-            self.logger.info(&format!("Starting batch {}", batch.id));
+    fn status_bar(&self) -> QueueStatusBar {
+        QueueStatusBar {
+            pending: self.pending.len(),
+            cores: self.cores,
         }
+    }
 
-        let mut positions = Vec::with_capacity(batch.positions.len());
+    fn add_incoming_batch(&mut self, api: &mut ApiStub, batch: IncomingBatch) {
+        let progress_at = ProgressAt::from(&batch);
 
         // Reversal only for cosmetics when displaying progress.
+        let mut positions = Vec::with_capacity(batch.positions.len());
         for pos in batch.positions.into_iter().rev() {
             positions.insert(0, match pos {
                 Skip::Present(pos) => {
@@ -112,6 +114,7 @@ impl QueueState {
             started_at: Instant::now(),
         });
 
+        self.logger.progress(self.status_bar(), progress_at);
         self.maybe_finished(api, batch.id);
     }
 
@@ -387,6 +390,16 @@ impl IncomingBatch {
         }
 
         batch
+    }
+}
+
+impl From<&IncomingBatch> for ProgressAt {
+    fn from(batch: &IncomingBatch) -> ProgressAt {
+        ProgressAt {
+            batch_id: batch.id,
+            batch_url: batch.url.clone(),
+            position_id: None,
+        }
     }
 }
 

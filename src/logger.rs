@@ -1,6 +1,8 @@
 use std::sync::{Arc, Mutex};
 use std::fmt;
 use std::cmp::{max, min};
+use url::Url;
+use crate::ipc::{BatchId, PositionId, Position};
 use crate::configure::Verbose;
 
 #[derive(Clone)]
@@ -37,8 +39,10 @@ impl Logger {
         self.println(&format!("D: {}", line));
     }
 
-    pub fn progress(&self, line: &str) {
-        println!("{}", line); // TODO
+    pub fn progress<P>(&self, queue: QueueStatusBar, progress: P)
+        where P: Into<ProgressAt>,
+    {
+        println!("{}, latest: {}", queue, progress.into());
     }
 
     pub fn info(&self, line: &str) {
@@ -55,6 +59,40 @@ impl Logger {
 
     pub fn error(&self, line: &str) {
         self.println(&format!("E: {}", line));
+    }
+}
+
+pub struct ProgressAt {
+    pub batch_id: BatchId,
+    pub batch_url: Option<Url>,
+    pub position_id: Option<PositionId>,
+}
+
+impl fmt::Display for ProgressAt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(ref batch_url) = self.batch_url {
+            let mut url = batch_url.clone();
+            if let Some(PositionId(positon_id)) = self.position_id {
+                url.set_fragment(Some(&positon_id.to_string()));
+            }
+            fmt::Display::fmt(&url, f)
+        } else {
+            write!(f, "{}", self.batch_id)?;
+            if let Some(PositionId(positon_id)) = self.position_id {
+                write!(f, "#{}", positon_id)?;
+            }
+            Ok(())
+        }
+    }
+}
+
+impl From<&Position> for ProgressAt {
+    fn from(pos: &Position) -> ProgressAt {
+        ProgressAt {
+            batch_id: pos.batch_id,
+            batch_url: pos.url.clone(),
+            position_id: Some(pos.position_id),
+        }
     }
 }
 

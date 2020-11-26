@@ -28,7 +28,7 @@ impl fmt::Display for BatchId {
 }
 
 /// Uniquely identifies a position within a batch.
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct PositionId(pub usize);
 
 #[derive(Debug, Clone)]
