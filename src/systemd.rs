@@ -36,7 +36,7 @@ pub fn systemd_system(opt: Opt) {
         let command = env::args().next().unwrap_or("./fishnet".to_owned());
         eprintln!();
         eprintln!("# Example usage:");
-        eprintln!("# {} systemd | tee /etc/systemd/system/fishnet.service", command);
+        eprintln!("# {} systemd | sudo tee /etc/systemd/system/fishnet.service", command);
         eprintln!("# systemctl enable fishnet.service");
         eprintln!("# systemctl start fishnet.service");
         eprintln!("# Live view of log: journalctl --follow -u fishnet");
