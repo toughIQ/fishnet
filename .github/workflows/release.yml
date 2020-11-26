@@ -24,7 +24,6 @@ jobs:
     runs-on: ubuntu-18.04
     needs: release
     steps:
-    - run: sudo apt-get update && sudo apt-get install -y musl-tools
     - uses: actions/checkout@v2
       with:
         submodules: true
@@ -32,19 +31,18 @@ jobs:
       with:
         profile: minimal
         toolchain: stable
-        target: x86_64-unknown-linux-musl
     - uses: actions-rs/cargo@v1
       with:
         command: build
-        args: --release --target x86_64-unknown-linux-musl
-    - run: strip target/x86_64-unknown-linux-musl/release/fishnet
+        args: --release
+    - run: strip target/release/fishnet
     - uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ needs.release.outputs.upload_url }}
-        asset_path: target/x86_64-unknown-linux-musl/release/fishnet
-        asset_name: fishnet-x86_64-unknown-linux-musl
+        asset_path: target/release/fishnet
+        asset_name: fishnet-x86_64-unknown-linux-gnu
         asset_content_type: application/octet-stream
   linux-aarch64:
     runs-on: ubuntu-18.04
