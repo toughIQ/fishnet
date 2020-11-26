@@ -9,7 +9,7 @@ Installation
 
 1. Request your personal fishnet key: https://lichess.org/get-fishnet
 
-2. Install the fishnet client.
+2. Install and run the fishnet client.
 
    **Download standalone binary**
 
@@ -20,7 +20,15 @@ Installation
    ```sh
    # After download:
    chmod +x fishnet-linux-x86-64
-   ./fishnet-linux-x86-64 --auto-update
+   ./x86_64-unknown-linux-musl --auto-update
+   ```
+
+   Other useful commands:
+
+   ```sh
+   ./fishnet-x86_64-unknown-linux-musl configure # Rerun the configuration dialog
+   ./fishnet-x86_64-unknown-linux-musl systemd   # Generate a systemd service file
+   ./fishnet-x86_64-unknown-linux-musl --help    # List all commands and options
    ```
 
    **From source**
@@ -30,27 +38,12 @@ Installation
    ```sh
    git clone --recursive https://github.com/niklasf/fishnet.git
    cd fishnet
-   cargo install .
+   cargo run --release --
    ```
 
    **Via Docker**
 
    Not yet available for 2.x.
-
-3. Run to donate CPU time:
-
-   ```sh
-   fishnet --auto-update
-   ```
-
-   Other useful commands:
-
-   ```sh
-   fishnet configure # Rerun the configuration dialog
-   fishnet systemd   # Generate a systemd service file
-   fishnet --help    # List all commands and options
-   ```
-
 
 Video tutorial (outdated since 2.x)
 -----------------------------------

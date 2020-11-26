@@ -33,7 +33,6 @@ impl Asset {
             .open(path)
     }
 
-    #[cfg(unix)]
     fn create(&self, base: &Path) -> io::Result<PathBuf> {
         let path = base.join(self.name);
         let mut file = self.open(&path)?;
@@ -47,13 +46,6 @@ impl Asset {
         }
 
         file.sync_all()?;
-        Ok(path)
-    }
-
-    #[cfg(not(unix))]
-    fn create(&self, base: &Path) -> io::Result<PathBuf> {
-        let path = base.join(self.name);
-        std::fs::write(&path, self.data)?;
         Ok(path)
     }
 }
