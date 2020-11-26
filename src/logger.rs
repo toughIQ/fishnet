@@ -140,7 +140,7 @@ pub struct QueueStatusBar {
 impl fmt::Display for QueueStatusBar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let width = 16;
-        let virtual_width = max(self.cores * 2, 16);
+        let virtual_width = max(self.cores * 3, 16);
         let cores_width = self.cores * width / virtual_width;
         let pending_width = min(width, self.pending * width / virtual_width);
         let overhang_width = pending_width.saturating_sub(cores_width);
