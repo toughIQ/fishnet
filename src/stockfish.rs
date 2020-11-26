@@ -184,7 +184,6 @@ impl StockfishActor {
         // Set global options (once).
         if let Some(init) = self.init.take() {
             stdout.read_line().await?; // discard preample
-            stdin.write_line("setoption name Hash value 32").await?;
             stdin.write_line(&format!("setoption name EvalFile value {}", init.nnue)).await?;
         }
 
