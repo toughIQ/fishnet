@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 use std::fmt;
-use std::cmp::{max, min};
+use std::cmp::{min, max};
 use url::Url;
 use crate::ipc::{BatchId, PositionId, PositionResponse};
 use crate::configure::Verbose;
@@ -106,16 +106,18 @@ pub struct QueueStatusBar {
 
 impl fmt::Display for QueueStatusBar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let width = 20;
-        let virtual_width = max(self.cores, self.pending);
+        let width = 16;
+        let virtual_width = max(self.cores * 2, 16);
         let cores_width = self.cores * width / virtual_width;
-        let pending_width = self.pending * width / virtual_width;
+        let pending_width = min(width, self.pending * width / virtual_width);
+        let overhang_width = pending_width.saturating_sub(cores_width);
 
         f.write_str("[")?;
         f.write_str(&"=".repeat(min(pending_width, cores_width)))?;
         f.write_str(&" ".repeat(cores_width.saturating_sub(pending_width)))?;
         f.write_str("|")?;
-        f.write_str(&"=".repeat(pending_width.saturating_sub(cores_width)))?;
+        f.write_str(&"=".repeat(overhang_width))?;
+        f.write_str(&" ".repeat(width.saturating_sub(cores_width).saturating_sub(overhang_width)))?;
         write!(f, "] {} cores / {} queued", self.cores, self.pending)
     }
 }
