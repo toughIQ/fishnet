@@ -1,6 +1,6 @@
 [package]
 name = "fishnet"
-version = "2.0.0-alpha.1" # remember to update changelog
+version = "2.0.0-alpha.0" # remember to update changelog
 description = "Distributed Stockfish analysis for lichess.org"
 repository = "https://github.com/niklasf/fishnet-alpha"
 readme = "README.md"
@@ -20,6 +20,7 @@ libflate = "1.0"
 num_cpus = "1.13"
 rand = "0.7"
 reqwest = { version = "0.10", features = ["json", "rustls-tls"], default-features = false }
+self_update = { version = "0.22", features = ["rustls"], default-features = false }
 serde = "1.0"
 serde_with = "1.6.0"
 shakmaty = "0.16"

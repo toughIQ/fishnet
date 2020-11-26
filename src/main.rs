@@ -9,7 +9,11 @@ mod stockfish;
 
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{debug, warn, info};
+use std::error::Error;
+use std::thread;
+use std::path::PathBuf;
+use atty::Stream;
+use tracing::{debug, warn, info, error};
 use tokio::time;
 use tokio::signal;
 use tokio::sync::{mpsc, oneshot};
@@ -24,7 +28,17 @@ async fn main() {
     let opt = configure::parse_and_configure().await;
 
     if opt.auto_update {
-        todo!("--auto-update");
+        let current_exe = std::env::current_exe().expect("current exe");
+        match auto_update(true) {
+            Err(err) => error!("Failed to update: {}", err),
+            Ok(self_update::Status::UpToDate(version)) => {
+                info!("Fishnet is up to date: {}", version);
+            }
+            Ok(self_update::Status::Updated(version)) => {
+                info!("Fishnet updated to {}.", version);
+                restart_process(current_exe);
+            }
+        }
     }
 
     match opt.command {
@@ -33,6 +47,37 @@ async fn main() {
         Some(Command::SystemdUser) => systemd::systemd_user(opt),
         Some(Command::Configure) => (),
     }
+}
+
+#[cfg(unix)]
+fn restart_process(current_exe: PathBuf) {
+    use std::os::unix::process::CommandExt as _;
+    info!("Waiting 5s before restarting {:?} ...", current_exe);
+    thread::sleep(Duration::from_secs(5));
+    let err = std::process::Command::new(current_exe)
+        .args(std::env::args().into_iter().skip(1))
+        .exec();
+    panic!("Failed to restart: {}", err);
+}
+
+#[cfg(windows)]
+fn restart_process(current_exe: PathBuf) {
+    info!("Waiting 5s before restarting {:?} ...", current_exe);
+    todo!("Restart on Windows");
+}
+
+fn auto_update(verbose: bool) -> Result<self_update::Status, Box<dyn Error>> {
+    info!("Checking for updates ...");
+    Ok(self_update::backends::github::Update::configure()
+        .repo_owner("niklasf")
+        .repo_name("fishnet")
+        .bin_name("fishnet")
+        .show_output(verbose)
+        .show_download_progress(atty::is(Stream::Stdout) && verbose)
+        .current_version(env!("CARGO_PKG_VERSION"))
+        .no_confirm(true)
+        .build()?
+        .update()?)
 }
 
 async fn run(opt: Opt) {

@@ -23,8 +23,8 @@ jobs:
     - run: mv target/x86_64-unknown-linux-musl/release/fishnet fishnet-linux-x86-64
     - uses: actions/upload-artifact@v2
       with:
-        name: fishnet-linux-x86-64.zip
-        path: fishnet-linux-x86-64
+        name: fishnet-x86_64-unknown-linux-musl.zip
+        path: fishnet-x86_64-unknown-linux-musl
   linux-aarch64:
     runs-on: ubuntu-18.04
     steps:
@@ -44,8 +44,8 @@ jobs:
     - run: mv target/aarch64-unknown-linux-gnu/release/fishnet fishnet-linux-aarch64
     - uses: actions/upload-artifact@v2
       with:
-        name: fishnet-linux-aarch64.zip
-        path: fishnet-linux-aarch64
+        name: fishnet-aarch64-unknown-linux-gnu.zip
+        path: fishnet-aarch64-unknown-linux-gnu
   windows-x86-64:
     runs-on: windows-2016
     steps:
@@ -63,8 +63,8 @@ jobs:
     - run: mv target/release/fishnet.exe fishnet-windows-x86-64.exe
     - uses: actions/upload-artifact@v2
       with:
-        name: fishnet-windows-x86-64.zip
-        path: fishnet-windows-x86-64.exe
+        name: fishnet-x86_64-pc-windows-msvc.zip
+        path: fishnet-x86_64-pc-windows-msvc.exe
   macos-x86-64:
     runs-on: macos-10.15
     steps:
@@ -82,5 +82,5 @@ jobs:
     - run: mv target/release/fishnet fishnet-macos-x86-64
     - uses: actions/upload-artifact@v2
       with:
-        name: fishnet-macos-x86-64.zip
-        path: fishnet-macos-x86-64
+        name: fishnet-x86_64-apple-darwin.zip
+        path: fishnet-x86_64-apple-darwin
