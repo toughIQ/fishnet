@@ -19,7 +19,7 @@ jobs:
         command: build
         args: --release
     - run: mv target/release/fishnet fishnet-x86_64-unknown-linux-gnu
-    - run: strip fishnet-x86_64-unknown-linux-musl
+    - run: strip fishnet-x86_64-unknown-linux-gnu
     - uses: actions/upload-artifact@v2
       with:
         name: fishnet-x86_64-unknown-linux-gnu.zip
