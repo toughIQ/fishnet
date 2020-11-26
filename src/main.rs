@@ -293,7 +293,7 @@ async fn run(opt: Opt, logger: &Logger) {
                     rx.close();
                 } else {
                     logger.info("");
-                    logger.fishnet_info("Stopping soon. Press ^C again to abort pending batches ...");
+                    logger.headline("Stopping soon. Press ^C again to abort pending batches ...");
                     queue.shutdown_soon().await;
                     shutdown_soon = true;
                 }
