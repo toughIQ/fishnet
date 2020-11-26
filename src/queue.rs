@@ -62,6 +62,11 @@ impl QueueStub {
             self.api.abort(k);
         }
     }
+
+    pub async fn stats(&self) -> StatsRecorder {
+        let state = self.state.lock().await;
+        state.stats.clone()
+    }
 }
 
 struct QueueState {
@@ -69,7 +74,7 @@ struct QueueState {
     cores: usize,
     incoming: VecDeque<Position>,
     pending: HashMap<BatchId, PendingBatch>,
-    nps_recorder: NpsRecorder,
+    stats: StatsRecorder,
     logger: Logger,
 }
 
@@ -80,7 +85,7 @@ impl QueueState {
             cores,
             incoming: VecDeque::new(),
             pending: HashMap::new(),
-            nps_recorder: NpsRecorder::new(),
+            stats: StatsRecorder::new(),
             logger,
         }
     }
@@ -157,7 +162,7 @@ impl QueueState {
                 Ok(completed) => {
                     let nps_string = match completed.nps() {
                         Some(nps) => {
-                            self.nps_recorder.add(nps);
+                            self.stats.record_batch(completed.total_positions(), completed.total_nodes(), nps);
                             nps.to_string()
                         }
                         None => "?".to_owned(),
@@ -222,7 +227,7 @@ impl QueueActor {
         let sec = Duration::from_secs(1);
         let min_user_backlog = {
             let state = self.state.lock().await;
-            state.nps_recorder.min_user_backlog()
+            state.stats.min_user_backlog()
         };
         let user_backlog = max(self.opt.user.map_or(Duration::default(), Duration::from), min_user_backlog);
         let system_backlog = self.opt.system.map_or(Duration::default(), Duration::from);
@@ -473,6 +478,13 @@ impl CompletedBatch {
         }).collect()
     }
 
+    fn total_positions(&self) -> u64 {
+        self.positions.iter().map(|p| match p {
+            Skip::Skip => 0,
+            Skip::Present(_) => 1,
+        }).sum()
+    }
+
     fn total_nodes(&self) -> u64 {
         self.positions.iter().map(|p| match p {
             Skip::Skip => 0,
@@ -487,18 +499,29 @@ impl CompletedBatch {
     }
 }
 
-struct NpsRecorder {
+#[derive(Clone)]
+pub struct StatsRecorder {
+    pub total_batches: u64,
+    pub total_positions: u64,
+    pub total_nodes: u64,
     nps: u32,
 }
 
-impl NpsRecorder {
-    fn new() -> NpsRecorder {
-        NpsRecorder {
+impl StatsRecorder {
+    fn new() -> StatsRecorder {
+        StatsRecorder {
+            total_batches: 0,
+            total_positions: 0,
+            total_nodes: 0,
             nps: 1_500_000, // start low
         }
     }
 
-    fn add(&mut self, nps: u32) {
+    fn record_batch(&mut self, positions: u64, nodes: u64, nps: u32) {
+        self.total_batches += 1;
+        self.total_positions += positions;
+        self.total_nodes += nodes;
+
         let alpha = 0.8;
         self.nps = max(1, (f64::from(self.nps) * alpha + f64::from(nps) * (1.0 - alpha)) as u32);
     }

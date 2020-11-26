@@ -252,14 +252,17 @@ async fn run(opt: Opt, logger: &Logger) {
         rx
     };
 
+    let started = Instant::now();
     let restart = Arc::new(std::sync::Mutex::new(None));
     let mut up_to_date = Instant::now();
+    let mut summarized = Instant::now();
     let mut shutdown_soon = false;
 
     loop {
         // Check for updates from time to time.
-        if opt.auto_update && !shutdown_soon && Instant::now().duration_since(up_to_date) >= Duration::from_secs(60 * 60 * 12) {
-            up_to_date = Instant::now();
+        let now = Instant::now();
+        if opt.auto_update && !shutdown_soon && now.duration_since(up_to_date) >= Duration::from_secs(60 * 60 * 12) {
+            up_to_date = now;
             let logger = logger.clone();
             let inner_restart = restart.clone();
             tokio::task::spawn_blocking(move || {
@@ -280,6 +283,16 @@ async fn run(opt: Opt, logger: &Logger) {
                 shutdown_soon = true;
                 queue.shutdown_soon().await;
             }
+        }
+
+        // Print summary from time to time.
+        if now.duration_since(summarized) >= Duration::from_secs(120) {
+            summarized = now;
+            let stats = queue.stats().await;
+            logger.fishnet_info(&format!("fishnet/{}: {:?} up, {} batches, {} positions, {} total nodes",
+                                         env!("CARGO_PKG_VERSION"),
+                                         now.duration_since(started),
+                                         stats.total_batches, stats.total_positions, stats.total_nodes));
         }
 
         // Main loop. Handles signals, forwards worker results from rx to the
@@ -312,6 +325,7 @@ async fn run(opt: Opt, logger: &Logger) {
                     break;
                 }
             }
+            _ = time::sleep(Duration::from_secs(120)) => (),
         }
     }
 
