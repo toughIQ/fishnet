@@ -265,6 +265,12 @@ pub enum Command {
     SystemdUser,
 }
 
+impl Command {
+    pub fn is_systemd(self) -> bool {
+        self == Command::Systemd || self == Command::SystemdUser
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 enum Toggle {
     Yes,
@@ -307,12 +313,12 @@ fn intro() {
 
 pub async fn parse_and_configure() -> Opt {
     let mut opt = Opt::from_args();
-    let logger = Logger::new(opt.verbose);
 
     // Show intro and configure logger.
-    match opt.command {
-        Some(Command::Systemd) | Some(Command::SystemdUser) => (),
-        _ => intro(),
+    let is_systemd = opt.command.map_or(false, Command::is_systemd);
+    let logger = Logger::new(opt.verbose, is_systemd);
+    if !is_systemd {
+        intro();
     }
 
     // Handle config file.
@@ -477,28 +483,25 @@ pub async fn parse_and_configure() -> Opt {
         }
 
         // Merge config file into command line arguments.
-        match opt.command {
-            Some(Command::Systemd) | Some(Command::SystemdUser) => (),
-            _ => {
-                opt.endpoint = opt.endpoint.or_else(|| {
-                    ini.get("Fishnet", "Endpoint").map(|e| e.parse().expect("valid endpoint"))
-                });
+        if !is_systemd {
+            opt.endpoint = opt.endpoint.or_else(|| {
+                ini.get("Fishnet", "Endpoint").map(|e| e.parse().expect("valid endpoint"))
+            });
 
-                opt.key = opt.key.or_else(|| {
-                    ini.get("Fishnet", "Key").map(|k| k.parse().expect("valid key"))
-                });
+            opt.key = opt.key.or_else(|| {
+                ini.get("Fishnet", "Key").map(|k| k.parse().expect("valid key"))
+            });
 
-                opt.cores = opt.cores.or_else(|| {
-                    ini.get("Fishnet", "Cores").map(|c| c.parse().expect("valid cores"))
-                });
+            opt.cores = opt.cores.or_else(|| {
+                ini.get("Fishnet", "Cores").map(|c| c.parse().expect("valid cores"))
+            });
 
-                opt.backlog.user = opt.backlog.user.or_else(|| {
-                    ini.get("Fishnet", "UserBacklog").map(|b| b.parse().expect("valid user backlog"))
-                });
-                opt.backlog.system = opt.backlog.system.or_else(|| {
-                    ini.get("Fishnet", "SystemBacklog").map(|b| b.parse().expect("valid system backlog"))
-                });
-            }
+            opt.backlog.user = opt.backlog.user.or_else(|| {
+                ini.get("Fishnet", "UserBacklog").map(|b| b.parse().expect("valid user backlog"))
+            });
+            opt.backlog.system = opt.backlog.system.or_else(|| {
+                ini.get("Fishnet", "SystemBacklog").map(|b| b.parse().expect("valid system backlog"))
+            });
         }
     }
 

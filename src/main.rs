@@ -28,7 +28,7 @@ use crate::util::RandomizedBackoff;
 #[tokio::main]
 async fn main() {
     let opt = configure::parse_and_configure().await;
-    let logger = Logger::new(opt.verbose);
+    let logger = Logger::new(opt.verbose, opt.command.map_or(false, Command::is_systemd));
 
     if opt.auto_update {
         let current_exe = env::current_exe().expect("current exe");

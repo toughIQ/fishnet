@@ -6,45 +6,55 @@ use crate::configure::Verbose;
 #[derive(Clone)]
 pub struct Logger {
     verbose: Verbose,
+    stderr: bool,
     state: Arc<Mutex<LoggerState>>,
 }
 
 impl Logger {
-    pub fn new(verbose: Verbose) -> Logger {
+    pub fn new(verbose: Verbose, stderr: bool) -> Logger {
         Logger {
             verbose,
+            stderr,
             state: Arc::new(Mutex::new(LoggerState { })),
         }
     }
 
+    fn println(&self, line: &str) {
+        if self.stderr {
+            eprintln!("{}", line);
+        } else {
+            println!("{}", line);
+        }
+    }
+
     pub fn headline(&self, title: &str) {
-        println!();
-        println!("### {}", title);
-        println!();
+        self.println("");
+        self.println(&format!("### {}", title));
+        self.println("");
     }
 
     pub fn debug(&self, line: &str) {
-        println!("D: {}", line);
+        self.println(&format!("D: {}", line));
     }
 
     pub fn progress(&self, line: &str) {
-        println!("{}", line);
+        println!("{}", line); // TODO
     }
 
     pub fn info(&self, line: &str) {
-        println!("{}", line);
+        self.println(line);
     }
 
     pub fn fishnet_info(&self, line: &str) {
-        println!("><> {}", line);
+        self.println(&format!("><> {}", line));
     }
 
     pub fn warn(&self, line: &str) {
-        println!("W: {}", line);
+        self.println(&format!("W: {}", line));
     }
 
     pub fn error(&self, line: &str) {
-        println!("E: {}", line);
+        self.println(&format!("E: {}", line));
     }
 }
 
