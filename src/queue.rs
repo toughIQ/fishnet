@@ -187,17 +187,17 @@ impl QueueState {
                         }
                         None => "?".to_owned(),
                     };
-                    match completed.url {
-                        Some(ref url) => {
-                            self.logger.info(&format!("{} {} finished ({} nps)", self.status_bar(), url, nps_string));
-                        }
-                        None => {
-                            self.logger.info(&format!("{} {} finished ({} nps)", self.status_bar(), batch, nps_string));
-                        }
-                    }
+                    let log = match completed.url {
+                        Some(ref url) => format!("{} {} finished ({} nps)", self.status_bar(), url, nps_string),
+                        None => format!("{} {} finished ({} nps)", self.status_bar(), batch, nps_string),
+                    };
                     match completed.work {
-                        Work::Analysis { id } => queue.api.submit_analysis(id, completed.into_analysis()),
+                        Work::Analysis { id } => {
+                            self.logger.info(&log);
+                            queue.api.submit_analysis(id, completed.into_analysis());
+                        }
                         Work::Move { .. } => {
+                            self.logger.debug(&log);
                             self.move_submissions.push_back(completed);
                             queue.move_submitted();
                         }
