@@ -149,6 +149,8 @@ pub enum Work {
         #[serde_as(as = "DisplayFromStr")]
         id: BatchId,
         level: SkillLevel,
+        #[serde(default)]
+        clock: Option<Clock>,
     },
 }
 
@@ -179,6 +181,22 @@ pub enum SkillLevel {
     Six = 6,
     Seven = 7,
     Eight = 8,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Clock {
+    wtime: Centis,
+    btime: Centis,
+    inc: Duration,
+}
+
+#[derive(Debug, Copy, Clone, Deserialize)]
+pub struct Centis(u32);
+
+impl From<Centis> for Duration {
+    fn from(Centis(centis): Centis) -> Duration {
+        Duration::from_millis(u64::from(centis) * 10)
+    }
 }
 
 #[serde_as]
