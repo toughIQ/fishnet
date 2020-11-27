@@ -257,7 +257,7 @@ dependencies = [
  "shell-escape",
  "structopt",
  "tempfile",
- "tokio 0.3.4",
+ "tokio 0.3.4 (git+https://github.com/niklasf/tokio.git?branch=windows-ctrl-c)",
  "tokio-compat-02",
  "url",
  "xz",
@@ -1470,6 +1470,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9dfe2523e6fa84ddf5e688151d4e5fddc51678de9752c6512a24714c23818d61"
 dependencies = [
  "autocfg",
+ "futures-core",
+ "pin-project-lite 0.2.0",
+]
+
+[[package]]
+name = "tokio"
+version = "0.3.4"
+source = "git+https://github.com/niklasf/tokio.git?branch=windows-ctrl-c#399b8c46faff319620d53db68e4be8baea2039f2"
+dependencies = [
+ "autocfg",
  "bytes 0.6.0",
  "futures-core",
  "lazy_static",
@@ -1495,14 +1505,13 @@ dependencies = [
  "once_cell",
  "pin-project-lite 0.1.11",
  "tokio 0.2.23",
- "tokio 0.3.4",
+ "tokio 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "tokio-macros"
 version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21d30fdbb5dc2d8f91049691aa1a9d4d4ae422a21c334ce8936e5886d30c5c45"
+source = "git+https://github.com/niklasf/tokio.git?branch=windows-ctrl-c#399b8c46faff319620d53db68e4be8baea2039f2"
 dependencies = [
  "proc-macro2",
  "quote",

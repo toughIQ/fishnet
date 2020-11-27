@@ -106,7 +106,7 @@ async fn run(opt: Opt, logger: &Logger) {
     #[cfg(unix)]
     let mut sig_int = signal::unix::signal(signal::unix::SignalKind::interrupt()).expect("install handler for sigint");
     #[cfg(windows)]
-    let mut sig_int = signal::windows::ctrl_break().expect("install handler for ctrl+c"); // TODO: https://github.com/tokio-rs/tokio/issues/3178
+    let mut sig_int = signal::windows::ctrl_c().expect("install handler for ctrl+c");
 
     // To wait for workers and API actor before shutdown.
     let mut join_handles = Vec::new();
