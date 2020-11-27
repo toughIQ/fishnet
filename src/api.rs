@@ -61,14 +61,14 @@ struct StatusResponseBody {
     analysis: AnalysisStatus,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 pub struct AnalysisStatus {
     pub user: QueueStatus,
     pub system: QueueStatus,
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 pub struct QueueStatus {
     pub acquired: u64,
     pub queued: u64,
@@ -490,8 +490,15 @@ impl ApiActor {
             }
             ApiMessage::Status { callback } => {
                 let url = format!("{}/status", self.endpoint);
-                let res: StatusResponseBody = self.client.get(&url).send().await?.error_for_status()?.json().await?;
-                callback.send(res.analysis).nevermind("callback dropped");
+                let res = self.client.get(&url).send().await?;
+                match res.status() {
+                    StatusCode::OK => callback.send(res.json::<StatusResponseBody>().await?.analysis).nevermind("callback dropped"),
+                    StatusCode::NOT_FOUND => callback.send(AnalysisStatus::default()).nevermind("callback dropped"),
+                    status => {
+                        self.logger.warn(&format!("Unexpected status for queue status: {}", status));
+                        res.error_for_status()?;
+                    }
+                }
             }
             ApiMessage::Abort { batch_id } => {
                 self.abort(batch_id).await?;
