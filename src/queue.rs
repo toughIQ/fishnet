@@ -53,16 +53,11 @@ impl QueueStub {
         }
     }
 
-    fn submit_move(&mut self, batch_id: BatchId, best_move: Option<Uci>) {
+    fn move_submitted(&mut self) {
         if let Some(ref tx) = self.tx {
-            tx.send(QueueMessage::SubmitMove {
-                batch_id,
-                best_move,
-            }).nevermind("moves are too short lived to abort anyway");
+            tx.send(QueueMessage::MoveSubmitted).nevermind("too late");
 
-            // Submitting a move can generate a follow-up response. So skip
-            // the queue backoff.
-            // TODO: Skipp multiple queue entries.
+            // Skip the queue backoff.
             self.interrupt.notify_one();
         }
     }
@@ -94,6 +89,7 @@ struct QueueState {
     cores: usize,
     incoming: VecDeque<Position>,
     pending: HashMap<BatchId, PendingBatch>,
+    move_submissions: VecDeque<CompletedBatch>,
     stats: StatsRecorder,
     logger: Logger,
 }
@@ -105,6 +101,7 @@ impl QueueState {
             cores,
             incoming: VecDeque::new(),
             pending: HashMap::new(),
+            move_submissions: VecDeque::new(),
             stats: StatsRecorder::new(),
             logger,
         }
@@ -200,7 +197,10 @@ impl QueueState {
                     }
                     match completed.work {
                         Work::Analysis { id } => queue.api.submit_analysis(id, completed.into_analysis()),
-                        Work::Move { id, .. } => queue.submit_move(id, completed.into_best_move()),
+                        Work::Move { .. } => {
+                            self.move_submissions.push_back(completed);
+                            queue.move_submitted();
+                        }
                     }
                 }
                 Err(pending) => {
@@ -221,10 +221,7 @@ enum QueueMessage {
     Pull {
         callback: oneshot::Sender<Position>,
     },
-    SubmitMove {
-        batch_id: BatchId,
-        best_move: Option<Uci>,
-    },
+    MoveSubmitted,
 }
 
 pub struct QueueActor {
@@ -296,11 +293,37 @@ impl QueueActor {
         }
     }
 
+    async fn handle_move_submissions(&mut self) {
+        loop {
+            let next = {
+                let mut state = self.state.lock().await;
+                if state.shutdown_soon {
+                    // Each move submision can come with a follow-up task,
+                    // so we might never finish if we keep submitting.
+                    // Just drop some. They are short-lived anyway.
+                    break;
+                }
+
+                state.move_submissions.pop_front()
+            };
+
+            if let Some(completed) = next {
+                if let Some(Acquired::Accepted(body)) = self.api.submit_move_and_acquire(completed.work.id(), completed.into_best_move()).await {
+                    self.handle_acquired_response_body(body).await;
+                }
+            } else {
+                break;
+            }
+        }
+    }
+
     async fn run_inner(mut self) {
         while let Some(msg) = self.rx.recv().await {
             match msg {
                 QueueMessage::Pull { mut callback } => {
                     loop {
+                        self.handle_move_submissions().await;
+
                         {
                             let mut state = self.state.lock().await;
                             callback = match state.try_pull(callback) {
@@ -353,9 +376,7 @@ impl QueueActor {
                         }
                     }
                 }
-                QueueMessage::SubmitMove { batch_id, best_move } => {
-                    // TODO: Submit move
-                }
+                QueueMessage::MoveSubmitted => self.handle_move_submissions().await,
             }
         }
 
