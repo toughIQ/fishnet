@@ -288,7 +288,11 @@ impl QueueActor {
                 let mut state = self.state.lock().await;
                 state.add_incoming_batch(incoming);
             }
-            Err(completed) => self.api.submit_analysis(completed.work.id(), completed.into_analysis()),
+            Err(completed) => {
+                let batch_id = completed.work.id();
+                self.logger.warn(&format!("Completed empty batch {}.", batch_id));
+                self.api.submit_analysis(batch_id, completed.into_analysis());
+            }
         }
     }
 
