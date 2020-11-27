@@ -4,6 +4,7 @@ use tokio::time;
 use tokio::sync::{mpsc, oneshot};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationSeconds, DisplayFromStr, SpaceSeparator, StringWithSeparator};
+use serde_repr::Deserialize_repr as DeserializeRepr;
 use shakmaty::fen::Fen;
 use shakmaty::uci::Uci;
 use shakmaty::variants::Variant;
@@ -46,6 +47,11 @@ enum ApiMessage {
         batch_id: BatchId,
         analysis: Vec<Option<AnalysisPart>>,
     },
+    SubmitMove {
+        batch_id: BatchId,
+        best_move: Option<Uci>,
+        callback: oneshot::Sender<Acquired>,
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -131,19 +137,40 @@ pub struct AcquireQuery {
 
 #[serde_as]
 #[derive(Debug, Deserialize)]
-pub struct Work {
-    #[serde(rename = "type")]
-    pub work_type: WorkType,
-    #[serde_as(as = "DisplayFromStr")]
-    pub id: BatchId,
+#[serde(tag = "type")]
+pub enum Work {
+    #[serde(rename = "analysis")]
+    Analysis {
+        #[serde_as(as = "DisplayFromStr")]
+        id: BatchId,
+    },
+    Move {
+        #[serde_as(as = "DisplayFromStr")]
+        id: BatchId,
+        level: Level,
+    },
 }
 
-#[derive(Debug, Deserialize)]
-pub enum WorkType {
-    #[serde(rename = "analysis")]
-    Analysis,
-    #[serde(rename = "move")]
-    Move,
+impl Work {
+    pub fn id(&self) -> BatchId {
+        match *self {
+            Work::Analysis { id, .. } => id,
+            Work::Move { id, .. } => id,
+        }
+    }
+}
+
+#[derive(DeserializeRepr, Debug)]
+#[repr(u32)]
+pub enum Level {
+    One = 1,
+    Two = 2,
+    Three = 3,
+    Four = 4,
+    Five = 5,
+    Six = 6,
+    Seven = 7,
+    Eight = 8,
 }
 
 #[serde_as]
@@ -209,6 +236,7 @@ impl Default for LichessVariant {
     }
 }
 
+#[must_use = "Acquired work should be processed or cancelled"]
 #[derive(Debug)]
 pub enum Acquired {
     Accepted(AcquireResponseBody),
@@ -217,10 +245,20 @@ pub enum Acquired {
 }
 
 #[derive(Debug, Serialize)]
-pub struct AnalysisRequestBody {
+struct AnalysisRequestBody {
     fishnet: Fishnet,
     stockfish: Stockfish,
     analysis: Vec<Option<AnalysisPart>>,
+}
+
+#[serde_as]
+#[derive(Debug, Serialize)]
+struct MoveRequestBody {
+    fishnet: Fishnet,
+    stockfish: Stockfish,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    #[serde(rename = "bestmove")]
+    best_move: Option<Uci>,
 }
 
 #[serde_as]
@@ -249,15 +287,6 @@ pub enum Score {
     Cp(i64),
     #[serde(rename = "mate")]
     Mate(i64),
-}
-
-#[serde_as]
-#[derive(Debug, Serialize)]
-pub struct MoveRequestBody {
-    fishnet: Fishnet,
-    stockfish: Stockfish,
-    #[serde_as(as = "Option<DisplayFromStr>")]
-    bestmove: Option<Uci>,
 }
 
 #[derive(Debug, Serialize)]
@@ -311,6 +340,16 @@ impl ApiStub {
             batch_id,
             analysis,
         }).expect("api actor alive");
+    }
+
+    pub async fn submit_move_and_acquire(&mut self, batch_id: BatchId, best_move: Option<Uci>) -> Option<Acquired> {
+        let (req, res) = oneshot::channel();
+        self.tx.send(ApiMessage::SubmitMove {
+            batch_id,
+            best_move,
+            callback: req,
+        }).expect("api actor alive");
+        res.await.ok()
     }
 }
 
@@ -423,7 +462,7 @@ impl ApiActor {
                     StatusCode::OK | StatusCode::ACCEPTED => {
                         if let Err(Acquired::Accepted(res)) = callback.send(Acquired::Accepted(res.json().await?)) {
                             self.logger.error(&format!("Acquired a batch, but callback dropped. Aborting."));
-                            self.abort(res.work.id).await?;
+                            self.abort(res.work.id()).await?;
                         }
                     }
                     status => {
@@ -445,6 +484,27 @@ impl ApiActor {
 
                 if res.status() != StatusCode::NO_CONTENT {
                     self.logger.warn(&format!("Unexpected status for submitting analysis: {}", res.status()));
+                }
+            }
+            ApiMessage::SubmitMove { batch_id, best_move, callback } => {
+                let url = format!("{}/move/{}", self.endpoint, batch_id);
+                let res = self.client.post(&url).json(&MoveRequestBody {
+                    fishnet: Fishnet::authenticated(self.key.clone()),
+                    stockfish: Stockfish::default(),
+                    best_move,
+                }).send().await?.error_for_status()?;
+
+                match res.status() {
+                    StatusCode::NO_CONTENT => callback.send(Acquired::NoContent).nevermind("callback dropped"),
+                    StatusCode::OK | StatusCode::ACCEPTED => {
+                        if let Err(Acquired::Accepted(res)) = callback.send(Acquired::Accepted(res.json().await?)) {
+                            self.logger.error(&format!("Acquired a batch while submitting move, but callback dropped. Aborting."));
+                            self.abort(res.work.id()).await?;
+                        }
+                    }
+                    status => {
+                        self.logger.warn(&format!("Unexpected status for submit move: {}", status));
+                    }
                 }
             }
         })

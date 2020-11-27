@@ -22,7 +22,7 @@ rand = "0.7"
 reqwest = { version = "0.10", features = ["json", "rustls-tls"], default-features = false }
 self_update = { version = "0.22", features = ["rustls"], default-features = false }
 serde = "1.0"
-serde_with = "1.6.0"
+serde_with = "1.6"
 shakmaty = "0.16"
 shell-escape = "0.1"
 structopt = "0.3"
@@ -30,6 +30,7 @@ tempfile = "3.1"
 tokio = { version = "0.3", features = ["full"] }
 tokio-compat-02 = "0.1"
 url = "2.2"
+serde_repr = "0.1"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

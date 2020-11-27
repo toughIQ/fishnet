@@ -346,7 +346,7 @@ impl IncomingBatch {
     fn from_acquired(endpoint: Endpoint, body: AcquireResponseBody) -> IncomingBatch {
         let mut url = endpoint.url.clone();
         let mut batch = IncomingBatch {
-            id: body.work.id,
+            id: body.work.id(),
             url: body.game_id.as_ref().map(|g| {
                 url.set_path(g);
                 url
@@ -359,7 +359,7 @@ impl IncomingBatch {
 
         let mut url = endpoint.url.clone();
         batch.positions.push(Skip::Present(Position {
-            batch_id: body.work.id,
+            batch_id: body.work.id(),
             position_id: PositionId(0),
             url: body.game_id.as_ref().map(|g| {
                 url.set_path(g);
@@ -370,14 +370,14 @@ impl IncomingBatch {
             fen: body.position.clone(),
             moves: moves.clone(),
             nodes,
-            skill: None,
+            skill: None, // TODO
         }));
 
         for (i, m) in body.moves.into_iter().enumerate() {
             let mut url = endpoint.url.clone();
             moves.push(m);
             batch.positions.push(Skip::Present(Position {
-                batch_id: body.work.id,
+                batch_id: body.work.id(),
                 position_id: PositionId(1 + i),
                 url: body.game_id.as_ref().map(|g| {
                     url.set_path(g);
