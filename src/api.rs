@@ -1,4 +1,7 @@
+use std::fmt;
 use std::time::Duration;
+use std::str::FromStr;
+use arrayvec::ArrayString;
 use reqwest::StatusCode;
 use tokio::time;
 use tokio::sync::{mpsc, oneshot};
@@ -10,7 +13,6 @@ use shakmaty::uci::Uci;
 use shakmaty::variants::Variant;
 use tokio_compat_02::FutureExt as _;
 use crate::configure::{Endpoint, Key, KeyError};
-use crate::ipc::BatchId;
 use crate::logger::Logger;
 use crate::util::{NevermindExt as _, RandomizedBackoff};
 
@@ -136,7 +138,7 @@ pub struct AcquireQuery {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type")]
 pub enum Work {
     #[serde(rename = "analysis")]
@@ -170,6 +172,23 @@ impl Work {
     }
 }
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct BatchId(ArrayString<[u8; 16]>);
+
+impl FromStr for BatchId {
+    type Err = arrayvec::CapacityError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(BatchId(s.parse()?))
+    }
+}
+
+impl fmt::Display for BatchId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
+
 #[derive(DeserializeRepr, Debug, Copy, Clone)]
 #[repr(u32)]
 pub enum SkillLevel {
@@ -184,7 +203,7 @@ pub enum SkillLevel {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Clock {
     wtime: Centis,
     btime: Centis,

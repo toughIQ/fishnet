@@ -25,7 +25,7 @@ pub struct StockfishStub {
 impl StockfishStub {
     pub async fn go(&mut self, position: Position) -> Result<PositionResponse, PositionFailed> {
         let (callback, response) = oneshot::channel();
-        let batch_id = position.batch_id;
+        let batch_id = position.work.id();
         self.tx.send(StockfishMessage::Go { position, callback }).await.map_err(|_| PositionFailed {
             batch_id,
         })?;
@@ -238,7 +238,7 @@ impl StockfishActor {
             match parts.next() {
                 Some("bestmove") => {
                     return Ok(PositionResponse {
-                        batch_id: position.batch_id,
+                        work: position.work,
                         position_id: position.position_id,
                         url: position.url,
                         best_move: parts.next().and_then(|m| m.parse().ok()),

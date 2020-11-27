@@ -5,7 +5,8 @@ use std::io::Write as _;
 use std::cmp::{min, max};
 use atty::Stream;
 use url::Url;
-use crate::ipc::{BatchId, PositionId, PositionResponse};
+use crate::api::BatchId;
+use crate::ipc::{PositionId, PositionResponse};
 use crate::configure::Verbose;
 
 #[derive(Clone)]
@@ -112,7 +113,7 @@ impl fmt::Display for ProgressAt {
 impl From<&PositionResponse> for ProgressAt {
     fn from(pos: &PositionResponse) -> ProgressAt {
         ProgressAt {
-            batch_id: pos.batch_id,
+            batch_id: pos.work.id(),
             batch_url: pos.url.clone(),
             position_id: Some(pos.position_id),
         }

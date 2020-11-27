@@ -6,9 +6,9 @@ use std::time::{Duration, Instant};
 use url::Url;
 use tokio::sync::{mpsc, oneshot, Mutex, Notify};
 use tokio::time;
-use crate::api::{AcquireQuery, AcquireResponseBody, Acquired, ApiStub, AnalysisPart};
+use crate::api::{BatchId, Work, AcquireQuery, AcquireResponseBody, Acquired, ApiStub, AnalysisPart};
 use crate::configure::{BacklogOpt, Endpoint};
-use crate::ipc::{BatchId, Position, PositionResponse, PositionId, Pull};
+use crate::ipc::{Position, PositionResponse, PositionId, Pull};
 use crate::logger::{Logger, ProgressAt, QueueStatusBar};
 use crate::util::{NevermindExt as _, RandomizedBackoff};
 
@@ -98,29 +98,34 @@ impl QueueState {
     }
 
     fn add_incoming_batch(&mut self, api: &mut ApiStub, batch: IncomingBatch) {
-        let progress_at = ProgressAt::from(&batch);
+        let batch_id = batch.work.id();
+        if self.pending.contains_key(&batch_id) {
+            self.logger.error(&format!("Dropping duplicate incoming batch {}", batch_id));
+        } else {
+            let progress_at = ProgressAt::from(&batch);
 
-        // Reversal only for cosmetics when displaying progress.
-        let mut positions = Vec::with_capacity(batch.positions.len());
-        for pos in batch.positions.into_iter().rev() {
-            positions.insert(0, match pos {
-                Skip::Present(pos) => {
-                    self.incoming.push_back(pos);
-                    None
-                }
-                Skip::Skip => Some(Skip::Skip),
+            // Reversal only for cosmetics when displaying progress.
+            let mut positions = Vec::with_capacity(batch.positions.len());
+            for pos in batch.positions.into_iter().rev() {
+                positions.insert(0, match pos {
+                    Skip::Present(pos) => {
+                        self.incoming.push_back(pos);
+                        None
+                    }
+                    Skip::Skip => Some(Skip::Skip),
+                });
+            }
+
+            self.pending.insert(batch_id, PendingBatch {
+                work: batch.work,
+                positions,
+                url: batch.url,
+                started_at: Instant::now(),
             });
+
+            self.logger.progress(self.status_bar(), progress_at);
+            self.maybe_finished(api, batch_id);
         }
-
-        self.pending.insert(batch.id, PendingBatch {
-            id: batch.id,
-            positions,
-            url: batch.url,
-            started_at: Instant::now(),
-        });
-
-        self.logger.progress(self.status_bar(), progress_at);
-        self.maybe_finished(api, batch.id);
     }
 
     fn respond(&mut self, api: &mut ApiStub, mut pull: Pull) -> Result<(), Pull> {
@@ -128,7 +133,7 @@ impl QueueState {
         match pull.response.take() {
             Some(Ok(res)) => {
                 let progress_at = ProgressAt::from(&res);
-                let batch_id = res.batch_id;
+                let batch_id = res.work.id();
                 if let Some(pending) = self.pending.get_mut(&batch_id) {
                     if let Some(pos) = pending.positions.get_mut(res.position_id.0) {
                         *pos = Some(Skip::Present(res));
@@ -139,7 +144,7 @@ impl QueueState {
             }
             Some(Err(failed)) => {
                 self.pending.remove(&failed.batch_id);
-                self.incoming.retain(|p| p.batch_id != failed.batch_id);
+                self.incoming.retain(|p| p.work.id() != failed.batch_id);
                 api.abort(failed.batch_id);
             }
             None => (),
@@ -175,15 +180,16 @@ impl QueueState {
                             self.logger.info(&format!("{} {} finished ({} nps)", self.status_bar(), batch, nps_string));
                         }
                     }
-                    api.submit_analysis(completed.id, completed.into_analysis());
+                    // TODO: Or move?
+                    api.submit_analysis(completed.work.id(), completed.into_analysis());
                 }
                 Err(pending) => {
                     let progress_report = pending.progress_report();
                     if progress_report.iter().filter(|p| p.is_some()).count() % (self.cores * 2) == 0 {
-                        api.submit_analysis(pending.id, progress_report);
+                        api.submit_analysis(pending.work.id(), progress_report);
                     }
 
-                    self.pending.insert(pending.id, pending);
+                    self.pending.insert(pending.work.id(), pending);
                 }
             }
         }
@@ -337,89 +343,86 @@ enum Skip<T> {
 
 #[derive(Debug, Clone)]
 pub struct IncomingBatch {
-    id: BatchId,
+    work: Work,
     positions: Vec<Skip<Position>>,
     url: Option<Url>,
 }
 
 impl IncomingBatch {
     fn from_acquired(endpoint: Endpoint, body: AcquireResponseBody) -> IncomingBatch {
-        let mut url = endpoint.url.clone();
-        let mut batch = IncomingBatch {
-            id: body.work.id(),
-            url: body.game_id.as_ref().map(|g| {
-                url.set_path(g);
-                url
-            }),
-            positions: Vec::new(),
-        };
+        let url = body.game_id.as_ref().map(|g| {
+            let mut url = endpoint.url.clone();
+            url.set_path(g);
+            url
+        });
 
         let nodes = body.nodes.unwrap_or(4_000_000);
 
-        if let Some(skill) = body.work.skill_level() {
-            batch.positions.push(Skip::Present(Position {
-                batch_id: body.work.id(),
-                position_id: PositionId(0),
-                url: batch.url.clone(),
-                variant: body.variant,
-                fen: body.position,
-                moves: body.moves,
-                nodes,
-                skill: Some(skill),
-            }));
-        } else {
-            let mut moves = Vec::new();
+        IncomingBatch {
+            work: body.work.clone(),
+            url: url.clone(),
+            positions: match body.work {
+                Work::Move { .. } => {
+                    vec![Skip::Present(Position {
+                        work: body.work,
+                        position_id: PositionId(0),
+                        url,
+                        variant: body.variant,
+                        fen: body.position,
+                        moves: body.moves,
+                        nodes,
+                    })]
+                }
+                Work::Analysis { .. } => {
+                    let mut moves = Vec::new();
+                    let mut positions = vec![Skip::Present(Position {
+                        work: body.work.clone(),
+                        position_id: PositionId(0),
+                        url: url.clone().map(|mut url| {
+                            url.set_fragment(Some("0"));
+                            url
+                        }),
+                        variant: body.variant,
+                        fen: body.position.clone(),
+                        moves: moves.clone(),
+                        nodes,
+                    })];
 
-            let mut url = endpoint.url.clone();
-            batch.positions.push(Skip::Present(Position {
-                batch_id: body.work.id(),
-                position_id: PositionId(0),
-                url: body.game_id.as_ref().map(|g| {
-                    url.set_path(g);
-                    url.set_fragment(Some("0"));
-                    url
-                }),
-                variant: body.variant,
-                fen: body.position.clone(),
-                moves: moves.clone(),
-                nodes,
-                skill: None,
-            }));
+                    for (i, m) in body.moves.into_iter().enumerate() {
+                        let mut url = endpoint.url.clone();
+                        moves.push(m);
+                        positions.push(Skip::Present(Position {
+                            work: body.work.clone(),
+                            position_id: PositionId(1 + i),
+                            url: body.game_id.as_ref().map(|g| {
+                                url.set_path(g);
+                                url.set_fragment(Some(&(1 + i).to_string()));
+                                url
+                            }),
+                            variant: body.variant,
+                            fen: body.position.clone(),
+                            moves: moves.clone(),
+                            nodes,
+                        }));
+                    }
 
-            for (i, m) in body.moves.into_iter().enumerate() {
-                let mut url = endpoint.url.clone();
-                moves.push(m);
-                batch.positions.push(Skip::Present(Position {
-                    batch_id: body.work.id(),
-                    position_id: PositionId(1 + i),
-                    url: body.game_id.as_ref().map(|g| {
-                        url.set_path(g);
-                        url.set_fragment(Some(&(1 + i).to_string()));
-                        url
-                    }),
-                    variant: body.variant,
-                    fen: body.position.clone(),
-                    moves: moves.clone(),
-                    nodes,
-                    skill: None,
-                }));
-            }
+                    for skip in body.skip_positions.into_iter() {
+                        if let Some(pos) = positions.get_mut(skip) {
+                            *pos = Skip::Skip;
+                        }
+                    }
 
-            for skip in body.skip_positions.into_iter() {
-                if let Some(pos) = batch.positions.get_mut(skip) {
-                    *pos = Skip::Skip;
+                    positions
                 }
             }
         }
-
-        batch
     }
 }
 
 impl From<&IncomingBatch> for ProgressAt {
     fn from(batch: &IncomingBatch) -> ProgressAt {
         ProgressAt {
-            batch_id: batch.id,
+            batch_id: batch.work.id(),
             batch_url: batch.url.clone(),
             position_id: None,
         }
@@ -428,7 +431,7 @@ impl From<&IncomingBatch> for ProgressAt {
 
 #[derive(Debug, Clone)]
 struct PendingBatch {
-    id: BatchId,
+    work: Work,
     positions: Vec<Option<Skip<PositionResponse>>>,
     url: Option<Url>,
     started_at: Instant,
@@ -438,7 +441,7 @@ impl PendingBatch {
     fn try_into_completed(self) -> Result<CompletedBatch, PendingBatch> {
         match self.positions.clone().into_iter().collect() {
             Some(positions) => Ok(CompletedBatch {
-                id: self.id,
+                work: self.work,
                 positions,
                 url: self.url,
                 started_at: self.started_at,
@@ -450,8 +453,8 @@ impl PendingBatch {
 
     fn progress_report(&self) -> Vec<Option<AnalysisPart>> {
         self.positions.iter().enumerate().map(|(i, p)| match p {
-            // Quirk: Lila distinguishes progress reports from complete analysis
-            // by looking at the first part.
+            // Quirk: Lila distinguishes progress reports from complete
+            // analysis by looking at the first part.
             Some(Skip::Present(pos)) if i > 0 => Some(AnalysisPart::Complete {
                 pv: pos.pv.clone(),
                 depth: pos.depth,
@@ -470,7 +473,7 @@ impl PendingBatch {
 }
 
 pub struct CompletedBatch {
-    id: BatchId,
+    work: Work,
     positions: Vec<Skip<PositionResponse>>,
     url: Option<Url>,
     started_at: Instant,

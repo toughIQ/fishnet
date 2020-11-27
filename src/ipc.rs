@@ -1,31 +1,10 @@
-use arrayvec::ArrayString;
 use url::Url;
-use std::fmt;
 use std::time::Duration;
-use std::str::FromStr;
 use shakmaty::fen::Fen;
 use shakmaty::uci::Uci;
 use tokio::sync::oneshot;
-use crate::api::{Score, LichessVariant, SkillLevel};
+use crate::api::{Score, LichessVariant, Work, BatchId};
 use crate::assets::EngineFlavor;
-
-/// Uniquely identifies a batch in this process.
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct BatchId(ArrayString<[u8; 16]>);
-
-impl FromStr for BatchId {
-    type Err = arrayvec::CapacityError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(BatchId(s.parse()?))
-    }
-}
-
-impl fmt::Display for BatchId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
-    }
-}
 
 /// Uniquely identifies a position within a batch.
 #[derive(Debug, Copy, Clone)]
@@ -33,7 +12,7 @@ pub struct PositionId(pub usize);
 
 #[derive(Debug, Clone)]
 pub struct Position {
-    pub batch_id: BatchId,
+    pub work: Work,
     pub position_id: PositionId,
     pub url: Option<Url>,
 
@@ -41,7 +20,6 @@ pub struct Position {
     pub fen: Option<Fen>,
     pub moves: Vec<Uci>,
     pub nodes: u64,
-    pub skill: Option<SkillLevel>,
 }
 
 impl Position {
@@ -55,7 +33,7 @@ impl Position {
 
 #[derive(Debug, Clone)]
 pub struct PositionResponse {
-    pub batch_id: BatchId,
+    pub work: Work,
     pub position_id: PositionId,
     pub url: Option<Url>,
 
