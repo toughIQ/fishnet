@@ -143,15 +143,16 @@ impl fmt::Display for QueueStatusBar {
         let width = 16;
         let virtual_width = max(self.cores * 3, 16);
         let cores_width = self.cores * width / virtual_width;
-        let pending_width = min(width, self.pending * width / virtual_width);
+        let pending_width = self.pending * width / virtual_width;
         let overhang_width = pending_width.saturating_sub(cores_width);
+        let empty_width = width.checked_sub(cores_width).and_then(|w| w.checked_sub(overhang_width));
 
         f.write_str("[")?;
         f.write_str(&"=".repeat(min(pending_width, cores_width)))?;
         f.write_str(&" ".repeat(cores_width.saturating_sub(pending_width)))?;
         f.write_str("|")?;
-        f.write_str(&"=".repeat(overhang_width))?;
-        f.write_str(&" ".repeat(width.saturating_sub(cores_width).saturating_sub(overhang_width)))?;
-        f.write_str("]")
+        f.write_str(&"=".repeat(min(overhang_width, width.saturating_sub(cores_width))))?;
+        f.write_str(&" ".repeat(empty_width.unwrap_or(0)))?;
+        f.write_str(if empty_width.is_none() { ">" } else { "]" })
     }
 }
