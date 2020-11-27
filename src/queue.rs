@@ -595,7 +595,7 @@ impl CompletedBatch {
 
     fn nps(&self) -> Option<u32> {
         self.completed_at.checked_duration_since(self.started_at).and_then(|time| {
-            self.total_nodes().checked_div(time.as_secs())
+            (u128::from(self.total_nodes()) * 1000).checked_div(time.as_millis())
         }).and_then(|nps| nps.try_into().ok())
     }
 }
