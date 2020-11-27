@@ -6,7 +6,7 @@ use std::str::FromStr;
 use shakmaty::fen::Fen;
 use shakmaty::uci::Uci;
 use tokio::sync::oneshot;
-use crate::api::{Score, LichessVariant};
+use crate::api::{Score, LichessVariant, SkillLevel};
 use crate::assets::EngineFlavor;
 
 /// Uniquely identifies a batch in this process.
@@ -32,9 +32,6 @@ impl fmt::Display for BatchId {
 pub struct PositionId(pub usize);
 
 #[derive(Debug, Clone)]
-pub struct Skill(u32);
-
-#[derive(Debug, Clone)]
 pub struct Position {
     pub batch_id: BatchId,
     pub position_id: PositionId,
@@ -44,7 +41,7 @@ pub struct Position {
     pub fen: Option<Fen>,
     pub moves: Vec<Uci>,
     pub nodes: u64,
-    pub skill: Option<Skill>,
+    pub skill: Option<SkillLevel>,
 }
 
 impl Position {

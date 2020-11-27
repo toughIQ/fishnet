@@ -355,33 +355,28 @@ impl IncomingBatch {
         };
 
         let nodes = body.nodes.unwrap_or(4_000_000);
-        let mut moves = Vec::new();
 
-        let mut url = endpoint.url.clone();
-        batch.positions.push(Skip::Present(Position {
-            batch_id: body.work.id(),
-            position_id: PositionId(0),
-            url: body.game_id.as_ref().map(|g| {
-                url.set_path(g);
-                url.set_fragment(Some("0"));
-                url
-            }),
-            variant: body.variant,
-            fen: body.position.clone(),
-            moves: moves.clone(),
-            nodes,
-            skill: None, // TODO
-        }));
-
-        for (i, m) in body.moves.into_iter().enumerate() {
-            let mut url = endpoint.url.clone();
-            moves.push(m);
+        if let Some(skill) = body.work.skill_level() {
             batch.positions.push(Skip::Present(Position {
                 batch_id: body.work.id(),
-                position_id: PositionId(1 + i),
+                position_id: PositionId(0),
+                url: batch.url.clone(),
+                variant: body.variant,
+                fen: body.position,
+                moves: body.moves,
+                nodes,
+                skill: Some(skill),
+            }));
+        } else {
+            let mut moves = Vec::new();
+
+            let mut url = endpoint.url.clone();
+            batch.positions.push(Skip::Present(Position {
+                batch_id: body.work.id(),
+                position_id: PositionId(0),
                 url: body.game_id.as_ref().map(|g| {
                     url.set_path(g);
-                    url.set_fragment(Some(&(1 + i).to_string()));
+                    url.set_fragment(Some("0"));
                     url
                 }),
                 variant: body.variant,
@@ -390,11 +385,30 @@ impl IncomingBatch {
                 nodes,
                 skill: None,
             }));
-        }
 
-        for skip in body.skip_positions.into_iter() {
-            if let Some(pos) = batch.positions.get_mut(skip) {
-                *pos = Skip::Skip;
+            for (i, m) in body.moves.into_iter().enumerate() {
+                let mut url = endpoint.url.clone();
+                moves.push(m);
+                batch.positions.push(Skip::Present(Position {
+                    batch_id: body.work.id(),
+                    position_id: PositionId(1 + i),
+                    url: body.game_id.as_ref().map(|g| {
+                        url.set_path(g);
+                        url.set_fragment(Some(&(1 + i).to_string()));
+                        url
+                    }),
+                    variant: body.variant,
+                    fen: body.position.clone(),
+                    moves: moves.clone(),
+                    nodes,
+                    skill: None,
+                }));
+            }
+
+            for skip in body.skip_positions.into_iter() {
+                if let Some(pos) = batch.positions.get_mut(skip) {
+                    *pos = Skip::Skip;
+                }
             }
         }
 

@@ -148,7 +148,7 @@ pub enum Work {
     Move {
         #[serde_as(as = "DisplayFromStr")]
         id: BatchId,
-        level: Level,
+        level: SkillLevel,
     },
 }
 
@@ -159,11 +159,18 @@ impl Work {
             Work::Move { id, .. } => id,
         }
     }
+
+    pub fn skill_level(&self) -> Option<SkillLevel> {
+        match *self {
+            Work::Analysis { .. } => None,
+            Work::Move { level, .. } => Some(level),
+        }
+    }
 }
 
-#[derive(DeserializeRepr, Debug)]
+#[derive(DeserializeRepr, Debug, Copy, Clone)]
 #[repr(u32)]
-pub enum Level {
+pub enum SkillLevel {
     One = 1,
     Two = 2,
     Three = 3,
