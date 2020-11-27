@@ -122,15 +122,9 @@ POST http://lichess.org/fishnet/move/{work_id}
     "python": "2.7.11+",
     "apikey": "XXX"
   },
-  "stockfish": {
-    "name": "Stockfish 7 64",
-    "author": "T. Romstad, M. Costalba, J. Kiiski, G. Linscott"
-    "options": {
-      "hash": "256",
-      "threads": "4"
-    }
-  },
-  "bestmove": "b7b8q"
+  "move": {
+    "bestmove": "b7b8q"
+  }
 }
 ```
 

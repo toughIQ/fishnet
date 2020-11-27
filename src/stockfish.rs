@@ -223,6 +223,7 @@ impl StockfishActor {
 
         // Go.
         stdin.write_line(&format!("go nodes {}", position.nodes)).await?;
+        // TODO: stdin.write_line("go movetime 100").await?;
 
         // Process response.
         let mut score = None;

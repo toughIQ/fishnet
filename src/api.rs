@@ -298,11 +298,16 @@ struct AnalysisRequestBody {
     analysis: Vec<Option<AnalysisPart>>,
 }
 
-#[serde_as]
 #[derive(Debug, Serialize)]
 struct MoveRequestBody {
     fishnet: Fishnet,
-    stockfish: Stockfish,
+    #[serde(rename = "move")]
+    m: BestMove,
+}
+
+#[serde_as]
+#[derive(Debug, Serialize)]
+struct BestMove {
     #[serde_as(as = "Option<DisplayFromStr>")]
     #[serde(rename = "bestmove")]
     best_move: Option<Uci>,
@@ -532,8 +537,9 @@ impl ApiActor {
                 let url = format!("{}/move/{}", self.endpoint, batch_id);
                 let res = self.client.post(&url).json(&MoveRequestBody {
                     fishnet: Fishnet::authenticated(self.key.clone()),
-                    stockfish: Stockfish::default(),
-                    best_move,
+                    m: BestMove {
+                        best_move,
+                    },
                 }).send().await?.error_for_status()?;
 
                 match res.status() {
