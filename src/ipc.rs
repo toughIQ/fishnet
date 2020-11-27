@@ -25,7 +25,7 @@ pub struct Position {
 impl Position {
     pub fn engine_flavor(&self) -> EngineFlavor {
         match self.variant {
-            LichessVariant::Standard | LichessVariant::Chess960 if self.url.is_some() => EngineFlavor::Official,
+            LichessVariant::Standard | LichessVariant::Chess960 if self.url.is_some() && self.work.is_analysis() => EngineFlavor::Official,
             _ => EngineFlavor::MultiVariant,
         }
     }

@@ -163,6 +163,10 @@ impl Work {
             Work::Move { id, .. } => id,
         }
     }
+
+    pub fn is_analysis(&self) -> bool {
+        matches!(self, Work::Analysis { .. })
+    }
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
