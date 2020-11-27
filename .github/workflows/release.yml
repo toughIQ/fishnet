@@ -95,27 +95,27 @@ jobs:
         asset_path: target/release/fishnet.exe
         asset_name: fishnet-x86_64-pc-windows-msvc.exe
         asset_content_type: application/octet-stream
-  macos-x86-64:
-    runs-on: macos-10.15
-    needs: release
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: true
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-    - uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --release
-    - run: strip target/release/fishnet
-    - uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.release.outputs.upload_url }}
-        asset_path: target/release/fishnet
-        asset_name: fishnet-x86_64-apple-darwin
-        asset_content_type: application/octet-stream
+# macos-x86-64:
+#   runs-on: macos-10.15
+#   needs: release
+#   steps:
+#   - uses: actions/checkout@v2
+#     with:
+#       submodules: true
+#   - uses: actions-rs/toolchain@v1
+#     with:
+#       profile: minimal
+#       toolchain: stable
+#   - uses: actions-rs/cargo@v1
+#     with:
+#       command: build
+#       args: --release
+#   - run: strip target/release/fishnet
+#   - uses: actions/upload-release-asset@v1
+#     env:
+#       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#     with:
+#       upload_url: ${{ needs.release.outputs.upload_url }}
+#       asset_path: target/release/fishnet
+#       asset_name: fishnet-x86_64-apple-darwin
+#       asset_content_type: application/octet-stream
