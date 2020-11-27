@@ -7,7 +7,7 @@ use tokio::process::{Command, ChildStdin, ChildStdout};
 use tokio::io::{BufWriter, AsyncWriteExt as _, BufReader, AsyncBufReadExt as _, Lines};
 use shakmaty::fen::Fen;
 use shakmaty::variants::{VariantPosition, Variant};
-use crate::api::{Score, LichessVariant};
+use crate::api::{Score, LichessVariant, Work};
 use crate::ipc::{Position, PositionResponse, PositionFailed};
 use crate::assets::EngineFlavor;
 use crate::logger::Logger;
@@ -185,6 +185,7 @@ impl StockfishActor {
         if let Some(init) = self.init.take() {
             stdout.read_line().await?; // discard preample
             stdin.write_line(&format!("setoption name EvalFile value {}", init.nnue)).await?;
+            stdin.write_line("setoption name Analysis Contempt value Off").await?;
         }
 
         // Clear hash.
@@ -222,8 +223,39 @@ impl StockfishActor {
         stdin.write_line(&format!("position fen {} moves {}", fen, moves)).await?;
 
         // Go.
-        stdin.write_line(&format!("go nodes {}", position.nodes)).await?;
-        // TODO: stdin.write_line("go movetime 100").await?;
+        let mut go = vec!["go".to_owned(), "nodes".to_owned(), position.nodes.to_string()];
+        match &position.work {
+            Work::Move { level, clock, .. } => {
+                stdin.write_line("setoption name UCI_AnalyseMode value false").await?;
+                stdin.write_line("setoption name UCI_LimitStrength value true").await?;
+                stdin.write_line(&format!("setoption name UCI_Elo value {}", level.elo())).await?;
+
+                go.push("movetime".to_owned());
+                go.push(level.time().as_millis().to_string());
+
+                go.push("depth".to_owned());
+                go.push(level.depth().to_string());
+
+                if let Some(clock) = clock {
+                    go.push("wtime".to_owned());
+                    go.push(Duration::from(clock.wtime).as_millis().to_string());
+
+                    go.push("btime".to_owned());
+                    go.push(Duration::from(clock.wtime).as_millis().to_string());
+
+                    go.push("winc".to_owned());
+                    go.push(clock.inc.as_millis().to_string());
+
+                    go.push("binc".to_owned());
+                    go.push(clock.inc.as_millis().to_string());
+                }
+            }
+            Work::Analysis { .. } => {
+                stdin.write_line("setoption name UCI_AnalyseMode value true").await?;
+                stdin.write_line("setoption name UCI_LimitStrength value false").await?;
+            }
+        }
+        stdin.write_line(&go.join(" ")).await?;
 
         // Process response.
         let mut score = None;

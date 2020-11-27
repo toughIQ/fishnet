@@ -257,7 +257,7 @@ dependencies = [
  "shell-escape",
  "structopt",
  "tempfile",
- "tokio 0.3.4 (git+https://github.com/niklasf/tokio.git?branch=windows-ctrl-c)",
+ "tokio 0.3.4 (git+https://github.com/tokio-rs/tokio.git)",
  "tokio-compat-02",
  "url",
  "xz",
@@ -1477,7 +1477,7 @@ dependencies = [
 [[package]]
 name = "tokio"
 version = "0.3.4"
-source = "git+https://github.com/niklasf/tokio.git?branch=windows-ctrl-c#399b8c46faff319620d53db68e4be8baea2039f2"
+source = "git+https://github.com/tokio-rs/tokio.git#49129434198a96444bc0e9582a14062d3a46e93a"
 dependencies = [
  "autocfg",
  "bytes 0.6.0",
@@ -1511,7 +1511,7 @@ dependencies = [
 [[package]]
 name = "tokio-macros"
 version = "0.3.1"
-source = "git+https://github.com/niklasf/tokio.git?branch=windows-ctrl-c#399b8c46faff319620d53db68e4be8baea2039f2"
+source = "git+https://github.com/tokio-rs/tokio.git#49129434198a96444bc0e9582a14062d3a46e93a"
 dependencies = [
  "proc-macro2",
  "quote",

@@ -27,7 +27,7 @@ shakmaty = "0.16"
 shell-escape = "0.1"
 structopt = "0.3"
 tempfile = "3.1"
-tokio = { version = "0.3", features = ["full"], git = "https://github.com/niklasf/tokio.git", branch = "windows-ctrl-c" }
+tokio = { version = "0.3", features = ["full"], git = "https://github.com/tokio-rs/tokio.git" }
 tokio-compat-02 = "0.1"
 url = "2.2"
 serde_repr = "0.1"

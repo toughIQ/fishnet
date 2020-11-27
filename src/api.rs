@@ -163,13 +163,6 @@ impl Work {
             Work::Move { id, .. } => id,
         }
     }
-
-    pub fn skill_level(&self) -> Option<SkillLevel> {
-        match *self {
-            Work::Analysis { .. } => None,
-            Work::Move { level, .. } => Some(level),
-        }
-    }
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -202,13 +195,53 @@ pub enum SkillLevel {
     Eight = 8,
 }
 
+impl SkillLevel {
+    pub fn time(self) -> Duration {
+        use SkillLevel::*;
+        Duration::from_millis(match self {
+            One => 50,
+            Two => 100,
+            Three => 150,
+            Four => 200,
+            Five => 300,
+            Six => 400,
+            Seven => 500,
+            Eight => 1000,
+        })
+    }
+
+    pub fn elo(self) -> u32 {
+        use SkillLevel::*;
+        match self {
+            One => 800,
+            Two => 1100,
+            Three => 1400,
+            Four => 1700,
+            Five => 2000,
+            Six => 2300,
+            Seven => 2700,
+            Eight => 3000,
+        }
+    }
+
+    pub fn depth(self) -> u32 {
+        use SkillLevel::*;
+        match self {
+            One | Two | Three | Four | Five => 5,
+            Six => 8,
+            Seven => 13,
+            Eight => 22,
+        }
+    }
+}
+
 #[serde_as]
 #[derive(Debug, Deserialize, Clone)]
 pub struct Clock {
-    wtime: Centis,
-    btime: Centis,
+    pub wtime: Centis,
+    pub btime: Centis,
     #[serde_as(as = "DurationSeconds<u64>")]
-    inc: Duration,
+    pub inc: Duration,
 }
 
 #[derive(Debug, Copy, Clone, Deserialize)]
