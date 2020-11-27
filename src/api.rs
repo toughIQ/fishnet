@@ -183,10 +183,12 @@ pub enum SkillLevel {
     Eight = 8,
 }
 
+#[serde_as]
 #[derive(Debug, Deserialize)]
 pub struct Clock {
     wtime: Centis,
     btime: Centis,
+    #[serde_as(as = "DurationSeconds<u64>")]
     inc: Duration,
 }
 
