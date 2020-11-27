@@ -9,7 +9,7 @@ use tokio::sync::{mpsc, oneshot, Mutex, Notify};
 use tokio::time;
 use crate::api::{BatchId, Work, AcquireQuery, AcquireResponseBody, Acquired, ApiStub, AnalysisPart};
 use crate::configure::{BacklogOpt, Endpoint};
-use crate::ipc::{Position, PositionResponse, PositionId, Pull};
+use crate::ipc::{Position, PositionResponse, PositionFailed, PositionId, Pull};
 use crate::logger::{Logger, ProgressAt, QueueStatusBar};
 use crate::util::{NevermindExt as _, RandomizedBackoff};
 
@@ -40,21 +40,30 @@ impl QueueStub {
 
     pub async fn pull(&mut self, pull: Pull) {
         let mut state = self.state.lock().await;
-        if let Err(pull) = state.respond(self.clone(), &mut self.api, pull) {
+        let (response, callback) = pull.split();
+        if let Some(response) = response {
+            state.handle_position_response(self.clone(), response);
+        }
+        if let Err(callback) = state.try_pull(callback) {
             if let Some(ref mut tx) = self.tx {
                 tx.send(QueueMessage::Pull {
-                    callback: pull.callback,
+                    callback,
                 }).nevermind("queue dropped");
             }
         }
     }
 
     fn submit_move(&mut self, batch_id: BatchId, best_move: Option<Uci>) {
-        if let Some(tx) = self.tx {
+        if let Some(ref tx) = self.tx {
             tx.send(QueueMessage::SubmitMove {
                 batch_id,
                 best_move,
             }).nevermind("moves are too short lived to abort anyway");
+
+            // Submitting a move can generate a follow-up response. So skip
+            // the queue backoff.
+            // TODO: Skipp multiple queue entries.
+            self.interrupt.notify_one();
         }
     }
 
@@ -138,10 +147,9 @@ impl QueueState {
         }
     }
 
-    fn respond(&mut self, queue: QueueStub, api: &mut ApiStub, mut pull: Pull) -> Result<(), Pull> {
-        // Handle response.
-        match pull.response.take() {
-            Some(Ok(res)) => {
+    fn handle_position_response(&mut self, mut queue: QueueStub, res: Result<PositionResponse, PositionFailed>) {
+        match res {
+            Ok(res) => {
                 let progress_at = ProgressAt::from(&res);
                 let batch_id = res.work.id();
                 if let Some(pending) = self.pending.get_mut(&batch_id) {
@@ -150,28 +158,28 @@ impl QueueState {
                     }
                 }
                 self.logger.progress(self.status_bar(), progress_at);
-                self.maybe_finished(queue, api, batch_id);
+                self.maybe_finished(queue, batch_id);
             }
-            Some(Err(failed)) => {
+            Err(failed) => {
                 self.pending.remove(&failed.batch_id);
                 self.incoming.retain(|p| p.work.id() != failed.batch_id);
-                api.abort(failed.batch_id);
+                queue.api.abort(failed.batch_id);
             }
-            None => (),
         }
+    }
 
-        // Try to satisfy pull.
+    fn try_pull(&mut self, callback: oneshot::Sender<Position>) -> Result<(), oneshot::Sender<Position>> {
         if let Some(position) = self.incoming.pop_front() {
-            if let Err(err) = pull.callback.send(position) {
+            if let Err(err) = callback.send(position) {
                 self.incoming.push_front(err);
             }
             Ok(())
         } else {
-            Err(pull)
+            Err(callback)
         }
     }
 
-    fn maybe_finished(&mut self, queue: QueueStub, api: &mut ApiStub, batch: BatchId) {
+    fn maybe_finished(&mut self, mut queue: QueueStub, batch: BatchId) {
         if let Some(pending) = self.pending.remove(&batch) {
             match pending.try_into_completed() {
                 Ok(completed) => {
@@ -191,14 +199,14 @@ impl QueueState {
                         }
                     }
                     match completed.work {
-                        Work::Analysis { id } => api.submit_analysis(id, completed.into_analysis()),
+                        Work::Analysis { id } => queue.api.submit_analysis(id, completed.into_analysis()),
                         Work::Move { id, .. } => queue.submit_move(id, completed.into_best_move()),
                     }
                 }
                 Err(pending) => {
                     let progress_report = pending.progress_report();
                     if progress_report.iter().filter(|p| p.is_some()).count() % (self.cores * 2) == 0 {
-                        api.submit_analysis(pending.work.id(), progress_report);
+                        queue.api.submit_analysis(pending.work.id(), progress_report);
                     }
 
                     self.pending.insert(pending.work.id(), pending);
@@ -289,23 +297,17 @@ impl QueueActor {
             match msg {
                 QueueMessage::Pull { mut callback } => {
                     loop {
-                        callback = {
+                        {
                             let mut state = self.state.lock().await;
-
-                            let done = state.respond(&mut self.api, Pull {
-                                response: None, // always handled in the stub
-                                callback,
-                            });
+                            callback = match state.try_pull(callback) {
+                                Ok(()) => break,
+                                Err(not_done) => not_done,
+                            };
 
                             if state.shutdown_soon {
                                 break;
                             }
-
-                            match done {
-                                Ok(()) => break,
-                                Err(pull) => pull.callback,
-                            }
-                        };
+                        }
 
                         let (wait, query) = tokio::select! {
                             _ = callback.closed() => break,
@@ -346,6 +348,9 @@ impl QueueActor {
                             None => (),
                         }
                     }
+                }
+                QueueMessage::SubmitMove { batch_id, best_move } => {
+                    // TODO: Submit move
                 }
             }
         }
