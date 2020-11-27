@@ -435,28 +435,16 @@ impl ApiActor {
 
     async fn handle_mesage(&mut self, msg: ApiMessage) {
         if let Err(err) = self.handle_message_inner(msg).await {
-            match err.status() {
-                Some(status) if status == StatusCode::TOO_MANY_REQUESTS => {
-                    let backoff = Duration::from_secs(60) + self.error_backoff.next();
-                    self.logger.error(&format!("Too many requests. Suspending requests for {:?}.", backoff));
-                    time::sleep(backoff).await;
-                }
-                Some(status) if status.is_client_error() => {
-                    let backoff = self.error_backoff.next();
-                    self.logger.error(&format!("Client error: {}. Backing off {:?}.", status, backoff));
-                    time::sleep(backoff).await;
-                },
-                Some(status) if status.is_server_error() => {
-                    let backoff = self.error_backoff.next();
-                    self.logger.error(&format!("Server error: {}. Backing off {:?}.", status, backoff));
-                    time::sleep(backoff).await;
-                }
-                Some(_) => self.error_backoff.reset(),
-                None => {
-                    let backoff = self.error_backoff.next();
-                    self.logger.error(&format!("{}. Backing off {:?}.", err, backoff));
-                    time::sleep(backoff).await;
-                }
+            if err.status().map_or(false, |s| s.is_success()) {
+                self.error_backoff.reset();
+            } else if err.status() == Some(StatusCode::TOO_MANY_REQUESTS) {
+                let backoff = Duration::from_secs(60) + self.error_backoff.next();
+                self.logger.error(&format!("Too many requests. Suspending requests for {:?}.", backoff));
+                time::sleep(backoff).await;
+            } else {
+                let backoff = self.error_backoff.next();
+                self.logger.error(&format!("{}. Backing off {:?}.", err, backoff));
+                time::sleep(backoff).await;
             }
         } else {
             self.error_backoff.reset();
