@@ -144,6 +144,7 @@ pub enum Work {
         #[serde_as(as = "DisplayFromStr")]
         id: BatchId,
     },
+    #[serde(rename = "move")]
     Move {
         #[serde_as(as = "DisplayFromStr")]
         id: BatchId,
