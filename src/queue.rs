@@ -3,6 +3,7 @@ use std::convert::TryInto;
 use std::collections::{VecDeque, HashMap};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use shakmaty::uci::Uci;
 use url::Url;
 use tokio::sync::{mpsc, oneshot, Mutex, Notify};
 use tokio::time;
@@ -19,6 +20,7 @@ pub fn channel(endpoint: Endpoint, opt: BacklogOpt, cores: usize, api: ApiStub, 
     (QueueStub::new(tx, interrupt.clone(), state.clone(), api.clone()), QueueActor::new(rx, interrupt, state, endpoint, opt, api, logger))
 }
 
+#[derive(Clone)]
 pub struct QueueStub {
     tx: Option<mpsc::UnboundedSender<QueueMessage>>,
     interrupt: Arc<Notify>,
@@ -38,12 +40,21 @@ impl QueueStub {
 
     pub async fn pull(&mut self, pull: Pull) {
         let mut state = self.state.lock().await;
-        if let Err(pull) = state.respond(&mut self.api, pull) {
+        if let Err(pull) = state.respond(self.clone(), &mut self.api, pull) {
             if let Some(ref mut tx) = self.tx {
                 tx.send(QueueMessage::Pull {
                     callback: pull.callback,
                 }).nevermind("queue dropped");
             }
+        }
+    }
+
+    fn submit_move(&mut self, batch_id: BatchId, best_move: Option<Uci>) {
+        if let Some(tx) = self.tx {
+            tx.send(QueueMessage::SubmitMove {
+                batch_id,
+                best_move,
+            }).nevermind("moves are too short lived to abort anyway");
         }
     }
 
@@ -97,7 +108,7 @@ impl QueueState {
         }
     }
 
-    fn add_incoming_batch(&mut self, api: &mut ApiStub, batch: IncomingBatch) {
+    fn add_incoming_batch(&mut self, batch: IncomingBatch) {
         let batch_id = batch.work.id();
         if self.pending.contains_key(&batch_id) {
             self.logger.error(&format!("Dropping duplicate incoming batch {}", batch_id));
@@ -124,11 +135,10 @@ impl QueueState {
             });
 
             self.logger.progress(self.status_bar(), progress_at);
-            self.maybe_finished(api, batch_id);
         }
     }
 
-    fn respond(&mut self, api: &mut ApiStub, mut pull: Pull) -> Result<(), Pull> {
+    fn respond(&mut self, queue: QueueStub, api: &mut ApiStub, mut pull: Pull) -> Result<(), Pull> {
         // Handle response.
         match pull.response.take() {
             Some(Ok(res)) => {
@@ -140,7 +150,7 @@ impl QueueState {
                     }
                 }
                 self.logger.progress(self.status_bar(), progress_at);
-                self.maybe_finished(api, batch_id);
+                self.maybe_finished(queue, api, batch_id);
             }
             Some(Err(failed)) => {
                 self.pending.remove(&failed.batch_id);
@@ -161,7 +171,7 @@ impl QueueState {
         }
     }
 
-    fn maybe_finished(&mut self, api: &mut ApiStub, batch: BatchId) {
+    fn maybe_finished(&mut self, queue: QueueStub, api: &mut ApiStub, batch: BatchId) {
         if let Some(pending) = self.pending.remove(&batch) {
             match pending.try_into_completed() {
                 Ok(completed) => {
@@ -180,8 +190,10 @@ impl QueueState {
                             self.logger.info(&format!("{} {} finished ({} nps)", self.status_bar(), batch, nps_string));
                         }
                     }
-                    // TODO: Or move?
-                    api.submit_analysis(completed.work.id(), completed.into_analysis());
+                    match completed.work {
+                        Work::Analysis { id } => api.submit_analysis(id, completed.into_analysis()),
+                        Work::Move { id, .. } => queue.submit_move(id, completed.into_best_move()),
+                    }
                 }
                 Err(pending) => {
                     let progress_report = pending.progress_report();
@@ -200,7 +212,11 @@ impl QueueState {
 enum QueueMessage {
     Pull {
         callback: oneshot::Sender<Position>,
-    }
+    },
+    SubmitMove {
+        batch_id: BatchId,
+        best_move: Option<Uci>,
+    },
 }
 
 pub struct QueueActor {
@@ -258,6 +274,16 @@ impl QueueActor {
         (Duration::default(), AcquireQuery { slow })
     }
 
+    async fn handle_acquired_response_body(&mut self, body: AcquireResponseBody) {
+        match IncomingBatch::from_acquired(self.endpoint.clone(), body) {
+            Ok(incoming) => {
+                let mut state = self.state.lock().await;
+                state.add_incoming_batch(incoming);
+            }
+            Err(completed) => self.api.submit_analysis(completed.work.id(), completed.into_analysis()),
+        }
+    }
+
     async fn run_inner(mut self) {
         while let Some(msg) = self.rx.recv().await {
             match msg {
@@ -301,9 +327,7 @@ impl QueueActor {
                         match self.api.acquire(query).await {
                             Some(Acquired::Accepted(body)) => {
                                 self.backoff.reset();
-
-                                let mut state = self.state.lock().await;
-                                state.add_incoming_batch(&mut self.api, IncomingBatch::from_acquired(self.endpoint.clone(), body));
+                                self.handle_acquired_response_body(body).await;
                             }
                             Some(Acquired::NoContent) => {
                                 let backoff = self.backoff.next();
@@ -341,6 +365,12 @@ enum Skip<T> {
     Skip,
 }
 
+impl<T> Skip<T> {
+    fn is_skipped(&self) -> bool {
+        matches!(self, Skip::Skip)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct IncomingBatch {
     work: Work,
@@ -349,7 +379,7 @@ pub struct IncomingBatch {
 }
 
 impl IncomingBatch {
-    fn from_acquired(endpoint: Endpoint, body: AcquireResponseBody) -> IncomingBatch {
+    fn from_acquired(endpoint: Endpoint, body: AcquireResponseBody) -> Result<IncomingBatch, CompletedBatch> {
         let url = body.game_id.as_ref().map(|g| {
             let mut url = endpoint.url.clone();
             url.set_path(g);
@@ -358,7 +388,7 @@ impl IncomingBatch {
 
         let nodes = body.nodes.unwrap_or(4_000_000);
 
-        IncomingBatch {
+        Ok(IncomingBatch {
             work: body.work.clone(),
             url: url.clone(),
             positions: match body.work {
@@ -412,10 +442,23 @@ impl IncomingBatch {
                         }
                     }
 
+                    // Edge case: Batch is immediately completed, because all
+                    // positions are skipped.
+                    if positions.iter().all(Skip::is_skipped) {
+                        let now = Instant::now();
+                        return Err(CompletedBatch {
+                            work: body.work.clone(),
+                            url,
+                            started_at: now,
+                            completed_at: now,
+                            positions: positions.into_iter().map(|_| Skip::Skip).collect(),
+                        });
+                    }
+
                     positions
                 }
             }
-        }
+        })
     }
 }
 
@@ -497,6 +540,13 @@ impl CompletedBatch {
                 },
             })
         }).collect()
+    }
+
+    fn into_best_move(self) -> Option<Uci> {
+        self.positions.into_iter().next().and_then(|p| match p {
+            Skip::Skip => None,
+            Skip::Present(pos) => pos.best_move,
+        })
     }
 
     fn total_positions(&self) -> u64 {

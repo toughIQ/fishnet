@@ -56,3 +56,9 @@ pub struct Pull {
     pub response: Option<Result<PositionResponse, PositionFailed>>,
     pub callback: oneshot::Sender<Position>,
 }
+
+impl Pull {
+    pub fn split(self) -> (Option<Result<PositionResponse, PositionFailed>>, oneshot::Sender<Position>) {
+        (self.response, self.callback)
+    }
+}
