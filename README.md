@@ -68,8 +68,8 @@ that the compiled binary matches the source).
 * Available for
   - Linux on Intel, AMD, and ARMv8 CPUs
   - Windows on Intel and AMD CPUs
-  - OS X on Intel (and AMD) CPUs
-* Will max out the number of configured CPU cores
+  - OS X on Intel (and AMD) CPUs, upon request
+* Will max out the configured number of CPU cores
 * Uses about 64 MiB RAM per CPU core
 * A small amount of disk space
 * Low-bandwidth network communication with Lichess servers
@@ -78,7 +78,7 @@ that the compiled binary matches the source).
 
 ### Is my CPU fast enough?
 
-Almost all processors will be able to meet the requirement of 4 meganodes in
+Almost all processors will be able to meet the requirement of ~2 meganodes in
 6 seconds. Clients on the faster end will automatically be assigned
 analysis jobs that have humans waiting for the result (the user queue, as
 opposed to the system queue for slower clients).
@@ -86,9 +86,9 @@ opposed to the system queue for slower clients).
 ### What happens if I stop my client?
 
 Feel free to turn your client on and off at any time. By default, the client
-will try to finish any jobs it has already started. On immediate shutdown,
-the client tries to inform Lichess that jobs should be reassigned.
-If even that fails, Lichess will reassign the jobs after a timeout.
+will try to finish any batches it has already started. On immediate shutdown,
+the client tries to inform Lichess that batches should be reassigned.
+If even that fails, Lichess will reassign the batches after a timeout.
 
 ### Will fishnet use my GPU?
 
