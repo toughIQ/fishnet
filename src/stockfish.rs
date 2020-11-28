@@ -145,7 +145,7 @@ impl StockfishActor {
         let mut stdout = Stdout::new(child.stdout.take().ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "stdout closed"))?);
         let mut stdin = Stdin::new(child.stdin.take().ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "stdin closed"))?);
 
-        Ok(loop {
+        loop {
             tokio::select! {
                 msg = self.rx.recv() => {
                     if let Some(msg) = msg {
@@ -166,18 +166,23 @@ impl StockfishActor {
                     break;
                 }
             }
-        })
+        }
+
+        Ok(())
     }
 
     async fn handle_message(&mut self, stdout: &mut Stdout, stdin: &mut Stdin, msg: StockfishMessage) -> Result<(), EngineError> {
-        Ok(match msg {
+        match msg {
             StockfishMessage::Go { mut callback, position } => {
                 tokio::select! {
-                    _ = callback.closed() => return Err(EngineError::Shutdown),
-                    res = self.go(stdout, stdin, position) => callback.send(res?).nevermind("go receiver dropped"),
+                    _ = callback.closed() => Err(EngineError::Shutdown),
+                    res = self.go(stdout, stdin, position) => {
+                        callback.send(res?).nevermind("go receiver dropped");
+                        Ok(())
+                    }
                 }
             }
-        })
+        }
     }
 
     async fn go(&mut self, stdout: &mut Stdout, stdin: &mut Stdin, position: Position) -> io::Result<PositionResponse> {
@@ -264,7 +269,7 @@ impl StockfishActor {
 
         loop {
             let line = stdout.read_line().await?;
-            let mut parts = line.split(" ");
+            let mut parts = line.split(' ');
             match parts.next() {
                 Some("bestmove") => {
                     return Ok(PositionResponse {

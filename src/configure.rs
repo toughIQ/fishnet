@@ -343,14 +343,14 @@ pub async fn parse_and_configure() -> Opt {
             // Step 1: Endpoint.
             let endpoint = loop {
                 let mut endpoint = String::new();
-                eprint!("Endpoint (default: {}): ", ini.get("Fishnet", "Endpoint").unwrap_or(DEFAULT_ENDPOINT.to_owned()));
+                eprint!("Endpoint (default: {}): ", ini.get("Fishnet", "Endpoint").unwrap_or_else(|| DEFAULT_ENDPOINT.to_owned()));
                 io::stderr().flush().expect("flush stderr");
                 io::stdin().read_line(&mut endpoint).expect("read endpoint from stdin");
 
                 let endpoint = Some(endpoint.trim().to_owned())
                     .filter(|e| !e.is_empty())
                     .or_else(|| ini.get("Fishnet", "Endpoint"))
-                    .unwrap_or(DEFAULT_ENDPOINT.to_owned());
+                    .unwrap_or_else(|| DEFAULT_ENDPOINT.to_owned());
 
                 match endpoint.parse() {
                     Ok(url) => {

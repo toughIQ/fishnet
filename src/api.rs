@@ -183,8 +183,8 @@ impl Work {
     }
 
     pub fn node_limit(&self) -> Option<NodeLimit> {
-        match self {
-            Work::Analysis { nodes, .. } => nodes.clone(),
+        match *self {
+            Work::Analysis { nodes, .. } => nodes,
             Work::Move { .. } => None,
         }
     }
@@ -543,18 +543,16 @@ impl ApiActor {
     }
 
     async fn abort(&mut self, batch_id: BatchId) -> reqwest::Result<()> {
-        Ok({
-            let url = format!("{}/abort/{}", self.endpoint, batch_id);
-            self.logger.warn(&format!("Aborting batch {}.", batch_id));
-            self.client.post(&url).json(&VoidRequestBody {
-                fishnet: Fishnet::authenticated(self.key.clone()),
-                stockfish: Stockfish::without_flavor(),
-            }).send().await?.error_for_status()?;
-        })
+        let url = format!("{}/abort/{}", self.endpoint, batch_id);
+        self.logger.warn(&format!("Aborting batch {}.", batch_id));
+        self.client.post(&url).json(&VoidRequestBody {
+            fishnet: Fishnet::authenticated(self.key.clone()),
+            stockfish: Stockfish::without_flavor(),
+        }).send().await?.error_for_status().map(|_| ())
     }
 
     async fn handle_message_inner(&mut self, msg: ApiMessage) -> reqwest::Result<()> {
-        Ok(match msg {
+        match msg {
             ApiMessage::CheckKey { key, callback } => {
                 let url = format!("{}/key/{}", self.endpoint, key.0);
                 let res = self.client.get(&url).send().await?;
@@ -594,7 +592,7 @@ impl ApiActor {
                     StatusCode::BAD_REQUEST => callback.send(Acquired::BadRequest).nevermind("callback dropped"),
                     StatusCode::OK | StatusCode::ACCEPTED => {
                         if let Err(Acquired::Accepted(res)) = callback.send(Acquired::Accepted(res.json().await?)) {
-                            self.logger.error(&format!("Acquired a batch, but callback dropped. Aborting."));
+                            self.logger.error("Acquired a batch, but callback dropped. Aborting.");
                             self.abort(res.work.id()).await?;
                         }
                     }
@@ -632,7 +630,7 @@ impl ApiActor {
                     StatusCode::NO_CONTENT => callback.send(Acquired::NoContent).nevermind("callback dropped"),
                     StatusCode::OK | StatusCode::ACCEPTED => {
                         if let Err(Acquired::Accepted(res)) = callback.send(Acquired::Accepted(res.json().await?)) {
-                            self.logger.error(&format!("Acquired a batch while submitting move, but callback dropped. Aborting."));
+                            self.logger.error("Acquired a batch while submitting move, but callback dropped. Aborting.");
                             self.abort(res.work.id()).await?;
                         }
                     }
@@ -641,6 +639,8 @@ impl ApiActor {
                     }
                 }
             }
-        })
+        }
+
+        Ok(())
     }
 }

@@ -109,7 +109,7 @@ const NNUE: Asset = Asset {
 };
 
 #[cfg(all(unix, target_arch = "x86_64", not(target_os = "macos")))]
-const STOCKFISH: &'static [Asset] = &[
+const STOCKFISH: &[Asset] = &[
     Asset {
         name: "stockfish-x86-64-bmi2",
         data: include_bytes!("../assets/stockfish-x86-64-bmi2.xz"),
@@ -143,7 +143,7 @@ const STOCKFISH: &'static [Asset] = &[
 ];
 
 #[cfg(all(unix, target_arch = "x86_64", not(target_os = "macos")))]
-const STOCKFISH_MV: &'static [Asset] = &[
+const STOCKFISH_MV: &[Asset] = &[
     Asset {
         name: "stockfish-mv-x86-64-bmi2",
         data: include_bytes!("../assets/stockfish-mv-x86-64-bmi2.xz"),
@@ -177,7 +177,7 @@ const STOCKFISH_MV: &'static [Asset] = &[
 ];
 
 #[cfg(all(windows, target_arch = "x86_64"))]
-const STOCKFISH: &'static [Asset] = &[
+const STOCKFISH: &[Asset] = &[
     Asset {
         name: "stockfish-x86-64-bmi2.exe",
         data: include_bytes!("../assets/stockfish-x86-64-bmi2.exe.xz"),
@@ -211,7 +211,7 @@ const STOCKFISH: &'static [Asset] = &[
 ];
 
 #[cfg(all(windows, target_arch = "x86_64"))]
-const STOCKFISH_MV: &'static [Asset] = &[
+const STOCKFISH_MV: &[Asset] = &[
     Asset {
         name: "stockfish-mv-x86-64-bmi2.exe",
         data: include_bytes!("../assets/stockfish-mv-x86-64-bmi2.exe.xz"),
@@ -245,7 +245,7 @@ const STOCKFISH_MV: &'static [Asset] = &[
 ];
 
 #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-const STOCKFISH: &'static [Asset] = &[
+const STOCKFISH: &[Asset] = &[
     Asset {
         name: "stockfish-macos-x86-64",
         data: include_bytes!("../assets/stockfish-macos-x86-64.xz"),
@@ -255,7 +255,7 @@ const STOCKFISH: &'static [Asset] = &[
 ];
 
 #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-const STOCKFISH_MV: &'static [Asset] = &[
+const STOCKFISH_MV: &[Asset] = &[
     Asset {
         name: "stockfish-mv-macos-x86-64",
         data: include_bytes!("../assets/stockfish-mv-macos-x86-64.xz"),
@@ -265,7 +265,7 @@ const STOCKFISH_MV: &'static [Asset] = &[
 ];
 
 #[cfg(all(unix, target_arch = "aarch64"))]
-const STOCKFISH: &'static [Asset] = &[
+const STOCKFISH: &[Asset] = &[
     Asset {
         name: "stockfish-mv-armv8",
         data: include_bytes!("../assets/stockfish-armv8.xz"),
@@ -275,7 +275,7 @@ const STOCKFISH: &'static [Asset] = &[
 ];
 
 #[cfg(all(unix, target_arch = "aarch64"))]
-const STOCKFISH_MV: &'static [Asset] = &[
+const STOCKFISH_MV: &[Asset] = &[
     Asset {
         name: "stockfish-mv-armv8",
         data: include_bytes!("../assets/stockfish-mv-armv8.xz"),
@@ -342,8 +342,8 @@ impl Assets {
         Ok(Assets {
             nnue: NNUE.create(dir.path())?.to_str().expect("nnue path printable").to_owned(),
             stockfish: ByEngineFlavor {
-                official: STOCKFISH.iter().filter(|a| cpu.contains(a.needs)).next().expect("stockfish").create(dir.path())?,
-                multi_variant: STOCKFISH_MV.iter().filter(|a| cpu.contains(a.needs)).next().expect("stockfish").create(dir.path())?,
+                official: STOCKFISH.iter().find(|a| cpu.contains(a.needs)).expect("compatible stockfish").create(dir.path())?,
+                multi_variant: STOCKFISH_MV.iter().find(|a| cpu.contains(a.needs)).expect("compatible stockfish").create(dir.path())?,
             },
             dir,
         })

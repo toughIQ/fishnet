@@ -1,6 +1,7 @@
 use std::cmp::{min, max};
 use std::convert::TryInto;
 use std::collections::{VecDeque, HashMap};
+use std::collections::hash_map::Entry;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use shakmaty::uci::Uci;
@@ -116,33 +117,33 @@ impl QueueState {
     }
 
     fn add_incoming_batch(&mut self, batch: IncomingBatch) {
-        let batch_id = batch.work.id();
-        if self.pending.contains_key(&batch_id) {
-            self.logger.error(&format!("Dropping duplicate incoming batch {}", batch_id));
-        } else {
-            let progress_at = ProgressAt::from(&batch);
+        match self.pending.entry(batch.work.id()) {
+            Entry::Occupied(entry) => self.logger.error(&format!("Dropping duplicate incoming batch {}", entry.key())),
+            Entry::Vacant(entry) => {
+                let progress_at = ProgressAt::from(&batch);
 
-            // Reversal only for cosmetics when displaying progress.
-            let mut positions = Vec::with_capacity(batch.positions.len());
-            for pos in batch.positions.into_iter().rev() {
-                positions.insert(0, match pos {
-                    Skip::Present(pos) => {
-                        self.incoming.push_back(pos);
-                        None
-                    }
-                    Skip::Skip => Some(Skip::Skip),
+                // Reversal only for cosmetics when displaying progress.
+                let mut positions = Vec::with_capacity(batch.positions.len());
+                for pos in batch.positions.into_iter().rev() {
+                    positions.insert(0, match pos {
+                        Skip::Present(pos) => {
+                            self.incoming.push_back(pos);
+                            None
+                        }
+                        Skip::Skip => Some(Skip::Skip),
+                    });
+                }
+
+                entry.insert(PendingBatch {
+                    work: batch.work,
+                    flavor: batch.flavor,
+                    url: batch.url,
+                    positions,
+                    started_at: Instant::now(),
                 });
+
+                self.logger.progress(self.status_bar(), progress_at);
             }
-
-            self.pending.insert(batch_id, PendingBatch {
-                work: batch.work,
-                flavor: batch.flavor,
-                url: batch.url,
-                positions,
-                started_at: Instant::now(),
-            });
-
-            self.logger.progress(self.status_bar(), progress_at);
         }
     }
 
@@ -267,8 +268,8 @@ impl QueueActor {
 
         if user_backlog >= sec || system_backlog >= sec {
             if let Some(status) = self.api.status().await {
-                let user_wait = user_backlog.checked_sub(status.user.oldest).unwrap_or(Duration::default());
-                let system_wait = system_backlog.checked_sub(status.system.oldest).unwrap_or(Duration::default());
+                let user_wait = user_backlog.checked_sub(status.user.oldest).unwrap_or_default();
+                let system_wait = system_backlog.checked_sub(status.system.oldest).unwrap_or_default();
                 self.logger.debug(&format!("User wait: {:?} due to {:?} for oldest {:?}, system wait: {:?} due to {:?} for oldest {:?}",
                        user_wait, user_backlog, status.user.oldest,
                        system_wait, system_backlog, status.system.oldest));
@@ -484,7 +485,7 @@ impl IncomingBatch {
                     if positions.iter().all(Skip::is_skipped) {
                         let now = Instant::now();
                         return Err(CompletedBatch {
-                            work: body.work.clone(),
+                            work: body.work,
                             url,
                             flavor,
                             positions: positions.into_iter().map(|_| Skip::Skip).collect(),

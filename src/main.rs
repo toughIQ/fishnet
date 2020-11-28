@@ -195,7 +195,7 @@ async fn run(opt: Opt, logger: &Logger) {
                                 break;
                             }
                             _ = time::sleep(timeout) => {
-                                logger.warn(&format!("Engine timed out in worker. If this happens frequently it is better to stop and defer to clients with better hardware."));
+                                logger.warn(&format!("Engine timed out in worker {}. If this happens frequently it is better to stop and defer to clients with better hardware.", i));
                                 drop(sf);
                                 join_handle.await.expect("join");
                                 break;
@@ -222,10 +222,7 @@ async fn run(opt: Opt, logger: &Logger) {
 
                     let (callback, waiter) = oneshot::channel();
 
-                    if let Err(_) = tx.send(Pull {
-                        response,
-                        callback,
-                    }).await {
+                    if tx.send(Pull { response, callback }).await.is_err() {
                         logger.debug(&format!("Worker {} was about to send result, but shutting down", i));
                         break;
                     }

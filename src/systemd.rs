@@ -15,7 +15,7 @@ pub fn systemd_system(opt: Opt) {
     println!("ExecStart={}", exe);
     println!("KillMode=mixed");
     println!("WorkingDirectory=/tmp");
-    println!("User={}", env::var("USER").unwrap_or("XXX".to_owned()));
+    println!("User={}", env::var("USER").unwrap_or_else(|_| "XXX".to_owned()));
     println!("Nice=5");
     println!("CapabilityBoundingSet=");
     println!("PrivateTmp=true");
@@ -33,7 +33,7 @@ pub fn systemd_system(opt: Opt) {
     println!("WantedBy=multi-user.target");
 
     if atty::is(Stream::Stdout) {
-        let command = env::args().next().unwrap_or("./fishnet".to_owned());
+        let command = env::args().next().unwrap_or_else(|| "./fishnet".to_owned());
         eprintln!();
         eprintln!("# Example usage:");
         eprintln!("# {} systemd | sudo tee /etc/systemd/system/fishnet.service", command);
@@ -69,9 +69,10 @@ pub fn systemd_user(opt: Opt) {
     println!("WantedBy=default.target");
 
     if atty::is(Stream::Stdout) {
+        let command = env::args().next().unwrap_or_else(|| "./fishnet".to_owned());
         eprintln!();
         eprintln!("# Example usage:");
-        eprintln!("# {} systemd-user | tee ~/.config/systemd/user/fishnet.service", env::args().next().unwrap_or("./fishnet".to_owned()));
+        eprintln!("# {} systemd-user | tee ~/.config/systemd/user/fishnet.service", command);
         eprintln!("# systemctl enable --user fishnet.service");
         eprintln!("# systemctl start --user fishnet.service");
         eprintln!("# Live view of log: journalctl --follow --user-unit fishnet");
