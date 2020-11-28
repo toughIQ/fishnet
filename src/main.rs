@@ -20,7 +20,6 @@ use tokio::signal;
 use tokio::sync::{mpsc, oneshot};
 use crate::configure::{Opt, Command, Cores};
 use crate::assets::{Assets, Cpu, ByEngineFlavor, EngineFlavor};
-use crate::api::{Work, NodeLimit};
 use crate::ipc::{Pull, Position};
 use crate::stockfish::StockfishInit;
 use crate::logger::Logger;
@@ -184,10 +183,7 @@ async fn run(opt: Opt, logger: &Logger) {
 
                         // Heuristic for timeout, based on fixed communication
                         // cost and nodes.
-                        let NodeLimit(nodes) = match job.work {
-                            Work::Analysis { nodes, .. } => nodes.unwrap_or_default(),
-                            Work::Move { .. } => NodeLimit::default(), // conservative upper bound
-                        };
+                        let nodes = job.work.node_limit().unwrap_or_default().get(flavor);
                         let timeout = Duration::from_secs(4 + nodes / 250_000);
 
                         // Analyse or play.

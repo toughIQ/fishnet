@@ -7,7 +7,7 @@ use shakmaty::uci::Uci;
 use url::Url;
 use tokio::sync::{mpsc, oneshot, Mutex, Notify};
 use tokio::time;
-use crate::api::{BatchId, Work, AcquireQuery, AcquireResponseBody, Acquired, ApiStub, AnalysisPart};
+use crate::api::{AcquireQuery, AcquireResponseBody, Acquired, AnalysisPart, ApiStub, BatchId, Work, nnue_to_classical};
 use crate::configure::{BacklogOpt, Endpoint};
 use crate::ipc::{Position, PositionResponse, PositionFailed, PositionId, Pull};
 use crate::logger::{Logger, ProgressAt, QueueStatusBar};
@@ -550,7 +550,7 @@ pub struct CompletedBatch {
 
 impl CompletedBatch {
     fn into_analysis(self) -> Vec<Option<AnalysisPart>> {
-        let lila_nnue = matches!(self.work, Work::Analysis { nodes: Some(_), .. });
+        let lila_updated = matches!(self.work, Work::Analysis { nodes: Some(_), .. });
 
         self.positions.into_iter().map(|p| {
             Some(match p {
@@ -562,14 +562,14 @@ impl CompletedBatch {
                     depth: pos.depth,
                     score: pos.score,
                     time: pos.time.as_millis() as u64,
-                    nodes: if lila_nnue {
+                    nodes: if lila_updated {
                         pos.nodes
                     } else {
+                        // TODO: Remove when lila is updated:
                         // Lie to lila about crunched nodes by sending the
                         // rough classical equivalent. Otherwise NNUE analysis
                         // may be rejected as weak, even if it is stronger.
-                        // TODO: Remove when lila is updated.
-                        pos.nodes * 5 / 3
+                        nnue_to_classical(pos.nodes)
                     },
                     nps: pos.nps,
                 },

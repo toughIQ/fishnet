@@ -12,6 +12,7 @@ use shakmaty::fen::Fen;
 use shakmaty::uci::Uci;
 use shakmaty::variants::Variant;
 use tokio_compat_02::FutureExt as _;
+use crate::assets::EngineFlavor;
 use crate::configure::{Endpoint, Key, KeyError};
 use crate::logger::Logger;
 use crate::util::{NevermindExt as _, RandomizedBackoff};
@@ -169,6 +170,13 @@ impl Work {
     pub fn is_analysis(&self) -> bool {
         matches!(self, Work::Analysis { .. })
     }
+
+    pub fn node_limit(&self) -> Option<NodeLimit> {
+        match self {
+            Work::Analysis { nodes, .. } => nodes.clone(),
+            Work::Move { .. } => None,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -189,11 +197,30 @@ impl fmt::Display for BatchId {
 }
 
 #[derive(Debug, Copy, Clone, Deserialize)]
-pub struct NodeLimit(pub u64);
+pub struct NodeLimit {
+    classical: u64,
+    nnue: u64,
+}
+
+pub fn nnue_to_classical(nodes: u64) -> u64 {
+    nodes * 5 / 3
+}
+
+impl NodeLimit {
+    pub fn get(&self, flavor: EngineFlavor) -> u64 {
+        match flavor {
+            EngineFlavor::Official => self.classical,
+            EngineFlavor::MultiVariant => self.nnue,
+        }
+    }
+}
 
 impl Default for NodeLimit {
     fn default() -> NodeLimit {
-        NodeLimit(2_500_000)
+        NodeLimit {
+            nnue: 2_500_000,
+            classical: nnue_to_classical(2_500_000),
+        }
     }
 }
 

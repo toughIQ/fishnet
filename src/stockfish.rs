@@ -199,7 +199,8 @@ impl StockfishActor {
         stdin.write_line(&format!("setoption name UCI_Chess960 value {}", uci_chess960)).await?;
 
         // Set UCI_Variant.
-        if position.engine_flavor() == EngineFlavor::MultiVariant {
+        let flavor = position.engine_flavor();
+        if flavor == EngineFlavor::MultiVariant {
             let uci_variant = match position.variant.into() {
                 Variant::Chess => "chess",
                 Variant::Giveaway => "giveaway",
@@ -249,7 +250,7 @@ impl StockfishActor {
             Work::Analysis { nodes, .. } => {
                 stdin.write_line("setoption name UCI_AnalyseMode value true").await?;
                 stdin.write_line("setoption name UCI_LimitStrength value false").await?;
-                vec!["go".to_owned(), "nodes".to_owned(), nodes.unwrap_or_default().0.to_string()]
+                vec!["go".to_owned(), "nodes".to_owned(), nodes.unwrap_or_default().get(flavor).to_string()]
             }
         };
         stdin.write_line(&go.join(" ")).await?;
