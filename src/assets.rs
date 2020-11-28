@@ -293,8 +293,8 @@ pub enum EngineFlavor {
 impl EngineFlavor {
     pub fn eval_flavor(self) -> EvalFlavor {
         match self {
-            EngineFlavor::Official => EvalFlavor::Classical,
-            EngineFlavor::MultiVariant => EvalFlavor::Nnue,
+            EngineFlavor::Official => EvalFlavor::Nnue,
+            EngineFlavor::MultiVariant => EvalFlavor::Classical,
         }
     }
 }
