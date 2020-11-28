@@ -5,6 +5,8 @@ use std::collections::hash_map::Entry;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use shakmaty::uci::Uci;
+use shakmaty::variants::Variant;
+use shakmaty::{Chess, Setup, FromSetup, MaterialSide, Material};
 use url::Url;
 use tokio::sync::{mpsc, oneshot, Mutex, Notify};
 use tokio::time;
@@ -419,6 +421,30 @@ pub struct IncomingBatch {
     url: Option<Url>,
 }
 
+fn is_standard_material_side(side: &MaterialSide) -> bool {
+    side.pawns <= 8 &&
+    side.knights <= 2 &&
+    side.bishops <= 2 &&
+    side.rooks <= 2 &&
+    side.queens <= 1 &&
+    side.kings == 1
+}
+
+fn is_standard_material(material: &Material) -> bool {
+    is_standard_material_side(&material.white) &&
+    is_standard_material_side(&material.black)
+}
+
+fn engine_flavor(body: &AcquireResponseBody) -> EngineFlavor {
+    if body.work.is_analysis() && Variant::from(body.variant) == Variant::Chess {
+        match Chess::from_setup(&body.position.clone().unwrap_or_default()) {
+            Ok(pos) if is_standard_material(&pos.board().material()) => return EngineFlavor::Official,
+            _ => (),
+        }
+    }
+    EngineFlavor::MultiVariant
+}
+
 impl IncomingBatch {
     fn from_acquired(endpoint: Endpoint, body: AcquireResponseBody) -> Result<IncomingBatch, CompletedBatch> {
         let url = body.game_id.as_ref().map(|g| {
@@ -427,10 +453,7 @@ impl IncomingBatch {
             url
         });
 
-        let flavor = match body.variant {
-            LichessVariant::Standard | LichessVariant::Chess960 if body.work.is_analysis() && url.is_some() => EngineFlavor::Official,
-            _ => EngineFlavor::MultiVariant,
-        };
+        let flavor = engine_flavor(&body);
 
         Ok(IncomingBatch {
             work: body.work.clone(),
