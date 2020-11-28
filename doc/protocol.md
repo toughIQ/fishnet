@@ -46,7 +46,7 @@ Response with work:
   //     "inc": 2, // fisher increment (seconds)
   //   }
   // },
-  "game_id": "abcdefgh", // optional
+  "game_id": "abcdefgh", // optional, can be empty string for bc
   "position": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", // start position (X-FEN)
   "variant": "standard",
   "moves": "e2e4 c7c5 c2c4 b8c6 g1e2 g8f6 b1c3 c6b4 g2g3 b4d3", // moves of the game (UCI)

@@ -6,7 +6,7 @@ use reqwest::StatusCode;
 use tokio::time;
 use tokio::sync::{mpsc, oneshot};
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DurationSeconds, DisplayFromStr, SpaceSeparator, StringWithSeparator};
+use serde_with::{serde_as, NoneAsEmptyString, DurationSeconds, DisplayFromStr, SpaceSeparator, StringWithSeparator};
 use serde_repr::Deserialize_repr as DeserializeRepr;
 use shakmaty::fen::Fen;
 use shakmaty::uci::Uci;
@@ -311,6 +311,7 @@ impl From<Centis> for Duration {
 #[derive(Debug, Deserialize)]
 pub struct AcquireResponseBody {
     pub work: Work,
+    #[serde_as(as = "NoneAsEmptyString")]
     #[serde(default)]
     pub game_id: Option<String>,
     #[serde_as(as = "Option<DisplayFromStr>")]
