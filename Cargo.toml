@@ -1,13 +1,13 @@
 [package]
 name = "fishnet"
-version = "2.0.0-alpha.2" # remember to update changelog
+version = "2.0.0-beta.1" # remember to update changelog
 description = "Distributed Stockfish analysis for lichess.org"
-repository = "https://github.com/niklasf/fishnet-alpha"
+repository = "https://github.com/niklasf/fishnet"
 readme = "README.md"
 license = "GPL-3.0+"
 authors = ["Niklas Fiekas <niklas.fiekas@backscattering.de>"]
 categories = ["command-line-utilities", "web-programming::http-client", "games"]
-keywords = ["chess"]
+keywords = ["chess", "lichess"]
 edition = "2018"
 exclude = ["assets"]
 
