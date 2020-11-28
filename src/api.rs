@@ -214,7 +214,7 @@ pub struct NodeLimit {
 }
 
 pub fn nnue_to_classical(nodes: u64) -> u64 {
-    nodes * 5 / 3
+    nodes * 18 / 10
 }
 
 impl NodeLimit {
@@ -228,9 +228,10 @@ impl NodeLimit {
 
 impl Default for NodeLimit {
     fn default() -> NodeLimit {
+        let nnue = 2_250_000;
         NodeLimit {
-            nnue: 2_500_000,
-            classical: nnue_to_classical(2_500_000),
+            nnue,
+            classical: nnue_to_classical(nnue),
         }
     }
 }
