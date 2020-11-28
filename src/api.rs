@@ -137,6 +137,10 @@ pub struct AcquireQuery {
     pub slow: bool,
 }
 
+fn default_nodes() -> u64 {
+    2_500_000
+}
+
 #[serde_as]
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type")]
@@ -145,6 +149,8 @@ pub enum Work {
     Analysis {
         #[serde_as(as = "DisplayFromStr")]
         id: BatchId,
+        #[serde(default = "default_nodes")]
+        nodes: u64,
     },
     #[serde(rename = "move")]
     Move {
@@ -269,8 +275,6 @@ pub struct AcquireResponseBody {
     pub variant: LichessVariant,
     #[serde_as(as = "StringWithSeparator::<SpaceSeparator, Uci>")]
     pub moves: Vec<Uci>,
-    #[serde(default)]
-    pub nodes: Option<u64>,
     #[serde(rename = "skipPositions", default)]
     pub skip_positions: Vec<usize>,
 }

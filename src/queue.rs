@@ -192,7 +192,7 @@ impl QueueState {
                         None => format!("{} {} finished ({} nps)", self.status_bar(), batch, nps_string),
                     };
                     match completed.work {
-                        Work::Analysis { id } => {
+                        Work::Analysis { id, .. } => {
                             self.logger.info(&log);
                             queue.api.submit_analysis(id, completed.into_analysis());
                         }
@@ -416,8 +416,6 @@ impl IncomingBatch {
             url
         });
 
-        let nodes = body.nodes.unwrap_or(4_000_000);
-
         Ok(IncomingBatch {
             work: body.work.clone(),
             url: url.clone(),
@@ -430,7 +428,6 @@ impl IncomingBatch {
                         variant: body.variant,
                         fen: body.position,
                         moves: body.moves,
-                        nodes,
                     })]
                 }
                 Work::Analysis { .. } => {
@@ -445,7 +442,6 @@ impl IncomingBatch {
                         variant: body.variant,
                         fen: body.position.clone(),
                         moves: moves.clone(),
-                        nodes,
                     })];
 
                     for (i, m) in body.moves.into_iter().enumerate() {
@@ -462,7 +458,6 @@ impl IncomingBatch {
                             variant: body.variant,
                             fen: body.position.clone(),
                             moves: moves.clone(),
-                            nodes,
                         }));
                     }
 
@@ -628,13 +623,13 @@ impl StatsRecorder {
     }
 
     fn min_user_backlog(&self) -> Duration {
-        // The average batch has 60 positions, analysed with 4_000_000 nodes
-        // each. Top end clients take no longer than 60 seconds.
-        let best_batch_seconds = 60;
+        // The average batch has 60 positions, analysed with 2_500_000 nodes
+        // each. Top end clients take no longer than 30 seconds.
+        let best_batch_seconds = 30;
 
         // Estimate how long this client would take for the next batch,
         // capped at timeout.
-        let estimated_batch_seconds = u64::from(min(6 * 60, 60 * 4_000_000 / self.nps));
+        let estimated_batch_seconds = u64::from(min(6 * 60, 60 * 2_500_000 / self.nps));
 
         // Its worth joining if queue wait time + estimated time < top client
         // time on empty queue.

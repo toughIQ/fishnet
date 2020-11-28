@@ -223,38 +223,35 @@ impl StockfishActor {
         stdin.write_line(&format!("position fen {} moves {}", fen, moves)).await?;
 
         // Go.
-        let mut go = vec!["go".to_owned(), "nodes".to_owned(), position.nodes.to_string()];
-        match &position.work {
+        let go = match &position.work {
             Work::Move { level, clock, .. } => {
                 stdin.write_line("setoption name UCI_AnalyseMode value false").await?;
                 stdin.write_line("setoption name UCI_LimitStrength value true").await?;
                 stdin.write_line(&format!("setoption name UCI_Elo value {}", level.elo())).await?;
 
-                go.push("movetime".to_owned());
-                go.push(level.time().as_millis().to_string());
-
-                go.push("depth".to_owned());
-                go.push(level.depth().to_string());
+                let mut go = vec![
+                    "go".to_owned(),
+                    "movetime".to_owned(), level.time().as_millis().to_string(),
+                    "depth".to_owned(), level.depth().to_string(),
+                ];
 
                 if let Some(clock) = clock {
-                    go.push("wtime".to_owned());
-                    go.push(Duration::from(clock.wtime).as_millis().to_string());
-
-                    go.push("btime".to_owned());
-                    go.push(Duration::from(clock.wtime).as_millis().to_string());
-
-                    go.push("winc".to_owned());
-                    go.push(clock.inc.as_millis().to_string());
-
-                    go.push("binc".to_owned());
-                    go.push(clock.inc.as_millis().to_string());
+                    go.extend_from_slice(&[
+                        "wtime".to_owned(), Duration::from(clock.wtime).as_millis().to_string(),
+                        "btime".to_owned(), Duration::from(clock.btime).as_millis().to_string(),
+                        "winc".to_owned(), clock.inc.as_millis().to_string(),
+                        "binc".to_owned(), clock.inc.as_millis().to_string(),
+                    ]);
                 }
+
+                go
             }
-            Work::Analysis { .. } => {
+            Work::Analysis { nodes, .. } => {
                 stdin.write_line("setoption name UCI_AnalyseMode value true").await?;
                 stdin.write_line("setoption name UCI_LimitStrength value false").await?;
+                vec!["go".to_owned(), "nodes".to_owned(), nodes.to_string()]
             }
-        }
+        };
         stdin.write_line(&go.join(" ")).await?;
 
         // Process response.

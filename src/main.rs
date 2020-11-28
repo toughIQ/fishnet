@@ -20,6 +20,7 @@ use tokio::signal;
 use tokio::sync::{mpsc, oneshot};
 use crate::configure::{Opt, Command, Cores};
 use crate::assets::{Assets, Cpu, ByEngineFlavor, EngineFlavor};
+use crate::api::Work;
 use crate::ipc::{Pull, Position};
 use crate::stockfish::StockfishInit;
 use crate::logger::Logger;
@@ -181,7 +182,15 @@ async fn run(opt: Opt, logger: &Logger) {
                             (sf, join_handle)
                         };
 
-                        // Analyse.
+                        // Heuristic for timeout, based on fixed communication
+                        // cost and nodes.
+                        let nodes = match job.work {
+                            Work::Analysis { nodes, .. } => nodes,
+                            Work::Move { .. } => 2_500_000, // conservative upper bound
+                        };
+                        let timeout = Duration::from_secs(4 + nodes / 250_000);
+
+                        // Analyse or play.
                         tokio::select! {
                             _ = tx.closed() => {
                                 logger.debug(&format!("Worker {} shutting down engine early", i));
@@ -189,7 +198,7 @@ async fn run(opt: Opt, logger: &Logger) {
                                 join_handle.await.expect("join");
                                 break;
                             }
-                            _ = time::sleep(Duration::from_secs(5 + job.nodes / 250_000)) => {
+                            _ = time::sleep(timeout) => {
                                 logger.warn(&format!("Engine timed out in worker. If this happens frequently it is better to stop and defer to clients with better hardware."));
                                 drop(sf);
                                 join_handle.await.expect("join");

@@ -32,19 +32,25 @@ Response with work:
 {
   "work": {
     "type": "analysis",
-    "id": "work_id"
+    "id": "work_id",
+    "nodes": 2500000 // node limit (nnue)
   },
   // or:
   // "work": {
   //   "type": "move",
   //   "id": "work_id",
   //   "level": 5 // 1 to 8
+  //   "clock": { // optional
+  //     "wtime": 18000, // time on white clock (centiseconds)
+  //     "btime": 18000, // time on black clock
+  //     "inc": 2, // fisher increment (seconds)
+  //   }
   // },
   "game_id": "abcdefgh", // optional
   "position": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", // start position (X-FEN)
   "variant": "standard",
   "moves": "e2e4 c7c5 c2c4 b8c6 g1e2 g8f6 b1c3 c6b4 g2g3 b4d3", // moves of the game (UCI)
-  "nodes": 3500000, // optional limit
+  "nodes": 4000000, // legacy node limit
   "skipPositions": [1, 4, 5] // 0 is the first position
 }
 ```

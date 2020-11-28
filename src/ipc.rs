@@ -19,7 +19,6 @@ pub struct Position {
     pub variant: LichessVariant,
     pub fen: Option<Fen>,
     pub moves: Vec<Uci>,
-    pub nodes: u64,
 }
 
 impl Position {
