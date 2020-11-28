@@ -5,8 +5,8 @@ use std::collections::hash_map::Entry;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use shakmaty::uci::Uci;
-use shakmaty::variants::Variant;
-use shakmaty::{Chess, Setup, FromSetup, MaterialSide, Material};
+use shakmaty::variants::VariantPosition;
+use shakmaty::{Setup, MaterialSide, Material};
 use url::Url;
 use tokio::sync::{mpsc, oneshot, Mutex, Notify};
 use tokio::time;
@@ -436,13 +436,10 @@ fn is_standard_material(material: &Material) -> bool {
 }
 
 fn engine_flavor(body: &AcquireResponseBody) -> EngineFlavor {
-    if body.work.is_analysis() && Variant::from(body.variant) == Variant::Chess {
-        match Chess::from_setup(&body.position.clone().unwrap_or_default()) {
-            Ok(pos) if is_standard_material(&pos.board().material()) => return EngineFlavor::Official,
-            _ => (),
-        }
+    match VariantPosition::from_setup(body.variant.into(), &body.position.clone().unwrap_or_default()) {
+        Ok(VariantPosition::Chess(pos)) if body.work.is_analysis() && is_standard_material(&pos.board().material()) => EngineFlavor::Official,
+        _ => EngineFlavor::MultiVariant,
     }
-    EngineFlavor::MultiVariant
 }
 
 impl IncomingBatch {
