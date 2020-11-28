@@ -249,7 +249,7 @@ impl StockfishActor {
             Work::Analysis { nodes, .. } => {
                 stdin.write_line("setoption name UCI_AnalyseMode value true").await?;
                 stdin.write_line("setoption name UCI_LimitStrength value false").await?;
-                vec!["go".to_owned(), "nodes".to_owned(), nodes.to_string()]
+                vec!["go".to_owned(), "nodes".to_owned(), nodes.unwrap_or_default().0.to_string()]
             }
         };
         stdin.write_line(&go.join(" ")).await?;

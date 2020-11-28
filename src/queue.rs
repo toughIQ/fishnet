@@ -550,6 +550,8 @@ pub struct CompletedBatch {
 
 impl CompletedBatch {
     fn into_analysis(self) -> Vec<Option<AnalysisPart>> {
+        let lila_nnue = matches!(self.work, Work::Analysis { nodes: Some(_), .. });
+
         self.positions.into_iter().map(|p| {
             Some(match p {
                 Skip::Skip => AnalysisPart::Skipped {
@@ -560,7 +562,15 @@ impl CompletedBatch {
                     depth: pos.depth,
                     score: pos.score,
                     time: pos.time.as_millis() as u64,
-                    nodes: pos.nodes,
+                    nodes: if lila_nnue {
+                        pos.nodes
+                    } else {
+                        // Lie to lila about crunched nodes by sending the
+                        // rough classical equivalent. Otherwise NNUE analysis
+                        // may be rejected as weak, even if it is stronger.
+                        // TODO: Remove when lila is updated.
+                        pos.nodes * 5 / 3
+                    },
                     nps: pos.nps,
                 },
             })

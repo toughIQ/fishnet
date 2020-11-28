@@ -137,10 +137,6 @@ pub struct AcquireQuery {
     pub slow: bool,
 }
 
-fn default_nodes() -> u64 {
-    2_500_000
-}
-
 #[serde_as]
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type")]
@@ -149,8 +145,8 @@ pub enum Work {
     Analysis {
         #[serde_as(as = "DisplayFromStr")]
         id: BatchId,
-        #[serde(default = "default_nodes")]
-        nodes: u64,
+        #[serde(default)]
+        nodes: Option<NodeLimit>,
     },
     #[serde(rename = "move")]
     Move {
@@ -189,6 +185,15 @@ impl FromStr for BatchId {
 impl fmt::Display for BatchId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.0, f)
+    }
+}
+
+#[derive(Debug, Copy, Clone, Deserialize)]
+pub struct NodeLimit(pub u64);
+
+impl Default for NodeLimit {
+    fn default() -> NodeLimit {
+        NodeLimit(2_500_000)
     }
 }
 
