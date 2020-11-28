@@ -14,20 +14,12 @@ pub struct PositionId(pub usize);
 pub struct Position {
     pub work: Work,
     pub position_id: PositionId,
+    pub flavor: EngineFlavor,
     pub url: Option<Url>,
 
     pub variant: LichessVariant,
     pub fen: Option<Fen>,
     pub moves: Vec<Uci>,
-}
-
-impl Position {
-    pub fn engine_flavor(&self) -> EngineFlavor {
-        match self.variant {
-            LichessVariant::Standard | LichessVariant::Chess960 if self.url.is_some() && self.work.is_analysis() => EngineFlavor::Official,
-            _ => EngineFlavor::MultiVariant,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]

@@ -2,6 +2,7 @@ use std::fmt;
 use std::io;
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use serde::Serialize;
 use bitflags::bitflags;
 use tempfile::TempDir;
 use xz::read::XzDecoder;
@@ -289,6 +290,15 @@ pub enum EngineFlavor {
     MultiVariant,
 }
 
+impl EngineFlavor {
+    pub fn eval_flavor(self) -> EvalFlavor {
+        match self {
+            EngineFlavor::Official => EvalFlavor::Classical,
+            EngineFlavor::MultiVariant => EvalFlavor::Nnue,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct ByEngineFlavor<T> {
     pub official: T,
@@ -309,6 +319,14 @@ impl<T> ByEngineFlavor<T> {
             EngineFlavor::MultiVariant => &mut self.multi_variant,
         }
     }
+}
+
+#[derive(Debug, Copy, Clone, Serialize)]
+pub enum EvalFlavor {
+    #[serde(rename = "classical")]
+    Classical,
+    #[serde(rename = "nnue")]
+    Nnue,
 }
 
 #[derive(Debug)]

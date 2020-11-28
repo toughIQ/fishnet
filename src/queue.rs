@@ -7,7 +7,8 @@ use shakmaty::uci::Uci;
 use url::Url;
 use tokio::sync::{mpsc, oneshot, Mutex, Notify};
 use tokio::time;
-use crate::api::{AcquireQuery, AcquireResponseBody, Acquired, AnalysisPart, ApiStub, BatchId, Work, nnue_to_classical};
+use crate::assets::{EngineFlavor, EvalFlavor};
+use crate::api::{AcquireQuery, AcquireResponseBody, Acquired, AnalysisPart, ApiStub, BatchId, Work, LichessVariant, nnue_to_classical};
 use crate::configure::{BacklogOpt, Endpoint};
 use crate::ipc::{Position, PositionResponse, PositionFailed, PositionId, Pull};
 use crate::logger::{Logger, ProgressAt, QueueStatusBar};
@@ -135,8 +136,9 @@ impl QueueState {
 
             self.pending.insert(batch_id, PendingBatch {
                 work: batch.work,
-                positions,
+                flavor: batch.flavor,
                 url: batch.url,
+                positions,
                 started_at: Instant::now(),
             });
 
@@ -194,7 +196,7 @@ impl QueueState {
                     match completed.work {
                         Work::Analysis { id, .. } => {
                             self.logger.info(&log);
-                            queue.api.submit_analysis(id, completed.into_analysis());
+                            queue.api.submit_analysis(id, completed.flavor.eval_flavor(), completed.into_analysis());
                         }
                         Work::Move { .. } => {
                             self.logger.debug(&log);
@@ -206,7 +208,7 @@ impl QueueState {
                 Err(pending) => {
                     let progress_report = pending.progress_report();
                     if progress_report.iter().filter(|p| p.is_some()).count() % (self.cores * 2) == 0 {
-                        queue.api.submit_analysis(pending.work.id(), progress_report);
+                        queue.api.submit_analysis(pending.work.id(), pending.flavor.eval_flavor(), progress_report);
                     }
 
                     self.pending.insert(pending.work.id(), pending);
@@ -288,7 +290,7 @@ impl QueueActor {
             Err(completed) => {
                 let batch_id = completed.work.id();
                 self.logger.warn(&format!("Completed empty batch {}.", batch_id));
-                self.api.submit_analysis(batch_id, completed.into_analysis());
+                self.api.submit_analysis(batch_id, completed.flavor.eval_flavor(), completed.into_analysis());
             }
         }
     }
@@ -404,6 +406,7 @@ impl<T> Skip<T> {
 #[derive(Debug, Clone)]
 pub struct IncomingBatch {
     work: Work,
+    flavor: EngineFlavor,
     positions: Vec<Skip<Position>>,
     url: Option<Url>,
 }
@@ -416,15 +419,22 @@ impl IncomingBatch {
             url
         });
 
+        let flavor = match body.variant {
+            LichessVariant::Standard | LichessVariant::Chess960 if body.work.is_analysis() && url.is_some() => EngineFlavor::Official,
+            _ => EngineFlavor::MultiVariant,
+        };
+
         Ok(IncomingBatch {
             work: body.work.clone(),
             url: url.clone(),
+            flavor,
             positions: match body.work {
                 Work::Move { .. } => {
                     vec![Skip::Present(Position {
                         work: body.work,
-                        position_id: PositionId(0),
                         url,
+                        flavor,
+                        position_id: PositionId(0),
                         variant: body.variant,
                         fen: body.position,
                         moves: body.moves,
@@ -434,11 +444,12 @@ impl IncomingBatch {
                     let mut moves = Vec::new();
                     let mut positions = vec![Skip::Present(Position {
                         work: body.work.clone(),
-                        position_id: PositionId(0),
                         url: url.clone().map(|mut url| {
                             url.set_fragment(Some("0"));
                             url
                         }),
+                        flavor,
+                        position_id: PositionId(0),
                         variant: body.variant,
                         fen: body.position.clone(),
                         moves: moves.clone(),
@@ -449,12 +460,13 @@ impl IncomingBatch {
                         moves.push(m);
                         positions.push(Skip::Present(Position {
                             work: body.work.clone(),
-                            position_id: PositionId(1 + i),
                             url: body.game_id.as_ref().map(|g| {
                                 url.set_path(g);
                                 url.set_fragment(Some(&(1 + i).to_string()));
                                 url
                             }),
+                            flavor,
+                            position_id: PositionId(1 + i),
                             variant: body.variant,
                             fen: body.position.clone(),
                             moves: moves.clone(),
@@ -474,9 +486,10 @@ impl IncomingBatch {
                         return Err(CompletedBatch {
                             work: body.work.clone(),
                             url,
+                            flavor,
+                            positions: positions.into_iter().map(|_| Skip::Skip).collect(),
                             started_at: now,
                             completed_at: now,
-                            positions: positions.into_iter().map(|_| Skip::Skip).collect(),
                         });
                     }
 
@@ -500,8 +513,9 @@ impl From<&IncomingBatch> for ProgressAt {
 #[derive(Debug, Clone)]
 struct PendingBatch {
     work: Work,
-    positions: Vec<Option<Skip<PositionResponse>>>,
     url: Option<Url>,
+    flavor: EngineFlavor,
+    positions: Vec<Option<Skip<PositionResponse>>>,
     started_at: Instant,
 }
 
@@ -510,8 +524,9 @@ impl PendingBatch {
         match self.positions.clone().into_iter().collect() {
             Some(positions) => Ok(CompletedBatch {
                 work: self.work,
-                positions,
                 url: self.url,
+                flavor: self.flavor,
+                positions,
                 started_at: self.started_at,
                 completed_at: Instant::now(),
             }),
@@ -542,8 +557,9 @@ impl PendingBatch {
 
 pub struct CompletedBatch {
     work: Work,
-    positions: Vec<Skip<PositionResponse>>,
     url: Option<Url>,
+    flavor: EngineFlavor,
+    positions: Vec<Skip<PositionResponse>>,
     started_at: Instant,
     completed_at: Instant,
 }
@@ -551,6 +567,7 @@ pub struct CompletedBatch {
 impl CompletedBatch {
     fn into_analysis(self) -> Vec<Option<AnalysisPart>> {
         let lila_updated = matches!(self.work, Work::Analysis { nodes: Some(_), .. });
+        let flavor = self.flavor.eval_flavor();
 
         self.positions.into_iter().map(|p| {
             Some(match p {
@@ -562,14 +579,16 @@ impl CompletedBatch {
                     depth: pos.depth,
                     score: pos.score,
                     time: pos.time.as_millis() as u64,
-                    nodes: if lila_updated {
-                        pos.nodes
-                    } else {
-                        // TODO: Remove when lila is updated:
-                        // Lie to lila about crunched nodes by sending the
-                        // rough classical equivalent. Otherwise NNUE analysis
-                        // may be rejected as weak, even if it is stronger.
-                        nnue_to_classical(pos.nodes)
+                    nodes: match flavor {
+                        EvalFlavor::Nnue if !lila_updated => {
+                            // TODO: Remove when lila is updated:
+                            // Lie to lila about crunched nodes by sending the
+                            // rough classical equivalent. Otherwise NNUE
+                            // analysis may be rejected as weak, even if it is
+                            // stronger.
+                            nnue_to_classical(pos.nodes)
+                        }
+                        _ => pos.nodes,
                     },
                     nps: pos.nps,
                 },

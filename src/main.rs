@@ -155,7 +155,7 @@ async fn run(opt: Opt, logger: &Logger) {
                 loop {
                     let response = if let Some(job) = job.take() {
                         // Ensure engine process is ready.
-                        let flavor = job.engine_flavor();
+                        let flavor = job.flavor;
                         let (mut sf, join_handle) = if let Some((sf, join_handle)) = engine.get_mut(flavor).take() {
                             (sf, join_handle)
                         } else {
@@ -183,7 +183,7 @@ async fn run(opt: Opt, logger: &Logger) {
 
                         // Heuristic for timeout, based on fixed communication
                         // cost and nodes.
-                        let nodes = job.work.node_limit().unwrap_or_default().get(flavor);
+                        let nodes = job.work.node_limit().unwrap_or_default().get(flavor.eval_flavor());
                         let timeout = Duration::from_secs(4 + nodes / 250_000);
 
                         // Analyse or play.

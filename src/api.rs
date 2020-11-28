@@ -12,7 +12,7 @@ use shakmaty::fen::Fen;
 use shakmaty::uci::Uci;
 use shakmaty::variants::Variant;
 use tokio_compat_02::FutureExt as _;
-use crate::assets::EngineFlavor;
+use crate::assets::EvalFlavor;
 use crate::configure::{Endpoint, Key, KeyError};
 use crate::logger::Logger;
 use crate::util::{NevermindExt as _, RandomizedBackoff};
@@ -48,6 +48,7 @@ enum ApiMessage {
     },
     SubmitAnalysis {
         batch_id: BatchId,
+        flavor: EvalFlavor,
         analysis: Vec<Option<AnalysisPart>>,
     },
     SubmitMove {
@@ -104,13 +105,23 @@ impl Fishnet {
 struct Stockfish {
     name: &'static str,
     options: StockfishOptions,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    flavor: Option<EvalFlavor>,
 }
 
-impl Default for Stockfish {
-    fn default() -> Stockfish {
+impl Stockfish {
+    fn without_flavor() -> Stockfish {
         Stockfish {
             name: "Stockfish 12+",
             options: StockfishOptions::default(),
+            flavor: None,
+        }
+    }
+
+    fn with_flavor(flavor: EvalFlavor) -> Stockfish {
+        Stockfish {
+            flavor: Some(flavor),
+            ..Stockfish::without_flavor()
         }
     }
 }
@@ -207,10 +218,10 @@ pub fn nnue_to_classical(nodes: u64) -> u64 {
 }
 
 impl NodeLimit {
-    pub fn get(&self, flavor: EngineFlavor) -> u64 {
+    pub fn get(&self, flavor: EvalFlavor) -> u64 {
         match flavor {
-            EngineFlavor::Official => self.classical,
-            EngineFlavor::MultiVariant => self.nnue,
+            EvalFlavor::Classical => self.classical,
+            EvalFlavor::Nnue => self.nnue,
         }
     }
 }
@@ -460,9 +471,10 @@ impl ApiStub {
         res.await.ok()
     }
 
-    pub fn submit_analysis(&mut self, batch_id: BatchId, analysis: Vec<Option<AnalysisPart>>) {
+    pub fn submit_analysis(&mut self, batch_id: BatchId, flavor: EvalFlavor, analysis: Vec<Option<AnalysisPart>>) {
         self.tx.send(ApiMessage::SubmitAnalysis {
             batch_id,
+            flavor,
             analysis,
         }).expect("api actor alive");
     }
@@ -535,7 +547,7 @@ impl ApiActor {
             self.logger.warn(&format!("Aborting batch {}.", batch_id));
             self.client.post(&url).json(&VoidRequestBody {
                 fishnet: Fishnet::authenticated(self.key.clone()),
-                stockfish: Stockfish::default(),
+                stockfish: Stockfish::without_flavor(),
             }).send().await?.error_for_status()?;
         })
     }
@@ -573,7 +585,7 @@ impl ApiActor {
                 let url = format!("{}/acquire", self.endpoint);
                 let res = self.client.post(&url).query(&query).json(&VoidRequestBody {
                     fishnet: Fishnet::authenticated(self.key.clone()),
-                    stockfish: Stockfish::default(),
+                    stockfish: Stockfish::without_flavor(),
                 }).send().await?;
 
                 match res.status() {
@@ -591,15 +603,15 @@ impl ApiActor {
                     }
                 }
             }
-            ApiMessage::SubmitAnalysis { batch_id, analysis } => {
+            ApiMessage::SubmitAnalysis { batch_id, flavor, analysis } => {
                 let url = format!("{}/analysis/{}", self.endpoint, batch_id);
                 let res = self.client.post(&url).query(&SubmitQuery {
                     stop: true,
                     slow: false,
                 }).json(&AnalysisRequestBody {
                     fishnet: Fishnet::authenticated(self.key.clone()),
-                    stockfish: Stockfish::default(),
-                    analysis
+                    stockfish: Stockfish::with_flavor(flavor),
+                    analysis,
                 }).send().await?.error_for_status()?;
 
                 if res.status() != StatusCode::NO_CONTENT {

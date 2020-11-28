@@ -80,7 +80,8 @@ POST http://lichess.org/fishnet/analysis/{work_id}
     "options": {
       "hash": "256",
       "threads": "4"
-    }
+    },
+    "flavor": "nnue" // or classical
   },
   "analysis": [
     { // first ply
