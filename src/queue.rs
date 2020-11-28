@@ -184,20 +184,21 @@ impl QueueState {
         if let Some(pending) = self.pending.remove(&batch) {
             match pending.try_into_completed() {
                 Ok(completed) => {
-                    let nps_string = match completed.nps() {
+                    let mut extra = Vec::new();
+                    extra.extend(completed.variant.short_name().map(|n| n.to_owned()));
+                    if completed.flavor.eval_flavor() != EvalFlavor::Nnue {
+                        extra.push("no nnue".to_owned());
+                    }
+                    extra.push(match completed.nps() {
                         Some(nps) => {
                             self.stats.record_batch(completed.total_positions(), completed.total_nodes(), nps);
-                            nps.to_string()
+                            format!("{} nps", nps)
                         }
-                        None => "?".to_owned(),
-                    };
-                    let extra = match completed.variant.short_name() {
-                        Some(short_name) => format!("{}, ", short_name),
-                        None => "".to_owned(),
-                    };
+                        None => "? nps".to_owned(),
+                    });
                     let log = match completed.url {
-                        Some(ref url) => format!("{} {} finished ({}{} nps)", self.status_bar(), url, extra, nps_string),
-                        None => format!("{} {} finished ({}{} nps)", self.status_bar(), batch, extra, nps_string),
+                        Some(ref url) => format!("{} {} finished ({})", self.status_bar(), url, extra.join(", ")),
+                        None => format!("{} {} finished ({})", self.status_bar(), batch, extra.join(", ")),
                     };
                     match completed.work {
                         Work::Analysis { id, .. } => {

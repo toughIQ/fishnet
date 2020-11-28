@@ -321,7 +321,7 @@ impl<T> ByEngineFlavor<T> {
     }
 }
 
-#[derive(Debug, Copy, Clone, Serialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize)]
 pub enum EvalFlavor {
     #[serde(rename = "classical")]
     Classical,
