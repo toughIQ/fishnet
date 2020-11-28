@@ -562,10 +562,17 @@ impl ApiActor {
     async fn abort(&mut self, batch_id: BatchId) -> reqwest::Result<()> {
         let url = format!("{}/abort/{}", self.endpoint, batch_id);
         self.logger.warn(&format!("Aborting batch {}.", batch_id));
-        self.client.post(&url).json(&VoidRequestBody {
+        let res = self.client.post(&url).json(&VoidRequestBody {
             fishnet: Fishnet::authenticated(self.key.clone()),
             stockfish: Stockfish::without_flavor(),
-        }).send().await?.error_for_status().map(|_| ())
+        }).send().await?;
+
+        if res.status() == StatusCode::NOT_FOUND {
+            self.logger.warn(&format!("Fishnet server does not support abort (404 for {}).", batch_id));
+            Ok(())
+        } else {
+            res.error_for_status().map(|_| ())
+        }
     }
 
     async fn handle_message_inner(&mut self, msg: ApiMessage) -> reqwest::Result<()> {
