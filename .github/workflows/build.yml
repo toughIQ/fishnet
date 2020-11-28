@@ -1,0 +1,89 @@
+name: Build
+
+#on: [push, pull_request]
+on: [push]
+
+jobs:
+  linux-x86-64:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+    - uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --release
+    - run: mv target/release/fishnet fishnet-x86_64-unknown-linux-gnu
+    - run: strip fishnet-x86_64-unknown-linux-gnu
+    - uses: actions/upload-artifact@v2
+      with:
+        name: fishnet-x86_64-unknown-linux-gnu.zip
+        path: fishnet-x86_64-unknown-linux-gnu
+  linux-aarch64:
+    runs-on: ubuntu-18.04
+    steps:
+    - run: sudo apt-get update && sudo apt-get install -y binutils-aarch64-linux-gnu
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        target: aarch64-unknown-linux-gnu
+    - uses: actions-rs/cargo@v1
+      with:
+        use-cross: true
+        command: build
+        args: --release --target aarch64-unknown-linux-gnu
+    - run: mv target/aarch64-unknown-linux-gnu/release/fishnet fishnet-aarch64-unknown-linux-gnu
+    - run: aarch64-linux-gnu-strip fishnet-aarch64-unknown-linux-gnu
+    - uses: actions/upload-artifact@v2
+      with:
+        name: fishnet-aarch64-unknown-linux-gnu.zip
+        path: fishnet-aarch64-unknown-linux-gnu
+  windows-x86-64:
+    runs-on: windows-2016
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+    - uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --release
+    - run: mv target/release/fishnet.exe fishnet-x86_64-pc-windows-msvc.exe
+    - run: strip fishnet-x86_64-pc-windows-msvc.exe
+    - uses: actions/upload-artifact@v2
+      with:
+        name: fishnet-x86_64-pc-windows-msvc.zip
+        path: fishnet-x86_64-pc-windows-msvc.exe
+# macos-x86-64:
+#   runs-on: macos-10.15
+#   steps:
+#   - uses: actions/checkout@v2
+#     with:
+#       submodules: true
+#   - uses: actions-rs/toolchain@v1
+#     with:
+#       profile: minimal
+#       toolchain: stable
+#   - uses: actions-rs/cargo@v1
+#     with:
+#       command: build
+#       args: --release
+#   - run: mv target/release/fishnet fishnet-x86_64-apple-darwin
+#   - run: strip fishnet-x86_64-apple-darwin
+#   - uses: actions/upload-artifact@v2
+#     with:
+#       name: fishnet-x86_64-apple-darwin.zip
+#       path: fishnet-x86_64-apple-darwin
