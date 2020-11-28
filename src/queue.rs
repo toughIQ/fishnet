@@ -137,6 +137,7 @@ impl QueueState {
                 entry.insert(PendingBatch {
                     work: batch.work,
                     flavor: batch.flavor,
+                    variant: batch.variant,
                     url: batch.url,
                     positions,
                     started_at: Instant::now(),
@@ -190,9 +191,13 @@ impl QueueState {
                         }
                         None => "?".to_owned(),
                     };
+                    let extra = match completed.variant.short_name() {
+                        Some(short_name) => format!("{}, ", short_name),
+                        None => "".to_owned(),
+                    };
                     let log = match completed.url {
-                        Some(ref url) => format!("{} {} finished ({} nps)", self.status_bar(), url, nps_string),
-                        None => format!("{} {} finished ({} nps)", self.status_bar(), batch, nps_string),
+                        Some(ref url) => format!("{} {} finished ({}{} nps)", self.status_bar(), url, extra, nps_string),
+                        None => format!("{} {} finished ({}{} nps)", self.status_bar(), batch, extra, nps_string),
                     };
                     match completed.work {
                         Work::Analysis { id, .. } => {
@@ -408,6 +413,7 @@ impl<T> Skip<T> {
 pub struct IncomingBatch {
     work: Work,
     flavor: EngineFlavor,
+    variant: LichessVariant,
     positions: Vec<Skip<Position>>,
     url: Option<Url>,
 }
@@ -429,6 +435,7 @@ impl IncomingBatch {
             work: body.work.clone(),
             url: url.clone(),
             flavor,
+            variant: body.variant,
             positions: match body.work {
                 Work::Move { .. } => {
                     vec![Skip::Present(Position {
@@ -488,6 +495,7 @@ impl IncomingBatch {
                             work: body.work,
                             url,
                             flavor,
+                            variant: body.variant,
                             positions: positions.into_iter().map(|_| Skip::Skip).collect(),
                             started_at: now,
                             completed_at: now,
@@ -516,6 +524,7 @@ struct PendingBatch {
     work: Work,
     url: Option<Url>,
     flavor: EngineFlavor,
+    variant: LichessVariant,
     positions: Vec<Option<Skip<PositionResponse>>>,
     started_at: Instant,
 }
@@ -527,6 +536,7 @@ impl PendingBatch {
                 work: self.work,
                 url: self.url,
                 flavor: self.flavor,
+                variant: self.variant,
                 positions,
                 started_at: self.started_at,
                 completed_at: Instant::now(),
@@ -560,6 +570,7 @@ pub struct CompletedBatch {
     work: Work,
     url: Option<Url>,
     flavor: EngineFlavor,
+    variant: LichessVariant,
     positions: Vec<Skip<PositionResponse>>,
     started_at: Instant,
     completed_at: Instant,

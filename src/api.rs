@@ -347,6 +347,23 @@ pub enum LichessVariant {
     ThreeCheck,
 }
 
+impl LichessVariant {
+    pub fn short_name(self) -> Option<&'static str> {
+        Some(match self {
+            LichessVariant::Antichess => "anti",
+            LichessVariant::Atomic => "atomic",
+            LichessVariant::Chess960 => "960",
+            LichessVariant::Crazyhouse => "zh",
+            LichessVariant::FromPosition => "setup",
+            LichessVariant::Horde => "horde",
+            LichessVariant::KingOfTheHill => "koth",
+            LichessVariant::RacingKings => "race",
+            LichessVariant::ThreeCheck => "3check",
+            LichessVariant::Standard => return None,
+        })
+    }
+}
+
 impl From<LichessVariant> for Variant {
     fn from(lichess: LichessVariant) -> Variant {
         match lichess {
