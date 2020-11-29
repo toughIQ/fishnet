@@ -98,6 +98,9 @@ fn auto_update(verbose: bool, logger: &Logger) -> Result<self_update::Status, Bo
 async fn run(opt: Opt, logger: &Logger) {
     logger.headline("Checking configuration ...");
 
+    let endpoint = opt.endpoint();
+    logger.info(&format!("Endpoint: {}", endpoint));
+
     let cpu = Cpu::detect();
     logger.info(&format!("CPU features: {:?}", cpu));
 
@@ -123,8 +126,6 @@ async fn run(opt: Opt, logger: &Logger) {
     let mut join_handles = Vec::new();
 
     // Spawn API actor.
-    let endpoint = opt.endpoint();
-    logger.info(&format!("Endpoint: {}", endpoint));
     let api = {
         let (api, api_actor) = api::channel(endpoint.clone(), opt.key, logger.clone());
         join_handles.push(tokio::spawn(async move {
