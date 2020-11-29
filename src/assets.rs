@@ -315,7 +315,7 @@ const STOCKFISH_MV: &[Asset] = &[
 #[cfg(all(unix, target_arch = "aarch64"))]
 const STOCKFISH: &[Asset] = &[
     Asset {
-        name: "stockfish-mv-armv8",
+        name: "stockfish-armv8",
         data: include_bytes!("../assets/stockfish-armv8.xz"),
         needs: Cpu::empty(),
         executable: true,
