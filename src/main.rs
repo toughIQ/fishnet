@@ -93,6 +93,9 @@ async fn run(opt: Opt, logger: &Logger) {
     let cpu = Cpu::detect();
     logger.info(&format!("CPU features: {:?}", cpu));
 
+    let assets = Assets::prepare(cpu).expect("prepared bundled stockfish");
+    logger.info(&format!("Engine: {}", assets.sf_name));
+
     let cores = usize::from(opt.cores.unwrap_or(Cores::Auto));
     logger.info(&format!("Cores: {}", cores));
 
@@ -136,7 +139,7 @@ async fn run(opt: Opt, logger: &Logger) {
     // Spawn workers. Workers handle engine processes and send their results
     // to tx, thereby requesting more work.
     let mut rx = {
-        let assets = Arc::new(Assets::prepare(cpu).expect("prepared bundled stockfish"));
+        let assets = Arc::new(assets);
         let (tx, rx) = mpsc::channel::<Pull>(cores);
         for i in 0..cores {
             let logger = logger.clone();

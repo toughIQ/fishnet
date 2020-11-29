@@ -332,6 +332,7 @@ pub enum EvalFlavor {
 #[derive(Debug)]
 pub struct Assets {
     dir: TempDir,
+    pub sf_name: &'static str,
     pub nnue: String,
     pub stockfish: ByEngineFlavor<PathBuf>,
 }
@@ -339,10 +340,12 @@ pub struct Assets {
 impl Assets {
     pub fn prepare(cpu: Cpu) -> io::Result<Assets> {
         let dir = tempfile::Builder::new().prefix("fishnet-").tempdir()?;
+        let sf = STOCKFISH.iter().find(|a| cpu.contains(a.needs)).expect("compatible stockfish");
         Ok(Assets {
             nnue: NNUE.create(dir.path())?.to_str().expect("nnue path printable").to_owned(),
+            sf_name: sf.name,
             stockfish: ByEngineFlavor {
-                official: STOCKFISH.iter().find(|a| cpu.contains(a.needs)).expect("compatible stockfish").create(dir.path())?,
+                official: sf.create(dir.path())?,
                 multi_variant: STOCKFISH_MV.iter().find(|a| cpu.contains(a.needs)).expect("compatible stockfish").create(dir.path())?,
             },
             dir,
