@@ -54,10 +54,10 @@ async fn main() {
 }
 
 fn license(logger: &Logger) {
+    logger.headline("LICENSE.txt");
+    println!("{}", include_str!("../LICENSE.txt"));
     logger.headline("COPYING.txt");
     print!("{}", include_str!("../COPYING.txt"));
-    logger.headline("LICENSE.txt");
-    print!("{}", include_str!("../LICENSE.txt"));
 }
 
 #[cfg(unix)]
