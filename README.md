@@ -41,10 +41,13 @@ Installation
    cargo run --release --
    ```
 
-Video tutorial (outdated since 2.x)
------------------------------------
+Video introduction
+------------------
 
-[![Video introducation](https://img.youtube.com/vi/iPRNluVn22w/0.jpg)](https://www.youtube.com/watch?v=iPRNluVn22w)
+Watch [@arex](https://lichess.org/@/arex) explain fishnet. The exact
+installation steps have changed a bit since the video was recorded.
+
+[![Video introduction](https://img.youtube.com/vi/iPRNluVn22w/0.jpg)](https://www.youtube.com/watch?v=iPRNluVn22w)
 
 FAQ
 ---
