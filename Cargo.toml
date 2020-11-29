@@ -1,6 +1,6 @@
 [package]
 name = "fishnet"
-version = "2.0.0-beta.2" # remember to update changelog
+version = "2.0.0" # remember to update changelog
 description = "Distributed Stockfish analysis for lichess.org"
 repository = "https://github.com/niklasf/fishnet"
 readme = "README.md"
