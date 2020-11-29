@@ -226,7 +226,7 @@ async fn run(opt: Opt, logger: &Logger) {
                                     }
                                     Err(failed) => {
                                         drop(sf);
-                                        logger.debug(&format!("Worker {} waiting for engine to shut down after error", i));
+                                        logger.warn(&format!("Worker {} waiting for engine to shut down after error. Context: {}", i, context));
                                         join_handle.await.expect("join");
                                         Some(Err(failed))
                                     },
