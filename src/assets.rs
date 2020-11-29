@@ -247,6 +247,30 @@ const STOCKFISH_MV: &[Asset] = &[
 #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
 const STOCKFISH: &[Asset] = &[
     Asset {
+        name: "stockfish-macos-x86-64-bmi2",
+        data: include_bytes!("../assets/stockfish-macos-x86-64-bmi2.xz"),
+        needs: Cpu::SF_BMI2,
+        executable: true,
+    },
+    Asset {
+        name: "stockfish-macos-x86-64-avx2",
+        data: include_bytes!("../assets/stockfish-macos-x86-64-avx2.xz"),
+        needs: Cpu::SF_AVX2,
+        executable: true,
+    },
+    Asset {
+        name: "stockfish-macos-x86-64-sse41-popcnt",
+        data: include_bytes!("../assets/stockfish-macos-x86-64-sse41-popcnt.xz"),
+        needs: Cpu::SF_SSE41_POPCNT,
+        executable: true,
+    },
+    Asset {
+        name: "stockfish-macos-x86-64-ssse3",
+        data: include_bytes!("../assets/stockfish-macos-x86-64-ssse3.xz"),
+        needs: Cpu::SF_SSSE3,
+        executable: true,
+    },
+    Asset {
         name: "stockfish-macos-x86-64",
         data: include_bytes!("../assets/stockfish-macos-x86-64.xz"),
         needs: Cpu::SF,
@@ -256,6 +280,30 @@ const STOCKFISH: &[Asset] = &[
 
 #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
 const STOCKFISH_MV: &[Asset] = &[
+    Asset {
+        name: "stockfish-mv-macos-x86-64-bmi2",
+        data: include_bytes!("../assets/stockfish-mv-macos-x86-64-bmi2.xz"),
+        needs: Cpu::SF_BMI2,
+        executable: true,
+    },
+    Asset {
+        name: "stockfish-mv-macos-x86-64-avx2",
+        data: include_bytes!("../assets/stockfish-mv-macos-x86-64-avx2.xz"),
+        needs: Cpu::SF_AVX2,
+        executable: true,
+    },
+    Asset {
+        name: "stockfish-mv-macos-x86-64-sse41-popcnt",
+        data: include_bytes!("../assets/stockfish-mv-macos-x86-64-sse41-popcnt.xz"),
+        needs: Cpu::SF_SSE41_POPCNT,
+        executable: true,
+    },
+    Asset {
+        name: "stockfish-mv-macos-x86-64-ssse3",
+        data: include_bytes!("../assets/stockfish-mv-macos-x86-64-ssse3.xz"),
+        needs: Cpu::SF_SSSE3,
+        executable: true,
+    },
     Asset {
         name: "stockfish-mv-macos-x86-64",
         data: include_bytes!("../assets/stockfish-mv-macos-x86-64.xz"),
