@@ -647,9 +647,9 @@ impl ApiActor {
                 let res = self.client.post(&url).json(&MoveRequestBody {
                     fishnet: Fishnet::authenticated(self.key.clone()),
                     m: BestMove {
-                        best_move,
+                        best_move: best_move.clone(),
                     },
-                }).send().await?.error_for_status()?;
+                }).send().await?;
 
                 match res.status() {
                     StatusCode::NO_CONTENT => callback.send(Acquired::NoContent).nevermind("callback dropped"),
@@ -660,7 +660,10 @@ impl ApiActor {
                         }
                     }
                     status => {
-                        self.logger.warn(&format!("Unexpected status for submit move: {}", status));
+                        self.logger.warn(&format!("Unexpected status submitting move {} for batch {}: {}",
+                                                  best_move.map_or_else(|| "0000".to_owned(), |m| m.to_string()),
+                                                  batch_id, status));
+                        res.error_for_status()?;
                     }
                 }
             }
