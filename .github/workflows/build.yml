@@ -1,11 +1,10 @@
 name: Build
 
-#on: [push, pull_request]
-on: [push]
+on: [push, pull_request]
 
 jobs:
   linux-x86-64:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-16.04
     steps:
     - uses: actions/checkout@v2
       with:
@@ -25,7 +24,7 @@ jobs:
         name: fishnet-x86_64-unknown-linux-gnu
         path: fishnet-x86_64-unknown-linux-gnu
   linux-aarch64:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-16.04
     steps:
     - run: sudo apt-get update && sudo apt-get install -y binutils-aarch64-linux-gnu
     - uses: actions/checkout@v2
