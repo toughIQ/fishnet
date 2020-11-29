@@ -271,8 +271,8 @@ impl QueueActor {
             let state = self.state.lock().await;
             state.stats.min_user_backlog()
         };
-        let user_backlog = max(self.opt.user.map_or(Duration::default(), Duration::from), min_user_backlog);
-        let system_backlog = self.opt.system.map_or(Duration::default(), Duration::from);
+        let user_backlog = max(min_user_backlog, self.opt.user.map(Duration::from).unwrap_or_default());
+        let system_backlog = self.opt.system.map(Duration::from).unwrap_or_default();
 
         if user_backlog >= sec || system_backlog >= sec {
             if let Some(status) = self.api.status().await {
@@ -282,12 +282,15 @@ impl QueueActor {
                        user_wait, user_backlog, status.user.oldest,
                        system_wait, system_backlog, status.system.oldest));
                 let slow = user_wait >= system_wait + sec;
-                return (min(user_wait, system_wait), AcquireQuery { slow });
+                (min(user_wait, system_wait), AcquireQuery { slow })
+            } else {
+                self.logger.debug("Queue status not available. Will not delay acquire.");
+                let slow = user_backlog >= system_backlog + sec;
+                (Duration::default(), AcquireQuery { slow })
             }
+        } else {
+            (Duration::default(), AcquireQuery { slow: false })
         }
-
-        let slow = min_user_backlog >= sec;
-        (Duration::default(), AcquireQuery { slow })
     }
 
     async fn handle_acquired_response_body(&mut self, body: AcquireResponseBody) {

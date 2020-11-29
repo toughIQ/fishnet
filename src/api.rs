@@ -595,7 +595,7 @@ impl ApiActor {
                 let res = self.client.get(&url).send().await?;
                 match res.status() {
                     StatusCode::OK => callback.send(res.json::<StatusResponseBody>().await?.analysis).nevermind("callback dropped"),
-                    StatusCode::NOT_FOUND => callback.send(AnalysisStatus::default()).nevermind("callback dropped"),
+                    StatusCode::NOT_FOUND => (),
                     status => {
                         self.logger.warn(&format!("Unexpected status for queue status: {}", status));
                         res.error_for_status()?;
