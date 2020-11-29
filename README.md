@@ -41,10 +41,6 @@ Installation
    cargo run --release --
    ```
 
-   **Via Docker**
-
-   Not yet available for 2.x.
-
 Video tutorial (outdated since 2.x)
 -----------------------------------
 
@@ -112,6 +108,8 @@ No, sorry, not publically. It would incentivize gaming the metrics.
 ### Is there a Docker image?
 
 Not yet available for fishnet 2.x.
+Check [the 1.x branch](https://github.com/niklasf/fishnet/blob/1.x/Dockerfile)
+for reference, if you want to contribute a `Dockerfile`.
 
 ### Can I autoscale fishnet in the cloud?
 
