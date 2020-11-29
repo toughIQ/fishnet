@@ -188,6 +188,12 @@ Response:
 204 No Content
 ```
 
+Or abort not supported:
+
+```
+404 Not found
+```
+
 Status
 ------
 
