@@ -1,6 +1,6 @@
 use std::fmt;
 use std::io;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::path::{Path, PathBuf};
 use serde::Serialize;
 use bitflags::bitflags;
@@ -16,9 +16,9 @@ struct Asset {
 
 impl Asset {
     #[cfg(unix)]
-    fn open_file(&self, path: &Path) -> io::Result<File> {
+    fn open_executable_file(&self, path: &Path) -> io::Result<File> {
         use std::os::unix::fs::OpenOptionsExt as _;
-        std::fs::OpenOptions::new()
+        OpenOptions::new()
             .create(true)
             .write(true)
             .mode(0o700)
@@ -26,8 +26,12 @@ impl Asset {
     }
 
     #[cfg(not(unix))]
+    fn open_executable_file(&self, path: &Path) -> io::Result<File> {
+        self.open_file(path)
+    }
+
     fn open_file(&self, path: &Path) -> io::Result<File> {
-        std::fs::OpenOptions::new()
+        OpenOptions::new()
             .create(true)
             .write(true)
             .open(path)
@@ -35,7 +39,11 @@ impl Asset {
 
     fn create(&self, base: &Path) -> io::Result<PathBuf> {
         let path = base.join(self.name);
-        let mut file = self.open_file(&path)?;
+        let mut file = if self.executable {
+            self.open_executable_file(&path)
+        } else {
+            self.open_file(&path)
+        }?;
 
         let mut decoder = XzDecoder::new(self.data);
         io::copy(&mut decoder, &mut file)?;
