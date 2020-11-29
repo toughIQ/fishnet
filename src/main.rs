@@ -25,7 +25,7 @@ use crate::stockfish::StockfishInit;
 use crate::logger::Logger;
 use crate::util::RandomizedBackoff;
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     let opt = configure::parse_and_configure().await;
     let logger = Logger::new(opt.verbose, opt.command.map_or(false, Command::is_systemd));
