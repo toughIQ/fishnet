@@ -67,8 +67,8 @@ bitflags! {
         const BMI2   = 1 << 6;
         const INTEL  = 1 << 7; // amd supports bmi2, but pext is too slow
 
-        const SF              = 0;
-        const SF_SSSE3        = Cpu::SF.bits | Cpu::SSE.bits | Cpu::SSE2.bits | Cpu::SSSE3.bits;
+        const SF_SSE2         = Cpu::SSE2.bits;
+        const SF_SSSE3        = Cpu::SF_SSE2.bits | Cpu::SSE.bits | Cpu::SSE2.bits | Cpu::SSSE3.bits;
         const SF_SSE41_POPCNT = Cpu::SF_SSSE3.bits | Cpu::POPCNT.bits | Cpu::SSE41.bits;
         const SF_AVX2         = Cpu::SF_SSE41_POPCNT.bits | Cpu::AVX2.bits;
         const SF_BMI2         = Cpu::SF_AVX2.bits | Cpu::BMI2.bits | Cpu::INTEL.bits;
@@ -137,7 +137,7 @@ const STOCKFISH: &[Asset] = &[
     Asset {
         name: "stockfish-x86-64",
         data: include_bytes!("../assets/stockfish-x86-64.xz"),
-        needs: Cpu::SF,
+        needs: Cpu::SF_SSE2,
         executable: true,
     },
 ];
@@ -171,7 +171,7 @@ const STOCKFISH_MV: &[Asset] = &[
     Asset {
         name: "stockfish-mv-x86-64",
         data: include_bytes!("../assets/stockfish-mv-x86-64.xz"),
-        needs: Cpu::SF,
+        needs: Cpu::SF_SSE2,
         executable: true,
     },
 ];
@@ -205,7 +205,7 @@ const STOCKFISH: &[Asset] = &[
     Asset {
         name: "stockfish-x86-64.exe",
         data: include_bytes!("../assets/stockfish-x86-64.exe.xz"),
-        needs: Cpu::SF,
+        needs: Cpu::SF_SSE2,
         executable: true,
     },
 ];
@@ -239,7 +239,7 @@ const STOCKFISH_MV: &[Asset] = &[
     Asset {
         name: "stockfish-mv-x86-64.exe",
         data: include_bytes!("../assets/stockfish-mv-x86-64.exe.xz"),
-        needs: Cpu::SF,
+        needs: Cpu::SF_SSE2,
         executable: true,
     },
 ];
@@ -273,7 +273,7 @@ const STOCKFISH: &[Asset] = &[
     Asset {
         name: "stockfish-macos-x86-64",
         data: include_bytes!("../assets/stockfish-macos-x86-64.xz"),
-        needs: Cpu::SF,
+        needs: Cpu::SF_SSE2,
         executable: true,
     },
 ];
@@ -307,7 +307,7 @@ const STOCKFISH_MV: &[Asset] = &[
     Asset {
         name: "stockfish-mv-macos-x86-64",
         data: include_bytes!("../assets/stockfish-mv-macos-x86-64.xz"),
-        needs: Cpu::SF,
+        needs: Cpu::SF_SSE2,
         executable: true,
     },
 ];
@@ -317,7 +317,7 @@ const STOCKFISH: &[Asset] = &[
     Asset {
         name: "stockfish-mv-armv8",
         data: include_bytes!("../assets/stockfish-armv8.xz"),
-        needs: Cpu::SF,
+        needs: Cpu::empty(),
         executable: true,
     },
 ];
@@ -327,7 +327,7 @@ const STOCKFISH_MV: &[Asset] = &[
     Asset {
         name: "stockfish-mv-armv8",
         data: include_bytes!("../assets/stockfish-mv-armv8.xz"),
-        needs: Cpu::SF,
+        needs: Cpu::empty(),
         executable: true,
     },
 ];
