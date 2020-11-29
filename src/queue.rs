@@ -2,6 +2,7 @@ use std::cmp::{min, max};
 use std::convert::TryInto;
 use std::collections::{VecDeque, HashMap};
 use std::collections::hash_map::Entry;
+use std::fmt;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use shakmaty::uci::Uci;
@@ -193,8 +194,9 @@ impl QueueState {
                     }
                     extra.push(match completed.nps() {
                         Some(nps) => {
-                            self.stats.record_batch(completed.total_positions(), completed.total_nodes(), nps);
-                            format!("{} nps", nps)
+                            let nnue_nps = if completed.flavor.eval_flavor() == EvalFlavor::Nnue { Some(nps) } else { None };
+                            self.stats.record_batch(completed.total_positions(), completed.total_nodes(), nnue_nps);
+                            format!("{} knps", nps / 1000)
                         }
                         None => "? nps".to_owned(),
                     });
@@ -665,7 +667,7 @@ pub struct StatsRecorder {
     pub total_batches: u64,
     pub total_positions: u64,
     pub total_nodes: u64,
-    nps: u32,
+    pub nnue_nps: NpsRecorder,
 }
 
 impl StatsRecorder {
@@ -674,17 +676,17 @@ impl StatsRecorder {
             total_batches: 0,
             total_positions: 0,
             total_nodes: 0,
-            nps: 1_500_000, // start low
+            nnue_nps: NpsRecorder::new(),
         }
     }
 
-    fn record_batch(&mut self, positions: u64, nodes: u64, nps: u32) {
+    fn record_batch(&mut self, positions: u64, nodes: u64, nnue_nps: Option<u32>) {
         self.total_batches += 1;
         self.total_positions += positions;
         self.total_nodes += nodes;
-
-        let alpha = 0.8;
-        self.nps = max(1, (f64::from(self.nps) * alpha + f64::from(nps) * (1.0 - alpha)) as u32);
+        if let Some(nnue_nps) = nnue_nps {
+            self.nnue_nps.record(nnue_nps);
+        }
     }
 
     fn min_user_backlog(&self) -> Duration {
@@ -694,10 +696,47 @@ impl StatsRecorder {
 
         // Estimate how long this client would take for the next batch,
         // capped at timeout.
-        let estimated_batch_seconds = u64::from(min(6 * 60, 60 * 2_500_000 / self.nps));
+        let estimated_batch_seconds = u64::from(min(6 * 60, 60 * 2_500_000 / max(1, self.nnue_nps.nps)));
 
         // Its worth joining if queue wait time + estimated time < top client
         // time on empty queue.
         Duration::from_secs(estimated_batch_seconds.saturating_sub(best_batch_seconds))
+    }
+}
+
+#[derive(Clone)]
+pub struct NpsRecorder {
+    nps: u32,
+    uncertainty: f64,
+}
+
+impl NpsRecorder {
+    fn new() -> NpsRecorder {
+        NpsRecorder {
+            nps: 1_500_000, // start low
+            uncertainty: 1.0,
+        }
+    }
+
+    fn record(&mut self, nps: u32) {
+        let alpha = 0.9;
+        self.uncertainty *= alpha;
+        self.nps = (f64::from(self.nps) * alpha + f64::from(nps) * (1.0 - alpha)) as u32;
+    }
+}
+
+impl fmt::Display for NpsRecorder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} knps", self.nps / 1000)?;
+        if self.uncertainty > 0.7 {
+            write!(f, "?")?;
+        }
+        if self.uncertainty > 0.4 {
+            write!(f, "?")?;
+        }
+        if self.uncertainty > 0.1 {
+            write!(f, "?")?;
+        }
+        Ok(())
     }
 }

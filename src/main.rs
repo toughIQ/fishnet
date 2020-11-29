@@ -293,9 +293,10 @@ async fn run(opt: Opt, logger: &Logger) {
         if now.duration_since(summarized) >= Duration::from_secs(120) {
             summarized = now;
             let stats = queue.stats().await;
-            logger.fishnet_info(&format!("fishnet/{}: {} batches, {} positions, {} total nodes",
+            logger.fishnet_info(&format!("fishnet/{}: {} (nnue), {} batches, {} positions, {} total meganodes",
                                          env!("CARGO_PKG_VERSION"),
-                                         stats.total_batches, stats.total_positions, stats.total_nodes));
+                                         stats.nnue_nps,
+                                         stats.total_batches, stats.total_positions, stats.total_nodes / 1000_000));
         }
 
         // Main loop. Handles signals, forwards worker results from rx to the
