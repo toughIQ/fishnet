@@ -72,8 +72,8 @@ pub struct AnalysisStatus {
 #[serde_as]
 #[derive(Debug, Default, Deserialize)]
 pub struct QueueStatus {
-    pub acquired: u64,
-    pub queued: u64,
+    pub acquired: i64,
+    pub queued: i64,
     #[serde_as(as = "DurationSeconds<u64>")]
     pub oldest: Duration,
 }
