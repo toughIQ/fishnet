@@ -32,7 +32,7 @@ async fn main() {
 
     if opt.auto_update {
         let current_exe = env::current_exe().expect("current exe");
-        match auto_update(true, &logger) {
+        match auto_update(!opt.command.map_or(false, Command::is_systemd), &logger) {
             Err(err) => logger.error(&format!("Failed to update: {}", err)),
             Ok(self_update::Status::UpToDate(version)) => {
                 logger.fishnet_info(&format!("Fishnet {} is up to date", version));
