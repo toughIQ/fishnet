@@ -49,7 +49,15 @@ async fn main() {
         Some(Command::Systemd) => systemd::systemd_system(opt),
         Some(Command::SystemdUser) => systemd::systemd_user(opt),
         Some(Command::Configure) => (),
+        Some(Command::License) => license(&logger),
     }
+}
+
+fn license(logger: &Logger) {
+    logger.headline("COPYING.txt");
+    print!("{}", include_str!("../COPYING.txt"));
+    logger.headline("LICENSE.txt");
+    print!("{}", include_str!("../LICENSE.txt"));
 }
 
 #[cfg(unix)]
@@ -94,7 +102,7 @@ async fn run(opt: Opt, logger: &Logger) {
     logger.info(&format!("CPU features: {:?}", cpu));
 
     let assets = Assets::prepare(cpu).expect("prepared bundled stockfish");
-    logger.info(&format!("Engine: {}", assets.sf_name));
+    logger.info(&format!("Engine: {} (for GPLv3, run: {} license)", assets.sf_name, env::args().next().unwrap_or_else(|| "./fishnet".to_owned())));
 
     let cores = usize::from(opt.cores.unwrap_or(Cores::Auto));
     logger.info(&format!("Cores: {}", cores));

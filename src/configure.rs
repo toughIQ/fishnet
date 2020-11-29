@@ -263,6 +263,8 @@ pub enum Command {
     Systemd,
     /// Generate a systemd user service file.
     SystemdUser,
+    /// Show GPLv3 license.
+    License,
 }
 
 impl Command {
