@@ -22,7 +22,7 @@ use crate::configure::{Opt, Command, Cores};
 use crate::assets::{Assets, Cpu, ByEngineFlavor, EngineFlavor};
 use crate::ipc::{Pull, Position};
 use crate::stockfish::StockfishInit;
-use crate::logger::Logger;
+use crate::logger::{Logger, ProgressAt};
 use crate::util::RandomizedBackoff;
 
 #[tokio::main(flavor = "current_thread")]
@@ -172,6 +172,7 @@ async fn run(opt: Opt, logger: &Logger) {
                     let response = if let Some(job) = job.take() {
                         // Ensure engine process is ready.
                         let flavor = job.flavor;
+                        let context = ProgressAt::from(&job);
                         let (mut sf, join_handle) = if let Some((sf, join_handle)) = engine.get_mut(flavor).take() {
                             (sf, join_handle)
                         } else {
@@ -211,7 +212,7 @@ async fn run(opt: Opt, logger: &Logger) {
                                 break;
                             }
                             _ = time::sleep(timeout) => {
-                                logger.warn(&format!("Engine timed out in worker {}. If this happens frequently it is better to stop and defer to clients with better hardware.", i));
+                                logger.warn(&format!("Engine timed out in worker {}. If this happens frequently it is better to stop and defer to clients with better hardware. Context: {}", i, context));
                                 drop(sf);
                                 join_handle.await.expect("join");
                                 break;
