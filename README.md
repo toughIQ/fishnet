@@ -26,9 +26,9 @@ Installation
    Other useful commands:
 
    ```sh
-   ./fishnet-x86_64-unknown-linux-gnu configure # Rerun the configuration dialog
-   ./fishnet-x86_64-unknown-linux-gnu systemd   # Generate a systemd service file
-   ./fishnet-x86_64-unknown-linux-gnu --help    # List all commands and options
+   ./fishnet-x86_64-unknown-linux-gnu configure             # Rerun config
+   ./fishnet-x86_64-unknown-linux-gnu systemd --auto-update # Print a .service
+   ./fishnet-x86_64-unknown-linux-gnu --help
    ```
 
    **From source**
