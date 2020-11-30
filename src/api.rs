@@ -661,7 +661,7 @@ impl ApiActor {
                     }
                     status => {
                         self.logger.warn(&format!("Unexpected status submitting move {} for batch {}: {}",
-                                                  best_move.map_or_else(|| "0000".to_owned(), |m| m.to_string()),
+                                                  best_move.unwrap_or(Uci::Null),
                                                   batch_id, status));
                         res.error_for_status()?;
                     }
