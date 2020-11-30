@@ -113,120 +113,11 @@ async fn run(opt: Opt, logger: &Logger) {
         let assets = Arc::new(assets);
         let (tx, rx) = mpsc::channel::<Pull>(cores);
         for i in 0..cores {
-            let logger = logger.clone();
             let assets = assets.clone();
             let tx = tx.clone();
+            let logger = logger.clone();
             join_handles.push(tokio::spawn(async move {
-                logger.debug(&format!("Started worker {}.", i));
-
-                let mut job: Option<Position> = None;
-                let mut engine = ByEngineFlavor {
-                    official: None,
-                    multi_variant: None,
-                };
-                let mut engine_backoff = RandomizedBackoff::default();
-
-                loop {
-                    let response = if let Some(job) = job.take() {
-                        // Ensure engine process is ready.
-                        let flavor = job.flavor;
-                        let context = ProgressAt::from(&job);
-                        let (mut sf, join_handle) = if let Some((sf, join_handle)) = engine.get_mut(flavor).take() {
-                            (sf, join_handle)
-                        } else {
-                            // Backoff before starting engine.
-                            let backoff = engine_backoff.next();
-                            if backoff >= Duration::from_secs(5) {
-                                logger.info(&format!("Waiting {:?} before attempting to start engine", backoff));
-                            } else {
-                                logger.debug(&format!("Waiting {:?} before attempting to start engine", backoff));
-                            }
-                            tokio::select! {
-                                _ = tx.closed() => break,
-                                _ = time::sleep(engine_backoff.next()) => (),
-                            }
-
-                            // Start engine and spawn actor.
-                            let (sf, sf_actor) = stockfish::channel(assets.stockfish.get(flavor).clone(), StockfishInit {
-                                nnue: assets.nnue.clone(),
-                            }, logger.clone());
-                            let join_handle = tokio::spawn(async move {
-                                sf_actor.run().await;
-                            });
-                            (sf, join_handle)
-                        };
-
-                        // Heuristic for timeout, based on fixed communication
-                        // cost and nodes.
-                        let nodes = job.work.node_limit().unwrap_or_default().get(flavor.eval_flavor());
-                        let timeout = Duration::from_secs(4 + nodes / 250_000);
-
-                        // Analyse or play.
-                        tokio::select! {
-                            _ = tx.closed() => {
-                                logger.debug(&format!("Worker {} shutting down engine early", i));
-                                drop(sf);
-                                join_handle.await.expect("join");
-                                break;
-                            }
-                            _ = time::sleep(timeout) => {
-                                logger.warn(&format!("Engine timed out in worker {}. If this happens frequently it is better to stop and defer to clients with better hardware. Context: {}", i, context));
-                                drop(sf);
-                                join_handle.await.expect("join");
-                                break;
-                            }
-                            res = sf.go(job) => {
-                                match res {
-                                    Ok(res) => {
-                                        *engine.get_mut(flavor) = Some((sf, join_handle));
-                                        engine_backoff.reset();
-                                        Some(Ok(res))
-                                    }
-                                    Err(failed) => {
-                                        drop(sf);
-                                        logger.warn(&format!("Worker {} waiting for engine to shut down after error. Context: {}", i, context));
-                                        join_handle.await.expect("join");
-                                        Some(Err(failed))
-                                    },
-                                }
-                            }
-                        }
-                    } else {
-                        None
-                    };
-
-                    let (callback, waiter) = oneshot::channel();
-
-                    if tx.send(Pull { response, callback }).await.is_err() {
-                        logger.debug(&format!("Worker {} was about to send result, but shutting down", i));
-                        break;
-                    }
-
-                    tokio::select! {
-                        _ = tx.closed() => break,
-                        res = waiter => {
-                            match res {
-                                Ok(next_job) => job = Some(next_job),
-                                Err(_) => break,
-                            }
-                        }
-                    }
-                }
-
-                if let Some((sf, join_handle)) = engine.get_mut(EngineFlavor::Official).take() {
-                    logger.debug(&format!("Worker {} waiting for standard engine to shut down", i));
-                    drop(sf);
-                    join_handle.await.expect("join");
-                }
-
-                if let Some((sf, join_handle)) = engine.get_mut(EngineFlavor::MultiVariant).take() {
-                    logger.debug(&format!("Worker {} waiting for multi-variant engine to shut down", i));
-                    drop(sf);
-                    join_handle.await.expect("join");
-                }
-
-                logger.debug(&format!("Stopped worker {}", i));
-                drop(tx);
+                worker(i, assets, tx, logger).await;
             }));
         }
         rx
@@ -321,6 +212,119 @@ async fn run(opt: Opt, logger: &Logger) {
     if let Some(restart) = restart.take() {
         restart_process(restart, logger);
     }
+}
+
+async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: Logger) {
+    logger.debug(&format!("Started worker {}.", i));
+
+    let mut job: Option<Position> = None;
+    let mut engine = ByEngineFlavor {
+        official: None,
+        multi_variant: None,
+    };
+    let mut engine_backoff = RandomizedBackoff::default();
+
+    loop {
+        let response = if let Some(job) = job.take() {
+            // Ensure engine process is ready.
+            let flavor = job.flavor;
+            let context = ProgressAt::from(&job);
+            let (mut sf, join_handle) = if let Some((sf, join_handle)) = engine.get_mut(flavor).take() {
+                (sf, join_handle)
+            } else {
+                // Backoff before starting engine.
+                let backoff = engine_backoff.next();
+                if backoff >= Duration::from_secs(5) {
+                    logger.info(&format!("Waiting {:?} before attempting to start engine", backoff));
+                } else {
+                    logger.debug(&format!("Waiting {:?} before attempting to start engine", backoff));
+                }
+                tokio::select! {
+                    _ = tx.closed() => break,
+                    _ = time::sleep(engine_backoff.next()) => (),
+                }
+
+                // Start engine and spawn actor.
+                let (sf, sf_actor) = stockfish::channel(assets.stockfish.get(flavor).clone(), StockfishInit {
+                    nnue: assets.nnue.clone(),
+                }, logger.clone());
+                let join_handle = tokio::spawn(async move {
+                    sf_actor.run().await;
+                });
+                (sf, join_handle)
+            };
+
+            // Heuristic for timeout, based on fixed communication
+            // cost and nodes.
+            let nodes = job.work.node_limit().unwrap_or_default().get(flavor.eval_flavor());
+            let timeout = Duration::from_secs(4 + nodes / 250_000);
+
+            // Analyse or play.
+            tokio::select! {
+                _ = tx.closed() => {
+                    logger.debug(&format!("Worker {} shutting down engine early", i));
+                    drop(sf);
+                    join_handle.await.expect("join");
+                    break;
+                }
+                _ = time::sleep(timeout) => {
+                    logger.warn(&format!("Engine timed out in worker {}. If this happens frequently it is better to stop and defer to clients with better hardware. Context: {}", i, context));
+                    drop(sf);
+                    join_handle.await.expect("join");
+                    break;
+                }
+                res = sf.go(job) => {
+                    match res {
+                        Ok(res) => {
+                            *engine.get_mut(flavor) = Some((sf, join_handle));
+                            engine_backoff.reset();
+                            Some(Ok(res))
+                        }
+                        Err(failed) => {
+                            drop(sf);
+                            logger.warn(&format!("Worker {} waiting for engine to shut down after error. Context: {}", i, context));
+                            join_handle.await.expect("join");
+                            Some(Err(failed))
+                        },
+                    }
+                }
+            }
+        } else {
+            None
+        };
+
+        let (callback, waiter) = oneshot::channel();
+
+        if tx.send(Pull { response, callback }).await.is_err() {
+            logger.debug(&format!("Worker {} was about to send result, but shutting down", i));
+            break;
+        }
+
+        tokio::select! {
+            _ = tx.closed() => break,
+            res = waiter => {
+                match res {
+                    Ok(next_job) => job = Some(next_job),
+                    Err(_) => break,
+                }
+            }
+        }
+    }
+
+    if let Some((sf, join_handle)) = engine.get_mut(EngineFlavor::Official).take() {
+        logger.debug(&format!("Worker {} waiting for standard engine to shut down", i));
+        drop(sf);
+        join_handle.await.expect("join");
+    }
+
+    if let Some((sf, join_handle)) = engine.get_mut(EngineFlavor::MultiVariant).take() {
+        logger.debug(&format!("Worker {} waiting for multi-variant engine to shut down", i));
+        drop(sf);
+        join_handle.await.expect("join");
+    }
+
+    logger.debug(&format!("Stopped worker {}", i));
+    drop(tx);
 }
 
 fn license(logger: &Logger) {
