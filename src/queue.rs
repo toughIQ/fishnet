@@ -20,10 +20,26 @@ use crate::logger::{Logger, ProgressAt, QueueStatusBar};
 use crate::util::{NevermindExt as _, RandomizedBackoff};
 
 pub fn channel(endpoint: Endpoint, opt: BacklogOpt, cores: usize, api: ApiStub, logger: Logger) -> (QueueStub, QueueActor) {
-    let state = Arc::new(Mutex::new(QueueState::new(cores, logger.clone())));
     let (tx, rx) = mpsc::unbounded_channel();
     let interrupt = Arc::new(Notify::new());
-    (QueueStub::new(tx, interrupt.clone(), state.clone(), api.clone()), QueueActor::new(rx, interrupt, state, endpoint, opt, api, logger))
+    let state = Arc::new(Mutex::new(QueueState::new(cores, logger.clone())));
+    let stub = QueueStub {
+        tx: Some(tx),
+        interrupt: interrupt.clone(),
+        state: state.clone(),
+        api: api.clone(),
+    };
+    let actor = QueueActor {
+        rx,
+        interrupt,
+        state,
+        api,
+        endpoint,
+        opt,
+        logger,
+        backoff: RandomizedBackoff::default(),
+    };
+    (stub, actor)
 }
 
 #[derive(Clone)]
@@ -35,15 +51,6 @@ pub struct QueueStub {
 }
 
 impl QueueStub {
-    fn new(tx: mpsc::UnboundedSender<QueueMessage>, interrupt: Arc<Notify>, state: Arc<Mutex<QueueState>>, api: ApiStub) -> QueueStub {
-        QueueStub {
-            tx: Some(tx),
-            interrupt,
-            state,
-            api,
-        }
-    }
-
     pub async fn pull(&mut self, pull: Pull) {
         let mut state = self.state.lock().await;
         let (response, callback) = pull.split();
@@ -250,19 +257,6 @@ pub struct QueueActor {
 }
 
 impl QueueActor {
-    fn new(rx: mpsc::UnboundedReceiver<QueueMessage>, interrupt: Arc<Notify>, state: Arc<Mutex<QueueState>>, endpoint: Endpoint, opt: BacklogOpt, api: ApiStub, logger: Logger) -> QueueActor {
-        QueueActor {
-            rx,
-            interrupt,
-            state,
-            api,
-            endpoint,
-            opt,
-            backoff: RandomizedBackoff::default(),
-            logger,
-        }
-    }
-
     pub async fn run(self) {
         self.logger.debug("Queue actor started");
         self.run_inner().await;

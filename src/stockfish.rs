@@ -25,12 +25,11 @@ impl StockfishStub {
     pub async fn go(&mut self, position: Position) -> Result<PositionResponse, PositionFailed> {
         let (callback, response) = oneshot::channel();
         let batch_id = position.work.id();
-        self.tx.send(StockfishMessage::Go { position, callback }).await.map_err(|_| PositionFailed {
-            batch_id,
-        })?;
-        response.await.map_err(|_| PositionFailed {
-            batch_id,
-        })
+        self.tx.send(StockfishMessage::Go {
+            position,
+            callback,
+        }).await.map_err(|_| PositionFailed { batch_id })?;
+        response.await.map_err(|_| PositionFailed { batch_id })
     }
 }
 
