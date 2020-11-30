@@ -465,12 +465,7 @@ fn rewrite_moves(variant: LichessVariant, pos: &Fen, moves: Vec<Uci>) -> (bool, 
             Err(_) => return (chess960, rewritten), // truncate illegal moves
         };
 
-        rewritten.push(if chess960 {
-            Uci::from_chess960(&m)
-        } else {
-            Uci::from_move(&pos, &m)
-        });
-
+        rewritten.push(if chess960 { Uci::from_chess960(&m) } else { Uci::from_move(&pos, &m) });
         pos.play_unchecked(&m);
     }
 
@@ -724,13 +719,13 @@ impl StatsRecorder {
     }
 
     fn min_user_backlog(&self) -> Duration {
-        // The average batch has 60 positions, analysed with 2_500_000 nodes
+        // The average batch has 60 positions, analysed with 2_250_000 nodes
         // each. Top end clients take no longer than 30 seconds.
         let best_batch_seconds = 30;
 
         // Estimate how long this client would take for the next batch,
         // capped at timeout.
-        let estimated_batch_seconds = u64::from(min(6 * 60, 60 * 2_500_000 / max(1, self.nnue_nps.nps)));
+        let estimated_batch_seconds = u64::from(min(6 * 60, 60 * 2_250_000 / max(1, self.nnue_nps.nps)));
 
         // Its worth joining if queue wait time + estimated time < top client
         // time on empty queue.
