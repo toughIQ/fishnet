@@ -115,11 +115,11 @@ pub enum KeyError {
 
 impl fmt::Display for KeyError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            KeyError::EmptyKey => f.write_str("key expected to be non-empty"),
-            KeyError::InvalidKey => f.write_str("key expected to be alphanumeric"),
-            KeyError::AccessDenied => f.write_str("access denied"),
-        }
+        f.write_str(match self {
+            KeyError::EmptyKey => "key expected to be non-empty",
+            KeyError::InvalidKey => "key expected to be alphanumeric",
+            KeyError::AccessDenied => "access denied",
+        })
     }
 }
 
@@ -269,7 +269,7 @@ pub enum Command {
 
 impl Command {
     pub fn is_systemd(self) -> bool {
-        self == Command::Systemd || self == Command::SystemdUser
+        matches!(self, Command::Systemd | Command::SystemdUser)
     }
 }
 
