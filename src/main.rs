@@ -282,7 +282,7 @@ async fn run(opt: Opt, logger: &Logger) {
     loop {
         // Check for updates from time to time.
         let now = Instant::now();
-        if opt.auto_update && !shutdown_soon && now.duration_since(up_to_date) >= Duration::from_secs(60 * 60 * 12) {
+        if opt.auto_update && !shutdown_soon && now.duration_since(up_to_date) >= Duration::from_secs(60 * 60 * 5) {
             up_to_date = now;
             let logger = logger.clone();
             let inner_restart = restart.clone();
