@@ -110,8 +110,8 @@ impl Cpu {
 }
 
 const NNUE: Asset = Asset {
-    name: "nn-c3ca321c51c9.nnue",
-    data: include_bytes!("../assets/nn-c3ca321c51c9.nnue.xz"),
+    name: "nn-62ef826d1a6d.nnue",
+    data: include_bytes!("../assets/nn-62ef826d1a6d.nnue.xz"),
     needs: Cpu::empty(),
     executable: false,
 };
