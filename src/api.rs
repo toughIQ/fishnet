@@ -314,8 +314,8 @@ pub struct AcquireResponseBody {
     #[serde_as(as = "NoneAsEmptyString")]
     #[serde(default)]
     pub game_id: Option<String>,
-    #[serde_as(as = "Option<DisplayFromStr>")]
-    pub position: Option<Fen>,
+    #[serde_as(as = "DisplayFromStr")]
+    pub position: Fen,
     #[serde(default)]
     pub variant: LichessVariant,
     #[serde_as(as = "StringWithSeparator::<SpaceSeparator, Uci>")]

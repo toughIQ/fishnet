@@ -18,7 +18,8 @@ pub struct Position {
     pub url: Option<Url>,
 
     pub variant: LichessVariant,
-    pub fen: Option<Fen>,
+    pub chess960: bool,
+    pub fen: Fen,
     pub moves: Vec<Uci>,
 }
 

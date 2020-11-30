@@ -5,9 +5,8 @@ use std::path::PathBuf;
 use tokio::sync::{mpsc, oneshot};
 use tokio::process::{Command, ChildStdin, ChildStdout};
 use tokio::io::{BufWriter, AsyncWriteExt as _, BufReader, AsyncBufReadExt as _, Lines};
-use shakmaty::fen::Fen;
-use shakmaty::variants::{VariantPosition, Variant};
-use crate::api::{Score, LichessVariant, Work};
+use shakmaty::variants::Variant;
+use crate::api::{Score, Work};
 use crate::ipc::{Position, PositionResponse, PositionFailed};
 use crate::assets::EngineFlavor;
 use crate::logger::Logger;
@@ -197,11 +196,7 @@ impl StockfishActor {
         stdin.write_line("ucinewgame").await?;
 
         // Set UCI_Chess960.
-        let uci_chess960 =
-            position.variant == LichessVariant::Chess960 ||
-            position.variant == LichessVariant::FromPosition ||
-            position.url.is_none();
-        stdin.write_line(&format!("setoption name UCI_Chess960 value {}", uci_chess960)).await?;
+        stdin.write_line(&format!("setoption name UCI_Chess960 value {}", position.chess960)).await?;
 
         // Set UCI_Variant.
         if position.flavor == EngineFlavor::MultiVariant {
@@ -219,13 +214,8 @@ impl StockfishActor {
         }
 
         // Setup position.
-        let fen = if let Some(fen) = position.fen {
-            fen
-        } else {
-            Fen::from_setup(&VariantPosition::new(position.variant.into()))
-        };
         let moves = position.moves.iter().map(|m| m.to_string()).collect::<Vec<_>>().join(" ");
-        stdin.write_line(&format!("position fen {} moves {}", fen, moves)).await?;
+        stdin.write_line(&format!("position fen {} moves {}", position.fen, moves)).await?;
 
         // Go.
         let go = match &position.work {

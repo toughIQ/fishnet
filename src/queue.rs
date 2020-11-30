@@ -6,8 +6,9 @@ use std::fmt;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use shakmaty::uci::Uci;
+use shakmaty::fen::Fen;
 use shakmaty::variants::VariantPosition;
-use shakmaty::{Setup, MaterialSide, Material};
+use shakmaty::{Setup as _, Position as _, MaterialSide, Material};
 use url::Url;
 use tokio::sync::{mpsc, oneshot, Mutex, Notify};
 use tokio::time;
@@ -441,21 +442,51 @@ fn is_standard_material(material: &Material) -> bool {
 }
 
 fn engine_flavor(body: &AcquireResponseBody) -> EngineFlavor {
-    match VariantPosition::from_setup(body.variant.into(), &body.position.clone().unwrap_or_default()) {
+    match VariantPosition::from_setup(body.variant.into(), &body.position) {
         Ok(VariantPosition::Chess(pos)) if body.work.is_analysis() && is_standard_material(&pos.board().material()) => EngineFlavor::Official,
         _ => EngineFlavor::MultiVariant,
     }
 }
 
+fn rewrite_moves(variant: LichessVariant, pos: &Fen, moves: Vec<Uci>) -> (bool, Vec<Uci>) {
+    let chess960 = matches!(variant, LichessVariant::Chess960 | LichessVariant::FromPosition);
+
+    let mut pos = match VariantPosition::from_setup(variant.into(), pos) {
+        Ok(pos) => pos,
+        Err(_) => return (chess960, moves), // do not rewrite illegal setups
+    };
+
+    let chess960 = chess960 || pos.castles().is_chess960();
+
+    let mut rewritten = Vec::new();
+    for uci in moves {
+        let m = match uci.to_move(&pos) {
+            Ok(m) => m,
+            Err(_) => return (chess960, rewritten), // truncate illegal moves
+        };
+
+        rewritten.push(if chess960 {
+            Uci::from_chess960(&m)
+        } else {
+            Uci::from_move(&pos, &m)
+        });
+
+        pos.play_unchecked(&m);
+    }
+
+    (chess960, rewritten)
+}
+
 impl IncomingBatch {
     fn from_acquired(endpoint: Endpoint, body: AcquireResponseBody) -> Result<IncomingBatch, CompletedBatch> {
+        let flavor = engine_flavor(&body);
+        let (chess960, body_moves) = rewrite_moves(body.variant, &body.position, body.moves);
+
         let url = body.game_id.as_ref().map(|g| {
             let mut url = endpoint.url.clone();
             url.set_path(g);
             url
         });
-
-        let flavor = engine_flavor(&body);
 
         Ok(IncomingBatch {
             work: body.work.clone(),
@@ -470,8 +501,9 @@ impl IncomingBatch {
                         flavor,
                         position_id: PositionId(0),
                         variant: body.variant,
+                        chess960,
                         fen: body.position,
-                        moves: body.moves,
+                        moves: body_moves,
                     })]
                 }
                 Work::Analysis { .. } => {
@@ -485,11 +517,12 @@ impl IncomingBatch {
                         flavor,
                         position_id: PositionId(0),
                         variant: body.variant,
+                        chess960,
                         fen: body.position.clone(),
                         moves: moves.clone(),
                     })];
 
-                    for (i, m) in body.moves.into_iter().enumerate() {
+                    for (i, m) in body_moves.into_iter().enumerate() {
                         let mut url = endpoint.url.clone();
                         moves.push(m);
                         positions.push(Skip::Present(Position {
@@ -502,6 +535,7 @@ impl IncomingBatch {
                             flavor,
                             position_id: PositionId(1 + i),
                             variant: body.variant,
+                            chess960,
                             fen: body.position.clone(),
                             moves: moves.clone(),
                         }));
