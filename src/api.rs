@@ -19,7 +19,7 @@ use crate::util::{NevermindExt as _, RandomizedBackoff};
 
 pub fn channel(endpoint: Endpoint, key: Option<Key>, logger: Logger) -> (ApiStub, ApiActor) {
     let (tx, rx) = mpsc::unbounded_channel();
-    (ApiStub::new(tx), ApiActor::new(rx, endpoint, key, logger))
+    (ApiStub { tx, endpoint: endpoint.clone() }, ApiActor::new(rx, endpoint, key, logger))
 }
 
 pub fn spawn(endpoint: Endpoint, key: Option<Key>, logger: Logger) -> ApiStub {
@@ -453,11 +453,12 @@ struct SubmitQuery {
 #[derive(Debug, Clone)]
 pub struct ApiStub {
     tx: mpsc::UnboundedSender<ApiMessage>,
+    endpoint: Endpoint,
 }
 
 impl ApiStub {
-    fn new(tx: mpsc::UnboundedSender<ApiMessage>) -> ApiStub {
-        ApiStub { tx }
+    pub fn endpoint(&self) -> &Endpoint {
+        &self.endpoint
     }
 
     pub async fn check_key(&mut self, key: Key) -> Option<Result<Key, KeyError>> {

@@ -19,7 +19,7 @@ use crate::ipc::{Position, PositionResponse, PositionFailed, PositionId, Pull};
 use crate::logger::{Logger, ProgressAt, QueueStatusBar};
 use crate::util::{NevermindExt as _, RandomizedBackoff};
 
-pub fn channel(endpoint: Endpoint, opt: BacklogOpt, cores: usize, api: ApiStub, logger: Logger) -> (QueueStub, QueueActor) {
+pub fn channel(opt: BacklogOpt, cores: usize, api: ApiStub, logger: Logger) -> (QueueStub, QueueActor) {
     let (tx, rx) = mpsc::unbounded_channel();
     let interrupt = Arc::new(Notify::new());
     let state = Arc::new(Mutex::new(QueueState::new(cores, logger.clone())));
@@ -34,7 +34,6 @@ pub fn channel(endpoint: Endpoint, opt: BacklogOpt, cores: usize, api: ApiStub, 
         interrupt,
         state,
         api,
-        endpoint,
         opt,
         logger,
         backoff: RandomizedBackoff::default(),
@@ -250,7 +249,6 @@ pub struct QueueActor {
     interrupt: Arc<Notify>,
     state: Arc<Mutex<QueueState>>,
     api: ApiStub,
-    endpoint: Endpoint,
     opt: BacklogOpt,
     backoff: RandomizedBackoff,
     logger: Logger,
@@ -291,7 +289,7 @@ impl QueueActor {
     }
 
     async fn handle_acquired_response_body(&mut self, body: AcquireResponseBody) {
-        match IncomingBatch::from_acquired(self.endpoint.clone(), body) {
+        match IncomingBatch::from_acquired(self.api.endpoint(), body) {
             Ok(incoming) => {
                 let mut state = self.state.lock().await;
                 state.add_incoming_batch(incoming);
@@ -467,7 +465,7 @@ fn rewrite_moves(variant: LichessVariant, pos: &Fen, moves: Vec<Uci>) -> (bool, 
 }
 
 impl IncomingBatch {
-    fn from_acquired(endpoint: Endpoint, body: AcquireResponseBody) -> Result<IncomingBatch, CompletedBatch> {
+    fn from_acquired(endpoint: &Endpoint, body: AcquireResponseBody) -> Result<IncomingBatch, CompletedBatch> {
         let flavor = engine_flavor(&body);
         let (chess960, body_moves) = rewrite_moves(body.variant, &body.position, body.moves);
 
