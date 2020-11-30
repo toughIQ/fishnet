@@ -138,7 +138,7 @@ struct StockfishOptions {
 impl Default for StockfishOptions {
     fn default() -> StockfishOptions {
         StockfishOptions {
-            hash: 32,
+            hash: 16,
             threads: 1,
         }
     }
