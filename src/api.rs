@@ -3,6 +3,7 @@ use std::time::Duration;
 use std::str::FromStr;
 use arrayvec::ArrayString;
 use reqwest::StatusCode;
+use url::Url;
 use tokio::time;
 use tokio::sync::{mpsc, oneshot};
 use serde::{Deserialize, Serialize};
@@ -322,6 +323,16 @@ pub struct AcquireResponseBody {
     pub moves: Vec<Uci>,
     #[serde(rename = "skipPositions", default)]
     pub skip_positions: Vec<usize>,
+}
+
+impl AcquireResponseBody {
+    pub fn batch_url(&self, endpoint: &Endpoint) -> Option<Url> {
+        self.game_id.as_ref().map(|g| {
+            let mut url = endpoint.url.clone();
+            url.set_path(g);
+            url
+        })
+    }
 }
 
 #[derive(Debug, Deserialize, Copy, Clone, Eq, PartialEq)]

@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use shakmaty::uci::Uci;
 use shakmaty::fen::Fen;
 use shakmaty::variants::VariantPosition;
-use shakmaty::{Setup as _, Position as _, MaterialSide, Material};
+use shakmaty::{Setup as _, Position as _, MaterialSide, Material, PositionError, IllegalMoveError};
 use url::Url;
 use tokio::sync::{mpsc, oneshot, Mutex, Notify};
 use tokio::time;
@@ -289,15 +289,23 @@ impl QueueActor {
     }
 
     async fn handle_acquired_response_body(&mut self, body: AcquireResponseBody) {
+        let context = ProgressAt {
+            batch_id: body.work.id(),
+            batch_url: body.batch_url(self.api.endpoint()),
+            position_id: None,
+        };
+
         match IncomingBatch::from_acquired(self.api.endpoint(), body) {
             Ok(incoming) => {
                 let mut state = self.state.lock().await;
                 state.add_incoming_batch(incoming);
             }
-            Err(completed) => {
-                let batch_id = completed.work.id();
-                self.logger.warn(&format!("Completed empty batch {}.", batch_id));
-                self.api.submit_analysis(batch_id, completed.flavor.eval_flavor(), completed.into_analysis());
+            Err(IncomingError::AllSkipped(completed)) => {
+                self.logger.warn(&format!("Completed empty batch {}.", context));
+                self.api.submit_analysis(completed.work.id(), completed.flavor.eval_flavor(), completed.into_analysis());
+            }
+            Err(err) => {
+                self.logger.warn(&format!("Ignoring invalid batch {}: {:?}", context, err));
             }
         }
     }
@@ -440,40 +448,29 @@ fn engine_flavor(body: &AcquireResponseBody) -> EngineFlavor {
     }
 }
 
-fn rewrite_moves(variant: LichessVariant, pos: &Fen, moves: Vec<Uci>) -> (bool, Vec<Uci>) {
-    let chess960 = matches!(variant, LichessVariant::Chess960 | LichessVariant::FromPosition);
+fn sanitize_moves(variant: LichessVariant, pos: &Fen, moves: Vec<Uci>) -> Result<(bool, Vec<Uci>), IncomingError> {
+    let mut pos = VariantPosition::from_setup(variant.into(), pos)?;
 
-    let mut pos = match VariantPosition::from_setup(variant.into(), pos) {
-        Ok(pos) => pos,
-        Err(_) => return (chess960, moves), // do not rewrite illegal setups
-    };
-
-    let chess960 = chess960 || pos.castles().is_chess960();
+    let chess960 =
+        variant == LichessVariant::Chess960 ||
+        variant == LichessVariant::FromPosition ||
+        pos.castles().is_chess960();
 
     let mut rewritten = Vec::new();
     for uci in moves {
-        let m = match uci.to_move(&pos) {
-            Ok(m) => m,
-            Err(_) => return (chess960, rewritten), // truncate illegal moves
-        };
-
+        let m = uci.to_move(&pos)?;
         rewritten.push(if chess960 { Uci::from_chess960(&m) } else { Uci::from_move(&pos, &m) });
         pos.play_unchecked(&m);
     }
 
-    (chess960, rewritten)
+    Ok((chess960, rewritten))
 }
 
 impl IncomingBatch {
-    fn from_acquired(endpoint: &Endpoint, body: AcquireResponseBody) -> Result<IncomingBatch, CompletedBatch> {
+    fn from_acquired(endpoint: &Endpoint, body: AcquireResponseBody) -> Result<IncomingBatch, IncomingError> {
+        let url = body.batch_url(endpoint);
         let flavor = engine_flavor(&body);
-        let (chess960, body_moves) = rewrite_moves(body.variant, &body.position, body.moves);
-
-        let url = body.game_id.as_ref().map(|g| {
-            let mut url = endpoint.url.clone();
-            url.set_path(g);
-            url
-        });
+        let (chess960, body_moves) = sanitize_moves(body.variant, &body.position, body.moves)?;
 
         Ok(IncomingBatch {
             work: body.work.clone(),
@@ -510,12 +507,10 @@ impl IncomingBatch {
                     })];
 
                     for (i, m) in body_moves.into_iter().enumerate() {
-                        let mut url = endpoint.url.clone();
                         moves.push(m);
                         positions.push(Skip::Present(Position {
                             work: body.work.clone(),
-                            url: body.game_id.as_ref().map(|g| {
-                                url.set_path(g);
+                            url: url.clone().map(|mut url| {
                                 url.set_fragment(Some(&(1 + i).to_string()));
                                 url
                             }),
@@ -538,7 +533,7 @@ impl IncomingBatch {
                     // positions are skipped.
                     if positions.iter().all(Skip::is_skipped) {
                         let now = Instant::now();
-                        return Err(CompletedBatch {
+                        return Err(IncomingError::AllSkipped(CompletedBatch {
                             work: body.work,
                             url,
                             flavor,
@@ -546,7 +541,7 @@ impl IncomingBatch {
                             positions: positions.into_iter().map(|_| Skip::Skip).collect(),
                             started_at: now,
                             completed_at: now,
-                        });
+                        }));
                     }
 
                     positions
@@ -563,6 +558,25 @@ impl From<&IncomingBatch> for ProgressAt {
             batch_url: batch.url.clone(),
             position_id: None,
         }
+    }
+}
+
+#[derive(Debug)]
+enum IncomingError {
+    Position(PositionError),
+    IllegalMove(IllegalMoveError),
+    AllSkipped(CompletedBatch),
+}
+
+impl From<PositionError> for IncomingError {
+    fn from(err: PositionError) -> IncomingError {
+        IncomingError::Position(err)
+    }
+}
+
+impl From<IllegalMoveError> for IncomingError {
+    fn from(err: IllegalMoveError) -> IncomingError {
+        IncomingError::IllegalMove(err)
     }
 }
 
@@ -613,6 +627,7 @@ impl PendingBatch {
     }
 }
 
+#[derive(Debug)]
 pub struct CompletedBatch {
     work: Work,
     url: Option<Url>,
