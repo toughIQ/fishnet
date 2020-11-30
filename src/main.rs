@@ -53,48 +53,6 @@ async fn main() {
     }
 }
 
-fn license(logger: &Logger) {
-    logger.headline("LICENSE.txt");
-    println!("{}", include_str!("../LICENSE.txt"));
-    logger.headline("COPYING.txt");
-    print!("{}", include_str!("../COPYING.txt"));
-}
-
-#[cfg(unix)]
-fn restart_process(current_exe: PathBuf, logger: &Logger) {
-    use std::os::unix::process::CommandExt as _;
-    logger.headline(&format!("Waiting 5s before restarting {:?} ...", current_exe));
-    thread::sleep(Duration::from_secs(5));
-    let err = std::process::Command::new(current_exe)
-        .args(std::env::args().into_iter().skip(1))
-        .exec();
-    panic!("Failed to restart: {}", err);
-}
-
-#[cfg(windows)]
-fn restart_process(current_exe: PathBuf, logger: &Logger) {
-    logger.headline(&format!("Waiting 5s before restarting {:?} ...", current_exe));
-    thread::sleep(Duration::from_secs(5));
-    todo!("Restart on Windows");
-}
-
-fn auto_update(verbose: bool, logger: &Logger) -> Result<self_update::Status, Box<dyn Error>> {
-    if verbose {
-        logger.headline("Updating ...");
-    }
-    logger.fishnet_info("Checking for updates (--auto-update) ...");
-    Ok(self_update::backends::github::Update::configure()
-        .repo_owner("niklasf")
-        .repo_name("fishnet")
-        .bin_name("fishnet")
-        .show_output(verbose)
-        .show_download_progress(atty::is(Stream::Stdout) && verbose)
-        .current_version(env!("CARGO_PKG_VERSION"))
-        .no_confirm(true)
-        .build()?
-        .update()?)
-}
-
 async fn run(opt: Opt, logger: &Logger) {
     logger.headline("Checking configuration ...");
 
@@ -363,4 +321,46 @@ async fn run(opt: Opt, logger: &Logger) {
     if let Some(restart) = restart.take() {
         restart_process(restart, logger);
     }
+}
+
+fn license(logger: &Logger) {
+    logger.headline("LICENSE.txt");
+    println!("{}", include_str!("../LICENSE.txt"));
+    logger.headline("COPYING.txt");
+    print!("{}", include_str!("../COPYING.txt"));
+}
+
+#[cfg(unix)]
+fn restart_process(current_exe: PathBuf, logger: &Logger) {
+    use std::os::unix::process::CommandExt as _;
+    logger.headline(&format!("Waiting 5s before restarting {:?} ...", current_exe));
+    thread::sleep(Duration::from_secs(5));
+    let err = std::process::Command::new(current_exe)
+        .args(std::env::args().into_iter().skip(1))
+        .exec();
+    panic!("Failed to restart: {}", err);
+}
+
+#[cfg(windows)]
+fn restart_process(current_exe: PathBuf, logger: &Logger) {
+    logger.headline(&format!("Waiting 5s before restarting {:?} ...", current_exe));
+    thread::sleep(Duration::from_secs(5));
+    todo!("Restart on Windows");
+}
+
+fn auto_update(verbose: bool, logger: &Logger) -> Result<self_update::Status, Box<dyn Error>> {
+    if verbose {
+        logger.headline("Updating ...");
+    }
+    logger.fishnet_info("Checking for updates (--auto-update) ...");
+    Ok(self_update::backends::github::Update::configure()
+        .repo_owner("niklasf")
+        .repo_name("fishnet")
+        .bin_name("fishnet")
+        .show_output(verbose)
+        .show_download_progress(atty::is(Stream::Stdout) && verbose)
+        .current_version(env!("CARGO_PKG_VERSION"))
+        .no_confirm(true)
+        .build()?
+        .update()?)
 }
