@@ -1,7 +1,7 @@
 FROM rust:latest AS builder
 WORKDIR /fishnet
 COPY . .
-RUN git submodule update --init --recursive && cargo build --release && strip target/release/fishnet
+RUN cargo build --release && strip target/release/fishnet
 
 # Not using alpine due to https://andygrove.io/2020/05/why-musl-extremely-slow/
 FROM debian:buster-slim
