@@ -3,7 +3,7 @@ fishnet: distributed Stockfish analysis for lichess.org
 
 [![crates.io](https://img.shields.io/crates/v/fishnet.svg)](https://crates.io/crates/fishnet)
 [![Build](https://github.com/niklasf/fishnet/workflows/Build/badge.svg)](https://github.com/niklasf/fishnet/actions?query=workflow%3ABuild)
-[![Docker](https://hub.docker.com/r/niklasf/fishnet)](https://img.shields.io/docker/cloud/build/niklasf/fishnet)
+[![Docker](https://img.shields.io/docker/cloud/build/niklasf/fishnet)](https://hub.docker.com/r/niklasf/fishnet)
 
 Installation
 ------------
