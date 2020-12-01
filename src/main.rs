@@ -59,7 +59,7 @@ async fn run(opt: Opt, logger: &Logger) {
     let endpoint = opt.endpoint();
     logger.info(&format!("Endpoint: {}", endpoint));
 
-    logger.info(&format!("Join queue if: user backlog >= {:?} or system backlog >= {:?}",
+    logger.info(&format!("Backlog: Join queue if user backlog >= {:?} or system backlog >= {:?}",
                          Duration::from(opt.backlog.user.unwrap_or_default()),
                          Duration::from(opt.backlog.system.unwrap_or_default())));
 
