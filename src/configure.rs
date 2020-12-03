@@ -342,30 +342,16 @@ pub async fn parse_and_configure() -> Opt {
         if (!file_found && opt.command != Some(Command::Run)) || opt.command == Some(Command::Configure) {
             logger.headline("Configuration");
 
-            // Step 1: Endpoint.
-            let endpoint = loop {
-                let mut endpoint = String::new();
-                eprint!("Endpoint (default: {}): ", ini.get("Fishnet", "Endpoint").unwrap_or_else(|| DEFAULT_ENDPOINT.to_owned()));
-                io::stderr().flush().expect("flush stderr");
-                io::stdin().read_line(&mut endpoint).expect("read endpoint from stdin");
-
-                let endpoint = Some(endpoint.trim().to_owned())
-                    .filter(|e| !e.is_empty())
-                    .or_else(|| ini.get("Fishnet", "Endpoint"))
-                    .unwrap_or_else(|| DEFAULT_ENDPOINT.to_owned());
-
-                match endpoint.parse() {
-                    Ok(url) => {
-                        ini.setstr("Fishnet", "Endpoint", Some(&endpoint));
-                        break opt.endpoint.clone().unwrap_or(url);
-                    }
-                    Err(err) => eprintln!("Invalid: {}", err),
-                }
-            };
+            // Step 1: Endpoint (configured with --endpoint only).
+            let endpoint = opt.endpoint.clone().unwrap_or_else(|| {
+                ini.get("Fishnet", "Endpoint")
+                    .unwrap_or_else(|| DEFAULT_ENDPOINT.to_owned())
+                    .parse()
+                    .expect("valid endpoint from fishnet.ini")
+            });
 
             // Step 2: Key.
             let mut api = api::spawn(endpoint.clone(), None, logger.clone());
-            eprintln!();
             loop {
                 let mut key = String::new();
                 let required = if let Some(current) = ini.get("Fishnet", "Key") {
