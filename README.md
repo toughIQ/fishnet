@@ -65,6 +65,7 @@ that the compiled binary matches the source).
 
 * Available for:
   | CPU | Intel, AMD | ARMv8 |
+  | --- | --- | --- |
   | **Linux** | `x86_64-unknown-linux-gnu` | `aarch64-unknown-linux-gnu` |
   | **Windows** | `x86_64-pc-windows-msvc.exe` | |
   | **macOS** | `x86_64-apple-darwin` | |
