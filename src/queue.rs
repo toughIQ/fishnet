@@ -19,7 +19,7 @@ use crate::ipc::{Position, PositionResponse, PositionFailed, PositionId, Pull};
 use crate::logger::{Logger, ProgressAt, QueueStatusBar};
 use crate::util::{NevermindExt as _, RandomizedBackoff};
 
-pub fn channel(opt: BacklogOpt, cores: usize, api: ApiStub, logger: Logger) -> (QueueStub, QueueActor) {
+pub fn channel(opt: BacklogOpt, cores: usize, api: ApiStub, maximal_backoff_seconds: u64, logger: Logger) -> (QueueStub, QueueActor) {
     let (tx, rx) = mpsc::unbounded_channel();
     let interrupt = Arc::new(Notify::new());
     let state = Arc::new(Mutex::new(QueueState::new(cores, logger.clone())));
@@ -36,7 +36,7 @@ pub fn channel(opt: BacklogOpt, cores: usize, api: ApiStub, logger: Logger) -> (
         api,
         opt,
         logger,
-        backoff: RandomizedBackoff::default(),
+        backoff: RandomizedBackoff::new(maximal_backoff_seconds),
     };
     (stub, actor)
 }
