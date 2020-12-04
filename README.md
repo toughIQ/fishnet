@@ -64,9 +64,10 @@ that the compiled binary matches the source).
 ### What are the requirements?
 
 * Available for
-  - Linux on Intel, AMD, and ARMv8 CPUs
-  - Windows on Intel and AMD CPUs
-  - OS X on Intel (and AMD) CPUs
+  | | Linux | Windows | macOS |
+  | --- | --- | --- | --- |
+  | **Intel, AMD** | `x86_64-unknown-linux-gnu` | `x86_64-pc-windows-msvc.exe` | `x86_64-apple-darwin` |
+  | **ARMv8** | `aarch64-unknown-linux-gnu` | | |
 * Will max out the configured number of CPU cores
 * Uses about 64 MiB RAM per CPU core
 * A small amount of disk space
