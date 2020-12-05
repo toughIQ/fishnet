@@ -100,7 +100,7 @@ async fn run(opt: Opt, logger: &Logger) {
 
     // Spawn queue actor.
     let mut queue = {
-        let (queue, queue_actor) = queue::channel(opt.backlog, cores, api, logger.clone());
+        let (queue, queue_actor) = queue::channel(opt.backlog, cores, api, opt.maximal_backoff_seconds, logger.clone());
         join_handles.push(tokio::spawn(async move {
             queue_actor.run().await;
         }));

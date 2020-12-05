@@ -48,6 +48,10 @@ pub struct Opt {
     #[structopt(long, alias = "threads", global = true)]
     pub cores: Option<Cores>,
 
+    /// maximal amount of seconds to wait before the next job
+    #[structopt(long, default_value = "30", global = true)]
+    pub maximal_backoff_seconds: u64,
+
     #[structopt(flatten)]
     pub backlog: BacklogOpt,
 
