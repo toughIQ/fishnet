@@ -20,6 +20,7 @@ xz = "0.1"
 num_cpus = "1.13"
 rand = "0.7"
 reqwest = { version = "0.10", features = ["json", "rustls-tls"], default-features = false }
+rustls = "0.18"
 self_update = { version = "0.22", features = ["rustls"], default-features = false }
 serde = "1.0"
 serde_with = "1.6"
@@ -31,6 +32,7 @@ tokio = { version = "0.3", features = ["rt", "macros", "sync", "time", "signal",
 tokio-compat-02 = "0.1"
 url = "2.2"
 serde_repr = "0.1"
+webpki-roots = "0.21"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

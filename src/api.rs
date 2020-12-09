@@ -1,6 +1,7 @@
 use std::fmt;
 use std::time::Duration;
 use std::str::FromStr;
+use std::sync::Arc;
 use arrayvec::ArrayString;
 use reqwest::StatusCode;
 use url::Url;
@@ -532,6 +533,12 @@ pub struct ApiActor {
 
 impl ApiActor {
     fn new(rx: mpsc::UnboundedReceiver<ApiMessage>, endpoint: Endpoint, key: Option<Key>, logger: Logger) -> ApiActor {
+        // Build TLS backend that supports SSLKEYLOGFILE.
+        let mut tls = rustls::ClientConfig::new();
+        tls.set_protocols(&["h2".into(), "http/1.1".into()]);
+        tls.root_store.add_server_trust_anchors(&webpki_roots::TLS_SERVER_ROOTS);
+        tls.key_log = Arc::new(rustls::KeyLogFile::new());
+
         ApiActor {
             rx,
             endpoint,
@@ -540,6 +547,7 @@ impl ApiActor {
                 .user_agent(concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION")))
                 .timeout(Duration::from_secs(30))
                 .pool_idle_timeout(Duration::from_secs(25))
+                .use_preconfigured_tls(tls)
                 .build().expect("client"),
             error_backoff: RandomizedBackoff::default(),
             logger,

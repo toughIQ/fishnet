@@ -240,6 +240,7 @@ dependencies = [
  "rand",
  "raw-cpuid",
  "reqwest",
+ "rustls",
  "self_update",
  "serde",
  "serde_repr",
@@ -251,6 +252,7 @@ dependencies = [
  "tokio 0.3.5",
  "tokio-compat-02",
  "url",
+ "webpki-roots 0.21.0",
  "xz",
 ]
 
@@ -1020,7 +1022,7 @@ dependencies = [
  "wasm-bindgen-futures",
  "wasm-bindgen-test",
  "web-sys",
- "webpki-roots",
+ "webpki-roots 0.20.0",
  "winreg",
 ]
 
@@ -1731,6 +1733,15 @@ name = "webpki-roots"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f20dea7535251981a9670857150d571846545088359b28e4951d350bdaf179f"
+dependencies = [
+ "webpki",
+]
+
+[[package]]
+name = "webpki-roots"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82015b7e0b8bad8185994674a13a93306bea76cf5a16c5a181382fd3a5ec2376"
 dependencies = [
  "webpki",
 ]
