@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use tokio::sync::{mpsc, oneshot};
 use tokio::process::{Command, ChildStdin, ChildStdout};
 use tokio::io::{BufWriter, AsyncWriteExt as _, BufReader, AsyncBufReadExt as _, Lines};
+use shakmaty::fen::FenOpts;
 use shakmaty::variants::Variant;
 use crate::api::{Score, Work};
 use crate::ipc::{Position, PositionResponse, PositionFailed};
@@ -198,14 +199,15 @@ impl StockfishActor {
         stdin.write_line(&format!("setoption name UCI_Chess960 value {}", position.castling_mode.is_chess960())).await?;
 
         // Set UCI_Variant.
+        let variant = Variant::from(position.variant);
         if position.flavor == EngineFlavor::MultiVariant {
-            let variant = Variant::from(position.variant);
             stdin.write_line(&format!("setoption name UCI_Variant value {}", variant.uci())).await?;
         }
 
         // Setup position.
         let moves = position.moves.iter().map(|m| m.to_string()).collect::<Vec<_>>().join(" ");
-        stdin.write_line(&format!("position fen {} moves {}", position.fen, moves)).await?;
+        let fen = FenOpts::new().promoted(variant.distinguishes_promoted()).fen(&position.fen);
+        stdin.write_line(&format!("position fen {} moves {}", fen, moves)).await?;
 
         // Go.
         let go = match &position.work {
