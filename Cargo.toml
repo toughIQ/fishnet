@@ -24,7 +24,7 @@ rustls = "0.18"
 self_update = { version = "0.22", features = ["rustls"], default-features = false }
 serde = "1.0"
 serde_with = "1.6"
-shakmaty = "0.16"
+shakmaty = { version = "0.16", git = "https://github.com/niklasf/shakmaty.git" }
 shell-escape = "0.1"
 structopt = "0.3"
 tempfile = "3.1"

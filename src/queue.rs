@@ -5,10 +5,10 @@ use std::collections::hash_map::Entry;
 use std::fmt;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use shakmaty::uci::Uci;
+use shakmaty::uci::{Uci, IllegalUciError};
 use shakmaty::fen::Fen;
 use shakmaty::variants::VariantPosition;
-use shakmaty::{Setup as _, Position as _, MaterialSide, Material, PositionError, IllegalMoveError};
+use shakmaty::{CastlingMode, Setup as _, Position as _, MaterialSide, Material, PositionError};
 use url::Url;
 use tokio::sync::{mpsc, oneshot, Mutex, Notify};
 use tokio::time;
@@ -448,29 +448,27 @@ fn engine_flavor(body: &AcquireResponseBody) -> EngineFlavor {
     }
 }
 
-fn sanitize_moves(variant: LichessVariant, pos: &Fen, moves: Vec<Uci>) -> Result<(bool, Vec<Uci>), IncomingError> {
-    let mut pos = VariantPosition::from_setup(variant.into(), pos)?;
-
-    let chess960 =
-        variant == LichessVariant::Chess960 ||
-        variant == LichessVariant::FromPosition ||
-        pos.castles().is_chess960();
+fn sanitize_moves(variant: LichessVariant, pos: &Fen, moves: Vec<Uci>) -> Result<(CastlingMode, Vec<Uci>), IncomingError> {
+    let mut pos = VariantPosition::from_setup_with_mode(variant.into(), pos, match variant {
+        LichessVariant::Chess960 | LichessVariant::FromPosition => Some(CastlingMode::Chess960),
+        _ => None,
+    })?;
 
     let mut rewritten = Vec::new();
     for uci in moves {
         let m = uci.to_move(&pos)?;
-        rewritten.push(if chess960 { Uci::from_chess960(&m) } else { Uci::from_move(&pos, &m) });
+        rewritten.push(pos.castles().mode().uci(&m));
         pos.play_unchecked(&m);
     }
 
-    Ok((chess960, rewritten))
+    Ok((pos.castles().mode(), rewritten))
 }
 
 impl IncomingBatch {
     fn from_acquired(endpoint: &Endpoint, body: AcquireResponseBody) -> Result<IncomingBatch, IncomingError> {
         let url = body.batch_url(endpoint);
         let flavor = engine_flavor(&body);
-        let (chess960, body_moves) = sanitize_moves(body.variant, &body.position, body.moves)?;
+        let (castling_mode, body_moves) = sanitize_moves(body.variant, &body.position, body.moves)?;
 
         Ok(IncomingBatch {
             work: body.work.clone(),
@@ -485,7 +483,7 @@ impl IncomingBatch {
                         flavor,
                         position_id: PositionId(0),
                         variant: body.variant,
-                        chess960,
+                        castling_mode,
                         fen: body.position,
                         moves: body_moves,
                     })]
@@ -501,7 +499,7 @@ impl IncomingBatch {
                         flavor,
                         position_id: PositionId(0),
                         variant: body.variant,
-                        chess960,
+                        castling_mode,
                         fen: body.position.clone(),
                         moves: moves.clone(),
                     })];
@@ -517,7 +515,7 @@ impl IncomingBatch {
                             flavor,
                             position_id: PositionId(1 + i),
                             variant: body.variant,
-                            chess960,
+                            castling_mode,
                             fen: body.position.clone(),
                             moves: moves.clone(),
                         }));
@@ -564,7 +562,7 @@ impl From<&IncomingBatch> for ProgressAt {
 #[derive(Debug)]
 enum IncomingError {
     Position(PositionError),
-    IllegalMove(IllegalMoveError),
+    IllegalUci(IllegalUciError),
     AllSkipped(CompletedBatch),
 }
 
@@ -574,9 +572,9 @@ impl From<PositionError> for IncomingError {
     }
 }
 
-impl From<IllegalMoveError> for IncomingError {
-    fn from(err: IllegalMoveError) -> IncomingError {
-        IncomingError::IllegalMove(err)
+impl From<IllegalUciError> for IncomingError {
+    fn from(err: IllegalUciError) -> IncomingError {
+        IncomingError::IllegalUci(err)
     }
 }
 

@@ -195,21 +195,12 @@ impl StockfishActor {
         stdin.write_line("ucinewgame").await?;
 
         // Set UCI_Chess960.
-        stdin.write_line(&format!("setoption name UCI_Chess960 value {}", position.chess960)).await?;
+        stdin.write_line(&format!("setoption name UCI_Chess960 value {}", position.castling_mode.is_chess960())).await?;
 
         // Set UCI_Variant.
         if position.flavor == EngineFlavor::MultiVariant {
-            let uci_variant = match position.variant.into() {
-                Variant::Chess => "chess",
-                Variant::Giveaway => "giveaway",
-                Variant::Atomic => "atomic",
-                Variant::ThreeCheck => "3check",
-                Variant::KingOfTheHill =>  "kingofthehill",
-                Variant::RacingKings => "racingkings",
-                Variant::Horde => "horde",
-                Variant::Crazyhouse => "crazyhouse",
-            };
-            stdin.write_line(&format!("setoption name UCI_Variant value {}", uci_variant)).await?;
+            let variant = Variant::from(position.variant);
+            stdin.write_line(&format!("setoption name UCI_Variant value {}", variant.uci())).await?;
         }
 
         // Setup position.

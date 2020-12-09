@@ -380,7 +380,7 @@ impl LichessVariant {
 impl From<LichessVariant> for Variant {
     fn from(lichess: LichessVariant) -> Variant {
         match lichess {
-            LichessVariant::Antichess => Variant::Giveaway,
+            LichessVariant::Antichess => Variant::Antichess,
             LichessVariant::Atomic => Variant::Atomic,
             LichessVariant::Chess960 | LichessVariant::Standard | LichessVariant::FromPosition => Variant::Chess,
             LichessVariant::Crazyhouse => Variant::Crazyhouse,
