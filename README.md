@@ -122,6 +122,7 @@ Protocol
 ![Sequence diagram](https://raw.githubusercontent.com/niklasf/fishnet/master/doc/sequence-diagram.png)
 
 See [protocol.md](https://github.com/niklasf/fishnet/blob/master/doc/protocol.md) for details.
+Also supports [`SSLKEYLOGFILE`](https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS/Key_Log_Format) for inspection at runtime.
 
 License
 -------
