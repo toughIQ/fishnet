@@ -48,9 +48,10 @@ pub struct Opt {
     #[structopt(long, alias = "threads", global = true)]
     pub cores: Option<Cores>,
 
-    /// maximal amount of seconds to wait before the next job
-    #[structopt(long, default_value = "30", global = true)]
-    pub maximal_backoff_seconds: u64,
+    /// Maximum backoff time. The client will use randomized expontential
+    /// backoff when repeatedly receiving no job.
+    #[structopt(long, default_value = "30s", global = true)]
+    pub max_backoff: ParsedDuration,
 
     #[structopt(flatten)]
     pub backlog: BacklogOpt,
@@ -233,16 +234,7 @@ impl FromStr for Backlog {
         } else if s == "long" {
             Backlog::Long
         } else {
-            let (s, factor) = if let Some(s) = s.strip_suffix("d") {
-                (s, 60 * 60 * 24)
-            } else if let Some(s) = s.strip_suffix("h") {
-                (s, 60 * 60)
-            } else if let Some(s) = s.strip_suffix("m") {
-                (s, 60)
-            } else {
-                (s.strip_suffix("s").unwrap_or(s), 1)
-            };
-            Backlog::Duration(Duration::from_secs(u64::from(s.trim().parse::<u32>()?) * factor))
+            Backlog::Duration(s.parse::<ParsedDuration>()?.into())
         })
     }
 }
@@ -254,6 +246,34 @@ impl fmt::Display for Backlog {
             Backlog::Long => f.write_str("long"),
             Backlog::Duration(d) => write!(f, "{}s", d.as_secs()),
         }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct ParsedDuration(Duration);
+
+impl FromStr for ParsedDuration {
+    type Err = ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (s, factor) = if let Some(s) = s.strip_suffix("d") {
+            (s, 1000 * 60 * 60 * 24)
+        } else if let Some(s) = s.strip_suffix("h") {
+            (s, 1000 * 60 * 60)
+        } else if let Some(s) = s.strip_suffix("m") {
+            (s, 1000 * 60)
+        } else if let Some(s) = s.strip_suffix("ms") {
+            (s, 1)
+        } else {
+            (s.strip_suffix("s").unwrap_or(s), 1000)
+        };
+        Ok(ParsedDuration(Duration::from_millis(u64::from(s.trim().parse::<u32>()?) * factor)))
+    }
+}
+
+impl From<ParsedDuration> for Duration {
+    fn from(ParsedDuration(duration): ParsedDuration) -> Duration {
+        duration
     }
 }
 

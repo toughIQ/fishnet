@@ -1,37 +1,36 @@
-use std::cmp::min;
+use std::cmp::{max, min};
 use std::time::Duration;
 use rand::Rng;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct RandomizedBackoff {
     duration: Duration,
-    pub maximal_backoff_seconds: u64,
+    max_backoff: Duration,
 }
 
 impl RandomizedBackoff {
-    pub fn new(maximal_backoff_seconds: u64) -> RandomizedBackoff {
+    pub fn new(max_backoff: Duration) -> RandomizedBackoff {
         RandomizedBackoff {
             duration: Duration::default(),
-            maximal_backoff_seconds: maximal_backoff_seconds
-        }
-    }
-
-    pub fn default() -> RandomizedBackoff {
-        RandomizedBackoff {
-            duration: Duration::default(),
-            maximal_backoff_seconds: 30
+            max_backoff,
         }
     }
 
     pub fn next(&mut self) -> Duration {
         let low = self.duration.as_millis() as u64;
-        let high = min(self.maximal_backoff_seconds * 1000, (low + 500) * 2);
+        let high = max(1, min(self.max_backoff.as_millis() as u64, (low + 100) * 2));
         self.duration = Duration::from_millis(rand::thread_rng().gen_range(low, high));
         self.duration
     }
 
     pub fn reset(&mut self) {
         self.duration = Duration::default();
+    }
+}
+
+impl Default for RandomizedBackoff {
+    fn default() -> RandomizedBackoff {
+        RandomizedBackoff::new(Duration::from_secs(30))
     }
 }
 

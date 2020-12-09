@@ -96,11 +96,12 @@ async fn run(opt: Opt, logger: &Logger) {
         api
     };
 
-    logger.headline("Running (press Ctrl + C to stop) ...");
+    let to_stop = if atty::is(Stream::Stdout) { "CTRL-C" } else { "SIGINT" };
+    logger.headline(&format!("Running ({} to stop) ...", to_stop));
 
     // Spawn queue actor.
     let mut queue = {
-        let (queue, queue_actor) = queue::channel(opt.backlog, cores, api, opt.maximal_backoff_seconds, logger.clone());
+        let (queue, queue_actor) = queue::channel(opt.backlog, cores, api, opt.max_backoff.into(), logger.clone());
         join_handles.push(tokio::spawn(async move {
             queue_actor.run().await;
         }));
@@ -176,7 +177,7 @@ async fn run(opt: Opt, logger: &Logger) {
                     rx.close();
                 } else {
                     logger.clear_echo();
-                    logger.headline("Stopping soon. Press ^C again to abort pending batches ...");
+                    logger.headline(&format!("Stopping soon. {} again to abort pending batches ...", to_stop));
                     queue.shutdown_soon().await;
                     shutdown_soon = true;
                 }
