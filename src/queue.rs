@@ -6,9 +6,8 @@ use std::fmt;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use shakmaty::uci::{Uci, IllegalUciError};
-use shakmaty::fen::Fen;
 use shakmaty::variants::VariantPosition;
-use shakmaty::{CastlingMode, Setup as _, Position as _, MaterialSide, Material, PositionError};
+use shakmaty::{CastlingMode, Position as _, PositionError};
 use url::Url;
 use tokio::sync::{mpsc, oneshot, Mutex, Notify};
 use tokio::time;
@@ -427,48 +426,28 @@ pub struct IncomingBatch {
     url: Option<Url>,
 }
 
-fn is_standard_material_side(side: &MaterialSide) -> bool {
-    side.pawns <= 8 &&
-    side.knights <= 2 &&
-    side.bishops <= 2 &&
-    side.rooks <= 2 &&
-    side.queens <= 1 &&
-    side.kings == 1
-}
-
-fn is_standard_material(material: &Material) -> bool {
-    is_standard_material_side(&material.white) &&
-    is_standard_material_side(&material.black)
-}
-
-fn engine_flavor(body: &AcquireResponseBody) -> EngineFlavor {
-    match VariantPosition::from_setup(body.variant.into(), &body.position) {
-        Ok(VariantPosition::Chess(pos)) if body.work.is_analysis() && is_standard_material(&pos.board().material()) => EngineFlavor::Official,
-        _ => EngineFlavor::MultiVariant,
-    }
-}
-
-fn sanitize_moves(variant: LichessVariant, pos: &Fen, moves: Vec<Uci>) -> Result<(CastlingMode, Vec<Uci>), IncomingError> {
-    let mut pos = VariantPosition::from_setup_with_mode(variant.into(), pos, match variant {
-        LichessVariant::Chess960 | LichessVariant::FromPosition => Some(CastlingMode::Chess960),
-        _ => None,
-    })?;
-
-    let mut rewritten = Vec::new();
-    for uci in moves {
-        let m = uci.to_move(&pos)?;
-        rewritten.push(pos.castles().mode().uci(&m));
-        pos.play_unchecked(&m);
-    }
-
-    Ok((pos.castles().mode(), rewritten))
-}
-
 impl IncomingBatch {
     fn from_acquired(endpoint: &Endpoint, body: AcquireResponseBody) -> Result<IncomingBatch, IncomingError> {
         let url = body.batch_url(endpoint);
-        let flavor = engine_flavor(&body);
-        let (castling_mode, body_moves) = sanitize_moves(body.variant, &body.position, body.moves)?;
+
+        let maybe_pos = VariantPosition::from_setup(body.variant.into(), &body.position, match body.variant {
+            LichessVariant::Chess960 | LichessVariant::FromPosition => CastlingMode::Chess960,
+            _ => CastlingMode::detect(&body.position),
+        });
+
+        let (flavor, mut pos) = match maybe_pos {
+            Ok(pos @ VariantPosition::Chess(_)) if body.work.is_analysis() => (EngineFlavor::Official, pos),
+            Ok(pos) => (EngineFlavor::MultiVariant, pos),
+            Err(pos) => (EngineFlavor::MultiVariant, pos.ignore_impossible_material()?),
+        };
+
+        let castling_mode = pos.castles().mode();
+        let mut body_moves = Vec::new();
+        for uci in body.moves {
+            let m = uci.to_move(&pos)?;
+            body_moves.push(m.to_uci(castling_mode));
+            pos.play_unchecked(&m);
+        }
 
         Ok(IncomingBatch {
             work: body.work.clone(),
@@ -561,13 +540,13 @@ impl From<&IncomingBatch> for ProgressAt {
 
 #[derive(Debug)]
 enum IncomingError {
-    Position(PositionError),
+    Position(PositionError<VariantPosition>),
     IllegalUci(IllegalUciError),
     AllSkipped(CompletedBatch),
 }
 
-impl From<PositionError> for IncomingError {
-    fn from(err: PositionError) -> IncomingError {
+impl From<PositionError<VariantPosition>> for IncomingError {
+    fn from(err: PositionError<VariantPosition>) -> IncomingError {
         IncomingError::Position(err)
     }
 }
