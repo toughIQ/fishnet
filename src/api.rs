@@ -158,8 +158,7 @@ pub enum Work {
     Analysis {
         #[serde_as(as = "DisplayFromStr")]
         id: BatchId,
-        #[serde(default)]
-        nodes: Option<NodeLimit>,
+        nodes: NodeLimit,
         #[serde(default)]
         depth: Option<u8>,
         #[serde(default)]
@@ -184,13 +183,6 @@ impl Work {
 
     pub fn is_analysis(&self) -> bool {
         matches!(self, Work::Analysis { .. })
-    }
-
-    pub fn node_limit(&self) -> Option<NodeLimit> {
-        match *self {
-            Work::Analysis { nodes, .. } => nodes,
-            Work::Move { .. } => None,
-        }
     }
 
     pub fn multipv(&self) -> NonZeroU8 {
@@ -224,25 +216,11 @@ pub struct NodeLimit {
     nnue: u64,
 }
 
-pub fn nnue_to_classical(nodes: u64) -> u64 {
-    nodes * 18 / 10
-}
-
 impl NodeLimit {
     pub fn get(&self, flavor: EvalFlavor) -> u64 {
         match flavor {
             EvalFlavor::Classical => self.classical,
             EvalFlavor::Nnue => self.nnue,
-        }
-    }
-}
-
-impl Default for NodeLimit {
-    fn default() -> NodeLimit {
-        let nnue = 2_250_000;
-        NodeLimit {
-            nnue,
-            classical: nnue_to_classical(nnue),
         }
     }
 }

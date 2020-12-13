@@ -196,17 +196,13 @@ impl StockfishActor {
         // Clear hash.
         stdin.write_line("ucinewgame").await?;
 
-        // Set MultiPV.
-        stdin.write_line(&format!("setoption name MultiPV value {}", position.work.multipv())).await?;
-
-        // Set UCI_Chess960.
-        stdin.write_line(&format!("setoption name UCI_Chess960 value {}", position.castling_mode.is_chess960())).await?;
-
-        // Set UCI_Variant.
+        // Set basic options.
         let variant = Variant::from(position.variant);
         if position.flavor == EngineFlavor::MultiVariant {
             stdin.write_line(&format!("setoption name UCI_Variant value {}", variant.uci())).await?;
         }
+        stdin.write_line(&format!("setoption name UCI_Chess960 value {}", position.castling_mode.is_chess960())).await?;
+        stdin.write_line(&format!("setoption name MultiPV value {}", position.work.multipv())).await?;
 
         // Setup position.
         let moves = position.moves.iter().map(|m| m.to_string()).collect::<Vec<_>>().join(" ");
@@ -243,7 +239,7 @@ impl StockfishActor {
 
                 let mut go = vec![
                     "go".to_owned(),
-                    "nodes".to_owned(), nodes.unwrap_or_default().get(position.flavor.eval_flavor()).to_string(),
+                    "nodes".to_owned(), nodes.get(position.flavor.eval_flavor()).to_string(),
                 ];
 
                 if let Some(depth) = depth {

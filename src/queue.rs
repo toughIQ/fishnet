@@ -12,7 +12,7 @@ use url::Url;
 use tokio::sync::{mpsc, oneshot, Mutex, Notify};
 use tokio::time;
 use crate::assets::{EngineFlavor, EvalFlavor};
-use crate::api::{AcquireQuery, AcquireResponseBody, Acquired, AnalysisPart, ApiStub, BatchId, Work, LichessVariant, nnue_to_classical};
+use crate::api::{AcquireQuery, AcquireResponseBody, Acquired, AnalysisPart, ApiStub, BatchId, Work, LichessVariant};
 use crate::configure::{BacklogOpt, Endpoint};
 use crate::ipc::{Position, PositionResponse, PositionFailed, PositionId, Pull};
 use crate::logger::{Logger, ProgressAt, QueueStatusBar};
