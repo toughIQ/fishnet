@@ -191,6 +191,10 @@ impl Work {
             Work::Move { .. } => None,
         }.unwrap_or_else(|| NonZeroU8::new(1).unwrap())
     }
+
+    pub fn matrix_wanted(&self) -> bool {
+        matches!(*self, Work::Analysis { multipv: Some(_), .. })
+    }
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -434,8 +438,8 @@ pub enum AnalysisPart {
         nps: Option<u32>,
     },
     Matrix {
-        #[serde_as(as = "Vec<Vec<Option<DisplayFromStr>>>")]
-        pv: Vec<Vec<Option<Uci>>>,
+        #[serde_as(as = "Vec<Vec<Option<Vec<DisplayFromStr>>>>")]
+        pv: Vec<Vec<Option<Vec<Uci>>>>,
         score: Vec<Vec<Option<Score>>>,
         depth: u8,
         nodes: u64,

@@ -587,7 +587,7 @@ impl PendingBatch {
         self.positions.iter().enumerate().map(|(i, p)| match p {
             // Quirk: Lila distinguishes progress reports from complete
             // analysis by looking at the first part.
-            Some(Skip::Present(pos)) if i > 0 => Some(pos.best()),
+            Some(Skip::Present(pos)) if i > 0 => Some(pos.to_best()),
             _ => None,
         }).collect()
     }
@@ -613,7 +613,8 @@ impl CompletedBatch {
         self.positions.into_iter().map(|p| {
             Some(match p {
                 Skip::Skip => AnalysisPart::Skipped { skipped: true },
-                Skip::Present(pos) => pos.best(),
+                Skip::Present(pos) if pos.work.matrix_wanted() => pos.to_best(),
+                Skip::Present(pos) => pos.into_matrix(),
             })
         }).collect()
     }

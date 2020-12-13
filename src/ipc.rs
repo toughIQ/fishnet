@@ -41,10 +41,21 @@ pub struct PositionResponse {
 }
 
 impl PositionResponse {
-    pub fn best(&self) -> AnalysisPart {
+    pub fn to_best(&self) -> AnalysisPart {
         AnalysisPart::Best {
             pv: self.pvs.best().cloned().unwrap_or_default(),
             score: self.scores.best().cloned().expect("got score"),
+            depth: self.depth,
+            nodes: self.nodes,
+            time: self.time.as_millis() as u64,
+            nps: self.nps,
+        }
+    }
+
+    pub fn into_matrix(self) -> AnalysisPart {
+        AnalysisPart::Matrix {
+            pv: self.pvs.matrix,
+            score: self.scores.matrix,
             depth: self.depth,
             nodes: self.nodes,
             time: self.time.as_millis() as u64,
