@@ -613,8 +613,8 @@ impl CompletedBatch {
         self.positions.into_iter().map(|p| {
             Some(match p {
                 Skip::Skip => AnalysisPart::Skipped { skipped: true },
-                Skip::Present(pos) if pos.work.matrix_wanted() => pos.to_best(),
-                Skip::Present(pos) => pos.into_matrix(),
+                Skip::Present(pos) if pos.work.matrix_wanted() => pos.into_matrix(),
+                Skip::Present(pos) => pos.to_best(),
             })
         }).collect()
     }
