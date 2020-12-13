@@ -1,5 +1,6 @@
 use url::Url;
 use std::time::Duration;
+use std::num::NonZeroU8;
 use shakmaty::CastlingMode;
 use shakmaty::fen::Fen;
 use shakmaty::uci::Uci;
@@ -30,13 +31,39 @@ pub struct PositionResponse {
     pub position_id: PositionId,
     pub url: Option<Url>,
 
-    pub score: Score,
+    pub scores: Matrix<Score>,
+    pub pvs: Matrix<Vec<Uci>>,
     pub best_move: Option<Uci>,
-    pub pv: Vec<Uci>,
-    pub depth: u32,
+    pub depth: u8,
     pub nodes: u64,
     pub time: Duration,
     pub nps: Option<u32>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Matrix<T> {
+    matrix: Vec<Vec<Option<T>>>
+}
+
+impl<T> Matrix<T> {
+    pub fn new() -> Matrix<T> {
+        Matrix { matrix: Vec::new() }
+    }
+
+    pub fn set(&mut self, multipv: NonZeroU8, depth: u8, v: T) {
+        while self.matrix.len() < usize::from(multipv.get()) {
+            self.matrix.push(Vec::new());
+        }
+        let row = &mut self.matrix[usize::from(multipv.get() - 1)];
+        while row.len() <= usize::from(depth) {
+            row.push(None);
+        }
+        row[usize::from(depth)] = Some(v);
+    }
+
+    pub fn best(&self) -> Option<&T> {
+        self.matrix.get(0).and_then(|row| row.last().and_then(|v| v.as_ref()))
+    }
 }
 
 #[derive(Debug)]

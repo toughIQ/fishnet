@@ -252,3 +252,5 @@ Considered changes
 * Remove superfluous monitoring data.
 * Send key as `Authorization: Bearer <key>`.
 * New optional `work.analysis.depth`.
+* New optional `work.analysis.multipv`, to get top *multipv* scores and pvs
+  at each depth.

@@ -588,9 +588,9 @@ impl PendingBatch {
             // Quirk: Lila distinguishes progress reports from complete
             // analysis by looking at the first part.
             Some(Skip::Present(pos)) if i > 0 => Some(AnalysisPart::Complete {
-                pv: pos.pv.clone(),
+                pv: pos.pvs.best().cloned().unwrap_or_default(),
                 depth: pos.depth,
-                score: pos.score,
+                score: pos.scores.best().cloned().expect("got score"),
                 time: pos.time.as_millis() as u64,
                 nodes: pos.nodes,
                 nps: pos.nps,
@@ -626,9 +626,9 @@ impl CompletedBatch {
                     skipped: true,
                 },
                 Skip::Present(pos) => AnalysisPart::Complete {
-                    pv: pos.pv,
+                    pv: pos.pvs.best().cloned().unwrap_or_default(),
                     depth: pos.depth,
-                    score: pos.score,
+                    score: pos.scores.best().cloned().expect("got score"),
                     time: pos.time.as_millis() as u64,
                     nodes: match flavor {
                         EvalFlavor::Nnue if !lila_updated => {

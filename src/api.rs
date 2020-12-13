@@ -2,6 +2,7 @@ use std::fmt;
 use std::time::Duration;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::num::NonZeroU8;
 use arrayvec::ArrayString;
 use reqwest::{StatusCode, header};
 use url::Url;
@@ -160,7 +161,9 @@ pub enum Work {
         #[serde(default)]
         nodes: Option<NodeLimit>,
         #[serde(default)]
-        depth: Option<u32>,
+        depth: Option<u8>,
+        #[serde(default)]
+        multipv: Option<NonZeroU8>,
     },
     #[serde(rename = "move")]
     Move {
@@ -188,6 +191,13 @@ impl Work {
             Work::Analysis { nodes, .. } => nodes,
             Work::Move { .. } => None,
         }
+    }
+
+    pub fn multipv(&self) -> NonZeroU8 {
+        match *self {
+            Work::Analysis { multipv, .. } => multipv,
+            Work::Move { .. } => None,
+        }.unwrap_or_else(|| NonZeroU8::new(1).unwrap())
     }
 }
 
@@ -279,7 +289,7 @@ impl SkillLevel {
         }
     }
 
-    pub fn depth(self) -> u32 {
+    pub fn depth(self) -> u8 {
         use SkillLevel::*;
         match self {
             One | Two | Three | Four | Five => 5,
@@ -438,7 +448,7 @@ pub enum AnalysisPart {
         #[serde_as(as = "StringWithSeparator::<SpaceSeparator, Uci>")]
         #[serde(skip_serializing_if = "Vec::is_empty")]
         pv: Vec<Uci>,
-        depth: u32,
+        depth: u8,
         nodes: u64,
         score: Score,
         time: u64,

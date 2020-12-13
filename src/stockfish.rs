@@ -2,13 +2,14 @@ use std::io;
 use std::time::Duration;
 use std::process::Stdio;
 use std::path::PathBuf;
+use std::num::NonZeroU8;
 use tokio::sync::{mpsc, oneshot};
 use tokio::process::{Command, ChildStdin, ChildStdout};
 use tokio::io::{BufWriter, AsyncWriteExt as _, BufReader, AsyncBufReadExt as _, Lines};
 use shakmaty::fen::FenOpts;
 use shakmaty::variants::Variant;
 use crate::api::{Score, Work};
-use crate::ipc::{Position, PositionResponse, PositionFailed};
+use crate::ipc::{Position, Matrix, PositionResponse, PositionFailed};
 use crate::assets::EngineFlavor;
 use crate::logger::Logger;
 use crate::util::NevermindExt as _;
@@ -195,6 +196,9 @@ impl StockfishActor {
         // Clear hash.
         stdin.write_line("ucinewgame").await?;
 
+        // Set MultiPV.
+        stdin.write_line(&format!("setoption name MultiPV value {}", position.work.multipv())).await?;
+
         // Set UCI_Chess960.
         stdin.write_line(&format!("setoption name UCI_Chess960 value {}", position.castling_mode.is_chess960())).await?;
 
@@ -252,9 +256,10 @@ impl StockfishActor {
         stdin.write_line(&go.join(" ")).await?;
 
         // Process response.
-        let mut score = None;
-        let mut depth = None;
-        let mut pv = Vec::new();
+        let mut scores = Matrix::new();
+        let mut pvs = Matrix::new();
+        let mut depth = 0;
+        let mut multipv = NonZeroU8::new(1).unwrap();
         let mut time = Duration::default();
         let mut nodes = 0;
         let mut nps = None;
@@ -264,14 +269,18 @@ impl StockfishActor {
             let mut parts = line.split(' ');
             match parts.next() {
                 Some("bestmove") => {
+                    if scores.best().is_none() {
+                        return Err(io::Error::new(io::ErrorKind::InvalidData, "missing score"));
+                    }
+
                     return Ok(PositionResponse {
                         work: position.work,
                         position_id: position.position_id,
                         url: position.url,
                         best_move: parts.next().and_then(|m| m.parse().ok()),
-                        score: score.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "missing score"))?,
-                        depth: depth.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "missing depth"))?,
-                        pv,
+                        scores,
+                        depth,
+                        pvs,
                         time,
                         nodes,
                         nps,
@@ -280,11 +289,15 @@ impl StockfishActor {
                 Some("info") => {
                     while let Some(part) = parts.next() {
                         match part {
+                            "multipv" => {
+                                multipv = parts.next()
+                                    .and_then(|t| t.parse().ok())
+                                    .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected multipv"))?;
+                            }
                             "depth" => {
-                                depth = Some(
-                                    parts.next()
-                                        .and_then(|t| t.parse().ok())
-                                        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected depth"))?);
+                                depth = parts.next()
+                                    .and_then(|t| t.parse().ok())
+                                    .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected depth"))?;
                             }
                             "nodes" => {
                                 nodes = parts.next()
@@ -301,17 +314,18 @@ impl StockfishActor {
                                 nps = parts.next().and_then(|n| n.parse().ok());
                             }
                             "score" => {
-                                score = match parts.next() {
+                                scores.set(multipv, depth, match parts.next() {
                                     Some("cp") => parts.next().and_then(|cp| cp.parse().ok()).map(Score::Cp),
                                     Some("mate") => parts.next().and_then(|mate| mate.parse().ok()).map(Score::Mate),
                                     _ => return Err(io::Error::new(io::ErrorKind::InvalidData, "expected cp or mate")),
-                                }
+                                }.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected score"))?);
                             }
                             "pv" => {
-                                pv.clear();
+                                let mut pv = Vec::new();
                                 while let Some(part) = parts.next() {
                                     pv.push(part.parse().map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid pv"))?);
                                 }
+                                pvs.set(multipv, depth, pv);
                             }
                             _ => (),
                         }
