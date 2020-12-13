@@ -83,7 +83,7 @@ pub struct QueueStatus {
 #[derive(Debug, Serialize)]
 pub struct VoidRequestBody {
     fishnet: Fishnet,
-    stockfish: Stockfish,
+    stockfish: Stockfish, // TODO: remove after https://github.com/ornicar/lila/pull/7709
 }
 
 #[derive(Debug, Serialize)]
@@ -103,8 +103,8 @@ impl Fishnet {
 
 #[derive(Debug, Serialize)]
 struct Stockfish {
-    name: &'static str,
-    options: StockfishOptions,
+    name: &'static str, // TODO: remove after https://github.com/ornicar/lila/pull/7709
+    options: StockfishOptions, // TODO: remove after https://github.com/ornicar/lila/pull/7709
     #[serde(skip_serializing_if = "Option::is_none")]
     flavor: Option<EvalFlavor>,
 }
