@@ -617,9 +617,6 @@ pub struct CompletedBatch {
 
 impl CompletedBatch {
     fn into_analysis(self) -> Vec<Option<AnalysisPart>> {
-        let lila_updated = matches!(self.work, Work::Analysis { nodes: Some(_), .. });
-        let flavor = self.flavor.eval_flavor();
-
         self.positions.into_iter().map(|p| {
             Some(match p {
                 Skip::Skip => AnalysisPart::Skipped {
@@ -630,17 +627,7 @@ impl CompletedBatch {
                     depth: pos.depth,
                     score: pos.scores.best().cloned().expect("got score"),
                     time: pos.time.as_millis() as u64,
-                    nodes: match flavor {
-                        EvalFlavor::Nnue if !lila_updated => {
-                            // TODO: Remove when lila is updated:
-                            // Lie to lila about crunched nodes by sending the
-                            // rough classical equivalent. Otherwise NNUE
-                            // analysis may be rejected as weak, even if it is
-                            // stronger.
-                            nnue_to_classical(pos.nodes)
-                        }
-                        _ => pos.nodes,
-                    },
+                    nodes: pos.nodes,
                     nps: pos.nps,
                 },
             })
