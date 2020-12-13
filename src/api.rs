@@ -159,6 +159,8 @@ pub enum Work {
         id: BatchId,
         #[serde(default)]
         nodes: Option<NodeLimit>,
+        #[serde(default)]
+        depth: Option<u32>,
     },
     #[serde(rename = "move")]
     Move {
@@ -173,8 +175,7 @@ pub enum Work {
 impl Work {
     pub fn id(&self) -> BatchId {
         match *self {
-            Work::Analysis { id, .. } => id,
-            Work::Move { id, .. } => id,
+            Work::Analysis { id, .. } | Work::Move { id, .. } => id,
         }
     }
 

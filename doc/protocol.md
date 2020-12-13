@@ -251,3 +251,4 @@ Considered changes
 
 * Remove superfluous monitoring data.
 * Send key as `Authorization: Bearer <key>`.
+* New optional `work.analysis.depth`.

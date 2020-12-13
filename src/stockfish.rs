@@ -233,10 +233,20 @@ impl StockfishActor {
 
                 go
             }
-            Work::Analysis { nodes, .. } => {
+            Work::Analysis { nodes, depth, .. } => {
                 stdin.write_line("setoption name UCI_AnalyseMode value true").await?;
                 stdin.write_line("setoption name UCI_LimitStrength value false").await?;
-                vec!["go".to_owned(), "nodes".to_owned(), nodes.unwrap_or_default().get(position.flavor.eval_flavor()).to_string()]
+
+                let mut go = vec![
+                    "go".to_owned(),
+                    "nodes".to_owned(), nodes.unwrap_or_default().get(position.flavor.eval_flavor()).to_string(),
+                ];
+
+                if let Some(depth) = depth {
+                    go.extend_from_slice(&["depth".to_owned(), depth.to_string()]);
+                }
+
+                go
             }
         };
         stdin.write_line(&go.join(" ")).await?;
