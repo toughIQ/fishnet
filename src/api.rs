@@ -89,7 +89,6 @@ pub struct VoidRequestBody {
 #[derive(Debug, Serialize)]
 struct Fishnet {
     version: &'static str,
-    python: &'static str,
     apikey: String,
 }
 
@@ -97,7 +96,6 @@ impl Fishnet {
     fn authenticated(key: Option<Key>) -> Fishnet {
         Fishnet {
             version: env!("CARGO_PKG_VERSION"),
-            python: "-",
             apikey: key.map_or("".to_owned(), |k| k.0),
         }
     }

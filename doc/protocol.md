@@ -11,7 +11,6 @@ POST http://lichess.org/fishnet/acquire
 {
   "fishnet": {
     "version": "1.15.7",
-    "python": "2.7.11+",
     "apikey": "XXX"
   },
   "stockfish": {
@@ -71,7 +70,6 @@ POST http://lichess.org/fishnet/analysis/{work_id}
 {
   "fishnet": {
     "version": "0.0.1",
-    "python": "2.7.11+",
     "apikey": "XXX"
   },
   "stockfish": {
@@ -126,7 +124,6 @@ POST http://lichess.org/fishnet/move/{work_id}
 {
   "fishnet": {
     "version": "0.0.1",
-    "python": "2.7.11+",
     "apikey": "XXX"
   },
   "move": {
@@ -168,7 +165,6 @@ POST http://lichess.org/fishnet/abort/{work_id}
 {
   "fishnet": {
     "version": "0.0.1",
-    "python": "2.7.11+",
     "apikey": "XXX"
   },
   "stockfish": {
