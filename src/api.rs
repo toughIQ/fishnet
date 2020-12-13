@@ -3,7 +3,7 @@ use std::time::Duration;
 use std::str::FromStr;
 use std::sync::Arc;
 use arrayvec::ArrayString;
-use reqwest::StatusCode;
+use reqwest::{StatusCode, header};
 use url::Url;
 use tokio::time;
 use tokio::sync::{mpsc, oneshot};
@@ -537,11 +537,17 @@ impl ApiActor {
         tls.root_store.add_server_trust_anchors(&webpki_roots::TLS_SERVER_ROOTS);
         tls.key_log = Arc::new(rustls::KeyLogFile::new());
 
+        let mut headers = header::HeaderMap::new();
+        if let Some(Key(ref key)) = key {
+            headers.insert(header::AUTHORIZATION, format!("Bearer {}", key).parse().expect("header value"));
+        }
+
         ApiActor {
             rx,
             endpoint,
             key,
             client: reqwest::Client::builder()
+                .default_headers(headers)
                 .user_agent(concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION")))
                 .timeout(Duration::from_secs(30))
                 .pool_idle_timeout(Duration::from_secs(25))

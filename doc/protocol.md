@@ -245,3 +245,9 @@ Key invalid/inactive:
 ```
 404 Not found
 ```
+
+Considered changes
+------------------
+
+* Remove superfluous monitoring data.
+* Send key as `Authorization: Bearer <key>`.
