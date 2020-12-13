@@ -587,14 +587,7 @@ impl PendingBatch {
         self.positions.iter().enumerate().map(|(i, p)| match p {
             // Quirk: Lila distinguishes progress reports from complete
             // analysis by looking at the first part.
-            Some(Skip::Present(pos)) if i > 0 => Some(AnalysisPart::Complete {
-                pv: pos.pvs.best().cloned().unwrap_or_default(),
-                depth: pos.depth,
-                score: pos.scores.best().cloned().expect("got score"),
-                time: pos.time.as_millis() as u64,
-                nodes: pos.nodes,
-                nps: pos.nps,
-            }),
+            Some(Skip::Present(pos)) if i > 0 => Some(pos.best()),
             _ => None,
         }).collect()
     }
@@ -619,17 +612,8 @@ impl CompletedBatch {
     fn into_analysis(self) -> Vec<Option<AnalysisPart>> {
         self.positions.into_iter().map(|p| {
             Some(match p {
-                Skip::Skip => AnalysisPart::Skipped {
-                    skipped: true,
-                },
-                Skip::Present(pos) => AnalysisPart::Complete {
-                    pv: pos.pvs.best().cloned().unwrap_or_default(),
-                    depth: pos.depth,
-                    score: pos.scores.best().cloned().expect("got score"),
-                    time: pos.time.as_millis() as u64,
-                    nodes: pos.nodes,
-                    nps: pos.nps,
-                },
+                Skip::Skip => AnalysisPart::Skipped { skipped: true },
+                Skip::Present(pos) => pos.best(),
             })
         }).collect()
     }

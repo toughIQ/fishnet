@@ -5,7 +5,7 @@ use shakmaty::CastlingMode;
 use shakmaty::fen::Fen;
 use shakmaty::uci::Uci;
 use tokio::sync::oneshot;
-use crate::api::{Score, LichessVariant, Work, BatchId};
+use crate::api::{Score, LichessVariant, Work, BatchId, AnalysisPart};
 use crate::assets::EngineFlavor;
 
 /// Uniquely identifies a position within a batch.
@@ -38,6 +38,19 @@ pub struct PositionResponse {
     pub nodes: u64,
     pub time: Duration,
     pub nps: Option<u32>,
+}
+
+impl PositionResponse {
+    pub fn best(&self) -> AnalysisPart {
+        AnalysisPart::Best {
+            pv: self.pvs.best().cloned().unwrap_or_default(),
+            score: self.scores.best().cloned().expect("got score"),
+            depth: self.depth,
+            nodes: self.nodes,
+            time: self.time.as_millis() as u64,
+            nps: self.nps,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

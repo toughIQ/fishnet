@@ -422,13 +422,23 @@ pub enum AnalysisPart {
     Skipped {
         skipped: bool,
     },
-    Complete {
+    Best {
         #[serde_as(as = "StringWithSeparator::<SpaceSeparator, Uci>")]
         #[serde(skip_serializing_if = "Vec::is_empty")]
         pv: Vec<Uci>,
+        score: Score,
         depth: u8,
         nodes: u64,
-        score: Score,
+        time: u64,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        nps: Option<u32>,
+    },
+    Matrix {
+        #[serde_as(as = "Vec<Vec<Option<DisplayFromStr>>>")]
+        pv: Vec<Vec<Option<Uci>>>,
+        score: Vec<Vec<Option<Score>>>,
+        depth: u8,
+        nodes: u64,
         time: u64,
         #[serde(skip_serializing_if = "Option::is_none")]
         nps: Option<u32>,
