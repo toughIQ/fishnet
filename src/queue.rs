@@ -113,7 +113,7 @@ impl QueueState {
             incoming: VecDeque::new(),
             pending: HashMap::new(),
             move_submissions: VecDeque::new(),
-            stats: StatsRecorder::new(),
+            stats: StatsRecorder::new(cores),
             logger,
         }
     }
@@ -658,12 +658,12 @@ pub struct StatsRecorder {
 }
 
 impl StatsRecorder {
-    fn new() -> StatsRecorder {
+    fn new(cores: usize) -> StatsRecorder {
         StatsRecorder {
             total_batches: 0,
             total_positions: 0,
             total_nodes: 0,
-            nnue_nps: NpsRecorder::new(),
+            nnue_nps: NpsRecorder::new(cores),
         }
     }
 
@@ -678,8 +678,8 @@ impl StatsRecorder {
 
     fn min_user_backlog(&self) -> Duration {
         // The average batch has 60 positions, analysed with 2_250_000 nodes
-        // each. Top end clients take no longer than 30 seconds.
-        let best_batch_seconds = 30;
+        // each. Top end clients take no longer than 35 seconds.
+        let best_batch_seconds = 35;
 
         // Estimate how long this client would take for the next batch,
         // capped at timeout.
@@ -698,9 +698,9 @@ pub struct NpsRecorder {
 }
 
 impl NpsRecorder {
-    fn new() -> NpsRecorder {
+    fn new(cores: usize) -> NpsRecorder {
         NpsRecorder {
-            nps: 1_500_000, // start low
+            nps: 500_000 * cores as u32, // start with a low estimate
             uncertainty: 1.0,
         }
     }

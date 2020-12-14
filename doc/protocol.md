@@ -33,8 +33,8 @@ Response with work:
     "type": "analysis",
     "id": "work_id",
     "nodes": { // node limit for each eval flavor
-      "nnue": 2100000,
-      "classical": 4000000
+      "nnue": 2250000,
+      "classical": 4050000
     }
   },
   // or:
