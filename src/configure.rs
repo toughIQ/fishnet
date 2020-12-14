@@ -218,7 +218,7 @@ impl Default for Backlog {
 impl From<Backlog> for Duration {
     fn from(backlog: Backlog) -> Duration {
         match backlog {
-            Backlog::Short => Duration::from_secs(60),
+            Backlog::Short => Duration::from_secs(30),
             Backlog::Long => Duration::from_secs(60 * 60),
             Backlog::Duration(d) => d,
         }
