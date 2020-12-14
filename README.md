@@ -63,13 +63,13 @@ that the compiled binary matches the source).
 
 ### What are the requirements?
 
-* Available for:
-  | CPU | 64-bit Intel and AMD | ARMv8 |
-  | --- | --- | --- |
-  | **Linux** | `x86_64-unknown-linux-gnu` | `aarch64-unknown-linux-gnu` |
-  | **Windows** | `x86_64-pc-windows-msvc.exe` | |
-  | **macOS** | `x86_64-apple-darwin` | |
-* An operating system from around 2016 or later
+| Available for | 64-bit Intel and AMD | ARMv8 |
+| --- | --- | --- |
+| **Linux** | `x86_64-unknown-linux-gnu` | `aarch64-unknown-linux-gnu` |
+| **Windows** | `x86_64-pc-windows-msvc.exe` | |
+| **macOS** | `x86_64-apple-darwin` | |
+
+* Needs an operating system from around 2016 or later
 * Will max out the configured number of CPU cores
 * Uses about 64 MiB RAM per CPU core
 * A small amount of disk space
