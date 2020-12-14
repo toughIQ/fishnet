@@ -45,7 +45,7 @@ Installation
    **Docker**
 
    ```sh
-   docker run -it -e KEY=abcdef niklasf/fishnet:latest
+   docker run -it -e KEY=abcdef niklasf/fishnet:2
    ```
 
 FAQ
