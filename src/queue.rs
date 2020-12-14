@@ -357,16 +357,18 @@ impl QueueActor {
                             res = self.backlog_wait_time() => res,
                         };
 
-                        if wait >= Duration::from_secs(60) {
-                            self.logger.info(&format!("Going idle for {:?}.", wait));
-                        } else if wait >= Duration::from_secs(1) {
-                            self.logger.debug(&format!("Going idle for {:?}.", wait));
-                        }
+                        if wait >= Duration::from_secs(1) {
+                            if wait >= Duration::from_secs(40) {
+                                self.logger.info(&format!("Going idle for {:?}.", wait));
+                            } else {
+                                self.logger.debug(&format!("Going idle for {:?}.", wait));
+                            }
 
-                        tokio::select! {
-                            _ = callback.closed() => break,
-                            _ = self.interrupt.notified() => continue,
-                            _ = time::sleep(wait) => (),
+                            tokio::select! {
+                                _ = callback.closed() => break,
+                                _ = self.interrupt.notified() => continue,
+                                _ = time::sleep(wait) => continue,
+                            }
                         }
 
                         match self.api.acquire(query).await {
