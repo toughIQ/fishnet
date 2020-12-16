@@ -12,13 +12,6 @@ POST http://lichess.org/fishnet/acquire
   "fishnet": {
     "version": "1.15.7",
     "apikey": "XXX"
-  },
-  "stockfish": {
-    "name": "Stockfish 7 64",
-    "options": {
-      "hash": "256",
-      "threads": "4"
-    }
   }
 }
 ```
@@ -75,12 +68,6 @@ POST http://lichess.org/fishnet/analysis/{work_id}
     "apikey": "XXX"
   },
   "stockfish": {
-    "name": "Stockfish 7 64",
-    "author": "T. Romstad, M. Costalba, J. Kiiski, G. Linscott"
-    "options": {
-      "hash": "256",
-      "threads": "4"
-    },
     "flavor": "nnue" // or classical
   },
   "analysis": [
@@ -168,14 +155,6 @@ POST http://lichess.org/fishnet/abort/{work_id}
   "fishnet": {
     "version": "0.0.1",
     "apikey": "XXX"
-  },
-  "stockfish": {
-    "name": "Stockfish 7 64",
-    "author": "T. Romstad, M. Costalba, J. Kiiski, G. Linscott"
-    "options": {
-      "hash": "256",
-      "threads": "4"
-    }
   }
 }
 ```
@@ -251,7 +230,6 @@ Key invalid/inactive:
 Considered changes
 ------------------
 
-* Remove superfluous monitoring data.
 * Send key as `Authorization: Bearer <key>`.
 * New optional `work.analysis.depth`.
 * New optional `work.analysis.multipv`, to get top *multipv* scores and pvs

@@ -84,7 +84,6 @@ pub struct QueueStatus {
 #[derive(Debug, Serialize)]
 pub struct VoidRequestBody {
     fishnet: Fishnet,
-    stockfish: Stockfish, // TODO: remove after https://github.com/ornicar/lila/pull/7709
 }
 
 #[derive(Debug, Serialize)]
@@ -104,45 +103,7 @@ impl Fishnet {
 
 #[derive(Debug, Serialize)]
 struct Stockfish {
-    name: &'static str, // TODO: remove after https://github.com/ornicar/lila/pull/7709
-    options: StockfishOptions, // TODO: remove after https://github.com/ornicar/lila/pull/7709
-    #[serde(skip_serializing_if = "Option::is_none")]
-    flavor: Option<EvalFlavor>,
-}
-
-impl Stockfish {
-    fn without_flavor() -> Stockfish {
-        Stockfish {
-            name: "Stockfish 12+",
-            options: StockfishOptions::default(),
-            flavor: None,
-        }
-    }
-
-    fn with_flavor(flavor: EvalFlavor) -> Stockfish {
-        Stockfish {
-            flavor: Some(flavor),
-            ..Stockfish::without_flavor()
-        }
-    }
-}
-
-#[serde_as]
-#[derive(Debug, Serialize)]
-struct StockfishOptions {
-    #[serde_as(as = "DisplayFromStr")]
-    hash: u32,
-    #[serde_as(as = "DisplayFromStr")]
-    threads: usize,
-}
-
-impl Default for StockfishOptions {
-    fn default() -> StockfishOptions {
-        StockfishOptions {
-            hash: 16,
-            threads: 1,
-        }
-    }
+    flavor: EvalFlavor,
 }
 
 #[derive(Debug, Serialize)]
@@ -592,7 +553,6 @@ impl ApiActor {
         self.logger.warn(&format!("Aborting batch {}.", batch_id));
         let res = self.client.post(&url).json(&VoidRequestBody {
             fishnet: Fishnet::authenticated(self.key.clone()),
-            stockfish: Stockfish::without_flavor(),
         }).send().await?;
 
         if res.status() == StatusCode::NOT_FOUND {
@@ -636,7 +596,6 @@ impl ApiActor {
                 let url = format!("{}/acquire", self.endpoint);
                 let res = self.client.post(&url).query(&query).json(&VoidRequestBody {
                     fishnet: Fishnet::authenticated(self.key.clone()),
-                    stockfish: Stockfish::without_flavor(),
                 }).send().await?;
 
                 match res.status() {
@@ -661,7 +620,7 @@ impl ApiActor {
                     slow: false,
                 }).json(&AnalysisRequestBody {
                     fishnet: Fishnet::authenticated(self.key.clone()),
-                    stockfish: Stockfish::with_flavor(flavor),
+                    stockfish: Stockfish { flavor },
                     analysis,
                 }).send().await?.error_for_status()?;
 
