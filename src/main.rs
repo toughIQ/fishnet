@@ -15,6 +15,7 @@ use std::thread;
 use std::path::PathBuf;
 use std::env;
 use atty::Stream;
+use thousands::Separable as _;
 use tokio::time;
 use tokio::signal;
 use tokio::sync::{mpsc, oneshot};
@@ -164,7 +165,9 @@ async fn run(opt: Opt, logger: &Logger) {
             logger.fishnet_info(&format!("fishnet/{}: {} (nnue), {} batches, {} positions, {} total nodes",
                                          env!("CARGO_PKG_VERSION"),
                                          stats.nnue_nps,
-                                         stats.total_batches, stats.total_positions, stats.total_nodes));
+                                         stats.total_batches.separate_with_dots(),
+                                         stats.total_positions.separate_with_dots(),
+                                         stats.total_nodes.separate_with_dots()));
         }
 
         // Main loop. Handles signals, forwards worker results from rx to the

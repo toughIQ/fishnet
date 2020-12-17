@@ -33,6 +33,7 @@ tokio-compat-02 = "0.1"
 url = "2.2"
 serde_repr = "0.1"
 webpki-roots = "0.21"
+thousands = "0.2"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
