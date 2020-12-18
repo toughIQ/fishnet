@@ -54,25 +54,6 @@ pub struct StockfishInit {
     pub nnue: String,
 }
 
-struct Stdin {
-    inner: BufWriter<ChildStdin>,
-}
-
-impl Stdin {
-    fn new(inner: ChildStdin) -> Stdin {
-        Stdin {
-            inner: BufWriter::new(inner),
-        }
-    }
-
-    async fn write_line(&mut self, line: &str) -> io::Result<()> {
-        self.inner.write_all(line.as_bytes()).await?;
-        self.inner.write_all(b"\n").await?;
-        self.inner.flush().await?;
-        Ok(())
-    }
-}
-
 struct Stdout {
     inner: Lines<BufReader<ChildStdout>>,
 }
@@ -143,7 +124,7 @@ impl StockfishActor {
 
         let pid = child.id().expect("pid");
         let mut stdout = Stdout::new(child.stdout.take().ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "stdout closed"))?);
-        let mut stdin = Stdin::new(child.stdin.take().ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "stdin closed"))?);
+        let mut stdin = BufWriter::new(child.stdin.take().ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "stdin closed"))?);
 
         loop {
             tokio::select! {
@@ -171,7 +152,7 @@ impl StockfishActor {
         Ok(())
     }
 
-    async fn handle_message(&mut self, stdout: &mut Stdout, stdin: &mut Stdin, msg: StockfishMessage) -> Result<(), EngineError> {
+    async fn handle_message(&mut self, stdout: &mut Stdout, stdin: &mut BufWriter<ChildStdin>, msg: StockfishMessage) -> Result<(), EngineError> {
         match msg {
             StockfishMessage::Go { mut callback, position } => {
                 tokio::select! {
@@ -185,36 +166,36 @@ impl StockfishActor {
         }
     }
 
-    async fn go(&mut self, stdout: &mut Stdout, stdin: &mut Stdin, position: Position) -> io::Result<PositionResponse> {
+    async fn go(&mut self, stdout: &mut Stdout, stdin: &mut BufWriter<ChildStdin>, position: Position) -> io::Result<PositionResponse> {
         // Set global options (once).
         if let Some(init) = self.init.take() {
             stdout.read_line().await?; // discard preample
-            stdin.write_line(&format!("setoption name EvalFile value {}", init.nnue)).await?;
-            stdin.write_line("setoption name Analysis Contempt value Off").await?;
+            stdin.write_all(format!("setoption name EvalFile value {}\n", init.nnue).as_bytes()).await?;
+            stdin.write_all(b"setoption name Analysis Contempt value Off\n").await?;
         }
 
         // Clear hash.
-        stdin.write_line("ucinewgame").await?;
+        stdin.write_all(b"ucinewgame\n").await?;
 
         // Set basic options.
         let variant = Variant::from(position.variant);
         if position.flavor == EngineFlavor::MultiVariant {
-            stdin.write_line(&format!("setoption name UCI_Variant value {}", variant.uci())).await?;
+            stdin.write_all(format!("setoption name UCI_Variant value {}\n", variant.uci()).as_bytes()).await?;
         }
-        stdin.write_line(&format!("setoption name UCI_Chess960 value {}", position.castling_mode.is_chess960())).await?;
-        stdin.write_line(&format!("setoption name MultiPV value {}", position.work.multipv())).await?;
+        stdin.write_all(format!("setoption name UCI_Chess960 value {}\n", position.castling_mode.is_chess960()).as_bytes()).await?;
+        stdin.write_all(format!("setoption name MultiPV value {}\n", position.work.multipv()).as_bytes()).await?;
 
         // Setup position.
         let moves = position.moves.iter().map(|m| m.to_string()).collect::<Vec<_>>().join(" ");
         let fen = FenOpts::new().promoted(variant.distinguishes_promoted()).fen(&position.fen);
-        stdin.write_line(&format!("position fen {} moves {}", fen, moves)).await?;
+        stdin.write_all(format!("position fen {} moves {}\n", fen, moves).as_bytes()).await?;
 
         // Go.
         let go = match &position.work {
             Work::Move { level, clock, .. } => {
-                stdin.write_line("setoption name UCI_AnalyseMode value false").await?;
-                stdin.write_line("setoption name UCI_LimitStrength value true").await?;
-                stdin.write_line(&format!("setoption name UCI_Elo value {}", level.elo())).await?;
+                stdin.write_all(b"setoption name UCI_AnalyseMode value false\n").await?;
+                stdin.write_all(b"setoption name UCI_LimitStrength value true\n").await?;
+                stdin.write_all(format!("setoption name UCI_Elo value {}\n", level.elo()).as_bytes()).await?;
 
                 let mut go = vec![
                     "go".to_owned(),
@@ -234,8 +215,8 @@ impl StockfishActor {
                 go
             }
             Work::Analysis { nodes, depth, .. } => {
-                stdin.write_line("setoption name UCI_AnalyseMode value true").await?;
-                stdin.write_line("setoption name UCI_LimitStrength value false").await?;
+                stdin.write_all(b"setoption name UCI_AnalyseMode value true\n").await?;
+                stdin.write_all(b"setoption name UCI_LimitStrength value false\n").await?;
 
                 let mut go = vec![
                     "go".to_owned(),
@@ -249,7 +230,9 @@ impl StockfishActor {
                 go
             }
         };
-        stdin.write_line(&go.join(" ")).await?;
+        stdin.write_all(go.join(" ").as_bytes()).await?;
+        stdin.write_all(b"\n").await?;
+        stdin.flush().await?;
 
         // Process response.
         let mut scores = Matrix::new();
