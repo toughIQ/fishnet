@@ -48,6 +48,14 @@ Installation
    docker run -it -e KEY=abcdef niklasf/fishnet:2
    ```
 
+Video introduction
+------------------
+
+Watch [@arex](https://lichess.org/@/arex) explain fishnet.
+
+[![Video introduction](https://img.youtube.com/vi/C2SjcVbRfp0/0.jpg)](https://youtu.be/C2SjcVbRfp0)
+
+
 FAQ
 ---
 
