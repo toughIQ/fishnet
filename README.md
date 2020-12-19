@@ -51,7 +51,9 @@ Installation
 Video introduction
 ------------------
 
-[![https://lichess.org/@/arex introducing fishnet](https://img.youtube.com/vi/C2SjcVbRfp0/0.jpg)](https://www.youtube.com/watch?v=C2SjcVbRfp0)
+Watch [@arex](https://lichess.org/@/arex) explain fishnet.
+
+[![Video introduction](https://img.youtube.com/vi/C2SjcVbRfp0/0.jpg)](https://youtu.be/C2SjcVbRfp0)
 
 FAQ
 ---
