@@ -17,9 +17,12 @@ impl RandomizedBackoff {
     }
 
     pub fn next(&mut self) -> Duration {
-        let low = self.duration.as_millis() as u64;
-        let high = max(1, min(self.max_backoff.as_millis() as u64, (low + 100) * 2));
-        self.duration = Duration::from_millis(rand::thread_rng().gen_range(low, high));
+        let low = 100;
+        let cap = max(low, self.max_backoff.as_millis() as u64);
+        let last = self.duration.as_millis() as u64;
+        let high = 4 * max(low, last);
+        let t = min(cap, rand::thread_rng().gen_range(low, high));
+        self.duration = Duration::from_millis(t);
         self.duration
     }
 
