@@ -178,6 +178,7 @@ impl StockfishActor {
         stdin.write_all(b"ucinewgame\n").await?;
 
         // Set basic options.
+        stdin.write_all(format!("setoption name Use NNUE value {}\n", position.flavor.eval_flavor().is_nnue()).as_bytes()).await?;
         let variant = Variant::from(position.variant);
         if position.flavor == EngineFlavor::MultiVariant {
             stdin.write_all(format!("setoption name UCI_Variant value {}\n", variant.uci()).as_bytes()).await?;

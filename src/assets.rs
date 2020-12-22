@@ -385,6 +385,12 @@ pub enum EvalFlavor {
     Nnue,
 }
 
+impl EvalFlavor {
+    pub fn is_nnue(self) -> bool {
+        matches!(self, EvalFlavor::Nnue)
+    }
+}
+
 #[derive(Debug)]
 pub struct Assets {
     dir: TempDir,
