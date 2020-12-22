@@ -18,7 +18,7 @@ bitflags = "1.2"
 configparser = "1.0"
 xz = "0.1"
 num_cpus = "1.13"
-rand = "0.7"
+rand = "0.8"
 reqwest = { version = "0.10", features = ["json", "rustls-tls"], default-features = false }
 rustls = "0.18" # will fail at runtime if mismatch with reqwest
 self_update = { version = "0.22", features = ["rustls"], default-features = false }

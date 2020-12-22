@@ -21,7 +21,7 @@ impl RandomizedBackoff {
         let cap = max(low, self.max_backoff.as_millis() as u64);
         let last = self.duration.as_millis() as u64;
         let high = 4 * max(low, last);
-        let t = min(cap, rand::thread_rng().gen_range(low, high));
+        let t = min(cap, rand::thread_rng().gen_range(low..high));
         self.duration = Duration::from_millis(t);
         self.duration
     }
