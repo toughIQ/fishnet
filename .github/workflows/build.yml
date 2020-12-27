@@ -60,8 +60,8 @@ jobs:
     - uses: actions-rs/cargo@v1
       with:
         command: build
-        args: --release
-    - run: mv target/release/fishnet.exe fishnet-x86_64-pc-windows-gnu.exe
+        args: --release --target x86_64-pc-windows-gnu
+    - run: mv target/x86_64-pc-windows-gnu/release/fishnet.exe fishnet-x86_64-pc-windows-gnu.exe
     - run: strip fishnet-x86_64-pc-windows-gnu.exe
     - uses: actions/upload-artifact@v2
       with:
@@ -101,8 +101,8 @@ jobs:
     - uses: actions-rs/cargo@v1
       with:
         command: build
-        args: --release
-    - run: mv target/release/fishnet fishnet-aarch64-apple-darwin
+        args: --release --target aarch64-apple-darwin
+    - run: mv target/aarch64-apple-darwin/release/fishnet fishnet-aarch64-apple-darwin
     - run: strip fishnet-aarch64-apple-darwin
     - uses: actions/upload-artifact@v2
       with:
