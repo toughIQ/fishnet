@@ -184,6 +184,26 @@ const STOCKFISH_MV: &[Asset] = &[
     },
 ];
 
+#[cfg(all(unix, target_arch = "aarch64", not(target_os = "macos")))]
+const STOCKFISH: &[Asset] = &[
+    Asset {
+        name: "stockfish-aarch64",
+        data: include_bytes!("../assets/stockfish-aarch64.xz"),
+        needs: Cpu::empty(),
+        executable: true,
+    },
+];
+
+#[cfg(all(unix, target_arch = "aarch64", not(target_os = "macos")))]
+const STOCKFISH_MV: &[Asset] = &[
+    Asset {
+        name: "stockfish-mv-aarch64",
+        data: include_bytes!("../assets/stockfish-mv-aarch64.xz"),
+        needs: Cpu::empty(),
+        executable: true,
+    },
+];
+
 #[cfg(all(windows, target_arch = "x86_64"))]
 const STOCKFISH: &[Asset] = &[
     Asset {
@@ -320,7 +340,7 @@ const STOCKFISH_MV: &[Asset] = &[
     },
 ];
 
-#[cfg(all(unix, target_arch = "aarch64"))]
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 const STOCKFISH: &[Asset] = &[
     Asset {
         name: "stockfish-aarch64",
@@ -330,7 +350,7 @@ const STOCKFISH: &[Asset] = &[
     },
 ];
 
-#[cfg(all(unix, target_arch = "aarch64"))]
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 const STOCKFISH_MV: &[Asset] = &[
     Asset {
         name: "stockfish-mv-aarch64",
