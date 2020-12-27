@@ -56,16 +56,17 @@ jobs:
       with:
         profile: minimal
         toolchain: stable
+        target: x86_64-pc-windows-gnu
     - uses: actions-rs/cargo@v1
       with:
         command: build
         args: --release
-    - run: mv target/release/fishnet.exe fishnet-x86_64-pc-windows-msvc.exe
-    - run: strip fishnet-x86_64-pc-windows-msvc.exe
+    - run: mv target/release/fishnet.exe fishnet-x86_64-pc-windows-gnu.exe
+    - run: strip fishnet-x86_64-pc-windows-gnu.exe
     - uses: actions/upload-artifact@v2
       with:
-        name: fishnet-x86_64-pc-windows-msvc
-        path: fishnet-x86_64-pc-windows-msvc.exe
+        name: fishnet-x86_64-pc-windows-gnu
+        path: fishnet-x86_64-pc-windows-gnu.exe
   macos-x86-64:
     runs-on: macos-10.15
     steps:
