@@ -70,11 +70,11 @@ that the compiled binary matches the source).
 
 ### What are the requirements?
 
-| Available for | 64-bit Intel and AMD | ARMv8 |
+| Available for | 64-bit Intel and AMD | ARMv8 / Silicon |
 | --- | --- | --- |
 | **Linux** | `x86_64-unknown-linux-gnu` | `aarch64-unknown-linux-gnu` |
-| **Windows** | `x86_64-pc-windows-msvc.exe` | |
-| **macOS** | `x86_64-apple-darwin` | |
+| **Windows** | `x86_64-pc-windows-gnu.exe` | |
+| **macOS** | `x86_64-apple-darwin` | `aarch64-apple-darwin` |
 
 * Needs an operating system from around 2016 or later
 * Will max out the configured number of CPU cores
