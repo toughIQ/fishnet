@@ -227,10 +227,19 @@ Key invalid/inactive:
 404 Not found
 ```
 
-Considered changes
-------------------
+Prepared changes
+----------------
 
-* Send key as `Authorization: Bearer <key>`.
+These experimental changes have already been implemented in the client, and
+future versions of the server might start using them.
+
+* Client version sent as header `User-Agent: fishnet-<os>-<arch>/<version>`.
+* Key sent as header `Authorization: Bearer <key>`.
 * New optional `work.analysis.depth`.
 * New optional `work.analysis.multipv`, to get top *multipv* scores and pvs
   at each depth.
+* Reject client until update or reconfiguration with status code:
+  - 400 Bad Request (Update required due to protocol change)
+  - 401 Unauthorized (Unknown key)
+  - 403 Forbidden (Key disabled)
+  - 406 Not Acceptable (Update required)

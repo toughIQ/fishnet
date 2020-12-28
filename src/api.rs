@@ -356,7 +356,7 @@ impl Default for LichessVariant {
 pub enum Acquired {
     Accepted(AcquireResponseBody),
     NoContent,
-    BadRequest,
+    Rejected,
 }
 
 #[derive(Debug, Serialize)]
@@ -601,7 +601,11 @@ impl ApiActor {
 
                 match res.status() {
                     StatusCode::NO_CONTENT => callback.send(Acquired::NoContent).nevermind("callback dropped"),
-                    StatusCode::BAD_REQUEST => callback.send(Acquired::BadRequest).nevermind("callback dropped"),
+                    StatusCode::BAD_REQUEST | StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN | StatusCode::NOT_ACCEPTABLE => {
+                        let text = res.text().await?;
+                        self.logger.error(&format!("Server rejected request: {}", text));
+                        callback.send(Acquired::Rejected).nevermind("callback dropped");
+                    }
                     StatusCode::OK | StatusCode::ACCEPTED => {
                         if let Err(Acquired::Accepted(res)) = callback.send(Acquired::Accepted(res.json().await?)) {
                             self.logger.error("Acquired a batch, but callback dropped. Aborting.");

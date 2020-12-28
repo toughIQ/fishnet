@@ -385,8 +385,8 @@ impl QueueActor {
                                     _ = time::sleep(backoff) => (),
                                 }
                             }
-                            Some(Acquired::BadRequest) => {
-                                self.logger.error("Client update might be required. Stopping queue");
+                            Some(Acquired::Rejected) => {
+                                self.logger.error("Client update or reconfiguration might be required. Stopping queue.");
                                 let mut state = self.state.lock().await;
                                 state.shutdown_soon = true;
                             },
