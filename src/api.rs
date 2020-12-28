@@ -1,3 +1,4 @@
+use std::env;
 use std::fmt;
 use std::time::Duration;
 use std::str::FromStr;
@@ -512,7 +513,7 @@ impl ApiActor {
             key,
             client: reqwest::Client::builder()
                 .default_headers(headers)
-                .user_agent(concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION")))
+                .user_agent(format!("{}-{}-{}/{}", env!("CARGO_PKG_NAME"), env::consts::OS, env::consts::ARCH, env!("CARGO_PKG_VERSION")))
                 .timeout(Duration::from_secs(30))
                 .pool_idle_timeout(Duration::from_secs(25))
                 .use_preconfigured_tls(tls)
