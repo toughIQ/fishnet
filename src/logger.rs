@@ -8,6 +8,7 @@ use url::Url;
 use crate::api::BatchId;
 use crate::ipc::{PositionId, Position, PositionResponse};
 use crate::configure::Verbose;
+use crate::util::NevermindExt as _;
 
 #[derive(Clone)]
 pub struct Logger {
@@ -34,14 +35,15 @@ impl Logger {
         state.line_feed();
 
         if self.stderr {
-            let _ = writeln!(io::stderr(), "{}", line);
+            writeln!(io::stderr(), "{}", line).nevermind("write to stderr");
         } else {
             if let Err(e) = writeln!(io::stdout(), "{}", line) {
                 if e.kind() != io::ErrorKind::BrokenPipe {
-                    // Error when printing to stdout - print error to stderr
-                    let _ = writeln!(io::stderr(), "{}", e);
+                    // Error when printing to stdout - print error and original
+                    // line to stderr.
+                    writeln!(io::stderr(), "E: {} ({})", e, line).nevermind("write to stderr");
                 }
-	    }
+            }
         }
     }
 
@@ -77,7 +79,8 @@ impl Logger {
     }
 
     pub fn progress<P>(&self, queue: QueueStatusBar, progress: P)
-        where P: Into<ProgressAt>,
+    where
+        P: Into<ProgressAt>,
     {
         let line = format!("{} {} cores, {} queued, latest: {}", queue, queue.cores, queue.pending, progress.into());
         if self.atty {
@@ -143,7 +146,7 @@ impl LoggerState {
     fn line_feed(&mut self) {
         if self.progress_line > 0 {
             self.progress_line = 0;
-            let _ = writeln!(io::stdout());
+            writeln!(io::stdout()).nevermind("write to stdout");
         }
     }
 }
