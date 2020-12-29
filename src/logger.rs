@@ -35,14 +35,12 @@ impl Logger {
         state.line_feed();
 
         if self.stderr {
-            writeln!(io::stderr(), "{}", line).nevermind("write to stderr");
+            writeln!(io::stderr(), "{}", line).nevermind("log to stderr");
         } else {
             if let Err(e) = writeln!(io::stdout(), "{}", line) {
-                if e.kind() != io::ErrorKind::BrokenPipe {
-                    // Error when printing to stdout - print error and original
-                    // line to stderr.
-                    writeln!(io::stderr(), "E: {} ({})", e, line).nevermind("write to stderr");
-                }
+                // Error when printing to stdout - print error and original
+                // line to stderr.
+                writeln!(io::stderr(), "E: {} while logging to stdout: {}", e, line).nevermind("log to stderr");
             }
         }
     }
@@ -146,7 +144,7 @@ impl LoggerState {
     fn line_feed(&mut self) {
         if self.progress_line > 0 {
             self.progress_line = 0;
-            writeln!(io::stdout()).nevermind("write to stdout");
+            writeln!(io::stdout()).nevermind("log to stdout");
         }
     }
 }
