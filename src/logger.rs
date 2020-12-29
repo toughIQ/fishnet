@@ -34,9 +34,14 @@ impl Logger {
         state.line_feed();
 
         if self.stderr {
-            eprintln!("{}", line);
+            let _ = writeln!(io::stderr(), "{}", line);
         } else {
-            println!("{}", line);
+            if let Err(e) = writeln!(io::stdout(), "{}", line) {
+                if e.kind() != io::ErrorKind::BrokenPipe {
+                    // Error when printing to stdout - print error to stderr
+                    let _ = writeln!(io::stderr(), "{}", e);
+                }
+	    }
         }
     }
 
@@ -81,7 +86,7 @@ impl Logger {
             io::stdout().flush().expect("flush stdout");
             state.progress_line = line.len();
         } else if self.verbose.level > 0 {
-            println!("{}", line);
+            self.println(&line);
         }
     }
 }
@@ -138,7 +143,7 @@ impl LoggerState {
     fn line_feed(&mut self) {
         if self.progress_line > 0 {
             self.progress_line = 0;
-            println!();
+            let _ = writeln!(io::stdout());
         }
     }
 }
