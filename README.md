@@ -48,6 +48,19 @@ Installation
    docker run -it -e KEY=abcdef niklasf/fishnet:2
    ```
 
+3. Pick an update strategy.
+
+   **`--auto-update`**
+
+   Run with `--auto-update` as recommended above (will currently still require
+   manual restarts on Windows
+   due to [#151](https://github.com/niklasf/fishnet/issues/151)).
+
+   **Subscribe to release announcements**
+
+   With a GitHub account, you can watch this repository (can be set to only
+   release announcements). See the top right corner on this page.
+
 Video introduction
 ------------------
 
