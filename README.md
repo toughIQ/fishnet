@@ -50,7 +50,7 @@ Installation
 
 3. Pick an update strategy.
 
-   **`--auto-update`**
+   **Automatic updates**
 
    Run with `--auto-update` as recommended above (will currently still require
    manual restarts on Windows
