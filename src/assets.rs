@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use bitflags::bitflags;
 use tempfile::TempDir;
-use xz::read::XzDecoder;
+use xz2::read::XzDecoder;
 
 struct Asset {
     name: &'static str,
