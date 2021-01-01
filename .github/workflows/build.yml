@@ -96,12 +96,11 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         profile: minimal
-        toolchain: beta
+        toolchain: stable
         target: aarch64-apple-darwin
     - uses: actions-rs/cargo@v1
       with:
         command: build
-        toolchain: beta
         args: --release --target aarch64-apple-darwin
     - run: mv target/aarch64-apple-darwin/release/fishnet fishnet-aarch64-apple-darwin
     - run: strip fishnet-aarch64-apple-darwin
