@@ -238,8 +238,8 @@ future versions of the server might start using them.
   In the future the key validation endpoint may be deprecated
   in favor of a `GET /fishnet/status` request, validating the header if
   present.
-* New optional `work.analysis.depth`.
-* New optional `work.analysis.multipv`, to get top *multipv* scores and pvs
+* New optional `work.depth`.
+* New optional `work.multipv`, to get top *multipv* scores and pvs
   at each depth.
 * Reject client until update or reconfiguration with status code:
   - 400 Bad Request (Update required due to protocol change)
