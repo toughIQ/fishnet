@@ -526,12 +526,12 @@ impl ApiActor {
     pub async fn run(mut self) {
         self.logger.debug("Api actor started");
         while let Some(msg) = self.rx.recv().await {
-            self.handle_mesage(msg).compat().await;
+            self.handle_message(msg).compat().await;
         }
         self.logger.debug("Api actor exited");
     }
 
-    async fn handle_mesage(&mut self, msg: ApiMessage) {
+    async fn handle_message(&mut self, msg: ApiMessage) {
         if let Err(err) = self.handle_message_inner(msg).await {
             if err.status().map_or(false, |s| s.is_success()) {
                 self.error_backoff.reset();
