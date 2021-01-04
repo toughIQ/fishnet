@@ -223,9 +223,12 @@ impl QueueState {
                     }
                 }
                 Err(pending) => {
-                    let progress_report = pending.progress_report();
-                    if progress_report.iter().filter(|p| p.is_some()).count() % (self.cores * 2) == 0 {
-                        queue.api.submit_analysis(pending.work.id(), pending.flavor.eval_flavor(), progress_report);
+                    if !pending.work.matrix_wanted() {
+                        // Send partially analysis as progress report.
+                        let progress_report = pending.progress_report();
+                        if progress_report.iter().filter(|p| p.is_some()).count() % (self.cores * 2) == 0 {
+                            queue.api.submit_analysis(pending.work.id(), pending.flavor.eval_flavor(), progress_report);
+                        }
                     }
 
                     self.pending.insert(pending.work.id(), pending);
