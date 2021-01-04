@@ -36,12 +36,10 @@ impl Logger {
 
         if self.stderr {
             writeln!(io::stderr(), "{}", line).nevermind("log to stderr");
-        } else {
-            if let Err(e) = writeln!(io::stdout(), "{}", line) {
-                // Error when printing to stdout - print error and original
-                // line to stderr.
-                writeln!(io::stderr(), "E: {} while logging to stdout: {}", e, line).nevermind("log to stderr");
-            }
+        } else if let Err(e) = writeln!(io::stdout(), "{}", line) {
+            // Error when printing to stdout - print error and original
+            // line to stderr.
+            writeln!(io::stderr(), "E: {} while logging to stdout: {}", e, line).nevermind("log to stderr");
         }
     }
 
