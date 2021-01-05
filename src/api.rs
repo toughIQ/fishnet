@@ -15,7 +15,6 @@ use serde_repr::Deserialize_repr as DeserializeRepr;
 use shakmaty::fen::Fen;
 use shakmaty::uci::Uci;
 use shakmaty::variants::Variant;
-use tokio_compat_02::FutureExt as _;
 use crate::assets::EvalFlavor;
 use crate::configure::{Endpoint, Key, KeyError};
 use crate::logger::Logger;
@@ -524,7 +523,7 @@ impl ApiActor {
     pub async fn run(mut self) {
         self.logger.debug("Api actor started");
         while let Some(msg) = self.rx.recv().await {
-            self.handle_message(msg).compat().await;
+            self.handle_message(msg).await;
         }
         self.logger.debug("Api actor exited");
     }

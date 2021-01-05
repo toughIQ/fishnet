@@ -15,12 +15,12 @@ exclude = ["assets"]
 arrayvec = "0.5"
 atty = "0.2"
 bitflags = "1.2"
-configparser = "1.0"
+configparser = "2.0"
 xz2 = "0.1"
 num_cpus = "1.13"
 rand = "0.8"
-reqwest = { version = "0.10", features = ["json", "rustls-tls"], default-features = false }
-rustls = "0.18" # will fail at runtime if mismatch with reqwest
+reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+rustls = "0.19" # will fail at runtime if mismatch with reqwest
 self_update = { version = "0.22", features = ["rustls"], default-features = false }
 serde = "1.0"
 serde_with = "1.6"
@@ -28,8 +28,7 @@ shakmaty = "0.17"
 shell-escape = "0.1"
 structopt = "0.3"
 tempfile = "3.1"
-tokio = { version = "0.3", features = ["rt", "macros", "sync", "time", "signal", "process", "io-util"], default-features = false }
-tokio-compat-02 = "0.1"
+tokio = { version = "1.0", features = ["rt", "macros", "sync", "time", "signal", "process", "io-util"], default-features = false }
 url = "2.2"
 serde_repr = "0.1"
 webpki-roots = "0.21"
