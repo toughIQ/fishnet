@@ -1,4 +1,3 @@
-use structopt::StructOpt;
 use std::fs;
 use std::io;
 use std::cmp::max;
@@ -8,6 +7,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::num::{ParseIntError, NonZeroUsize};
 use std::time::Duration;
+use clap::Clap;
 use url::Url;
 use configparser::ini::Ini;
 use crate::logger::Logger;
@@ -16,47 +16,47 @@ use crate::api;
 const DEFAULT_ENDPOINT: &str = "https://lichess.org/fishnet";
 
 /// Distributed Stockfish analysis for lichess.org.
-#[derive(Debug, StructOpt)]
-#[structopt(setting = structopt::clap::AppSettings::DisableHelpSubcommand)]
+#[derive(Debug, Clap)]
+#[clap(setting = clap::AppSettings::DisableHelpSubcommand)]
 pub struct Opt {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     pub verbose: Verbose,
 
     /// Automatically install available updates on startup and at random
     /// intervals.
-    #[structopt(long, global = true)]
+    #[clap(long, global = true)]
     pub auto_update: bool,
 
     /// Configuration file.
-    #[structopt(long, parse(from_os_str), default_value = "fishnet.ini", global = true)]
+    #[clap(long, parse(from_os_str), default_value = "fishnet.ini", global = true)]
     pub conf: PathBuf,
 
     /// Do not use a configuration file.
-    #[structopt(long, conflicts_with = "conf", global = true)]
+    #[clap(long, conflicts_with = "conf", global = true)]
     pub no_conf: bool,
 
     /// Fishnet API key.
-    #[structopt(long, alias = "apikey", short = "k", global = true)]
+    #[clap(long, alias = "apikey", short = 'k', global = true)]
     pub key: Option<Key>,
 
     /// Lichess HTTP endpoint.
-    #[structopt(long, global = true)]
+    #[clap(long, global = true)]
     pub endpoint: Option<Endpoint>,
 
     /// Number of logical CPU cores to use for engine processes
     /// (or auto for n - 1, or all for n).
-    #[structopt(long, alias = "threads", global = true)]
+    #[clap(long, alias = "threads", global = true)]
     pub cores: Option<Cores>,
 
     /// Maximum backoff time. The client will use randomized expontential
     /// backoff when repeatedly receiving no job.
-    #[structopt(long, default_value = "30s", global = true)]
+    #[clap(long, default_value = "30s", global = true)]
     pub max_backoff: ParsedDuration,
 
-    #[structopt(flatten)]
+    #[clap(flatten)]
     pub backlog: BacklogOpt,
 
-    #[structopt(subcommand)]
+    #[clap(subcommand)]
     pub command: Option<Command>,
 }
 
@@ -101,10 +101,10 @@ impl Endpoint {
     }
 }
 
-#[derive(Debug, Default, Copy, Clone, StructOpt)]
+#[derive(Debug, Default, Copy, Clone, Clap)]
 pub struct Verbose {
     /// Increase verbosity.
-    #[structopt(long = "verbose", short = "v", parse(from_occurrences), global = true)]
+    #[clap(long = "verbose", short = 'v', parse(from_occurrences), global = true)]
     pub level: usize,
 }
 
@@ -189,16 +189,16 @@ impl From<Cores> for usize {
     }
 }
 
-#[derive(Debug, Clone, StructOpt)]
+#[derive(Debug, Clone, Clap)]
 pub struct BacklogOpt {
     /// Prefer to run high-priority jobs only if older than this duration
     /// (for example 120s).
-    #[structopt(long = "user-backlog", global = true)]
+    #[clap(long = "user-backlog", global = true)]
     pub user: Option<Backlog>,
 
     /// Prefer to run low-priority jobs only if older than this duration
     /// (for example 2h).
-    #[structopt(long = "system-backlog", global = true)]
+    #[clap(long = "system-backlog", global = true)]
     pub system: Option<Backlog>,
 }
 
@@ -277,7 +277,7 @@ impl From<ParsedDuration> for Duration {
     }
 }
 
-#[derive(StructOpt, Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Clap)]
 pub enum Command {
     /// Donate CPU time by running analysis (default).
     Run,
@@ -338,7 +338,7 @@ fn intro() {
 }
 
 pub async fn parse_and_configure() -> Opt {
-    let mut opt = Opt::from_args();
+    let mut opt = Opt::parse();
 
     // Show intro and configure logger.
     let is_systemd = opt.command.map_or(false, Command::is_systemd);
