@@ -375,7 +375,6 @@ pub async fn parse_and_configure() -> Opt {
             });
 
             // Step 2: Key.
-            let mut api = api::spawn(endpoint.clone(), None, logger.clone());
             loop {
                 let mut key = String::new();
                 let required = if let Some(current) = ini.get("Fishnet", "Key") {
@@ -407,11 +406,15 @@ pub async fn parse_and_configure() -> Opt {
                 };
 
                 let key = match Key::from_str(key) {
-                    Ok(key) if network => match api.check_key(key).await {
-                        Some(res) => res,
-                        None => continue, // server/network error already logged
-                    },
-                    Ok(key) => Ok(key),
+                    Ok(key) if !network => Ok(key),
+                    Ok(key) => {
+                        let mut api = api::spawn(endpoint.clone(), Some(key.clone()), logger.clone());
+                        match api.check_key().await {
+                            Some(Ok(())) => Ok(key),
+                            Some(Err(err)) => Err(err),
+                            None => continue, // server/network arror already logged
+                        }
+                    }
                     Err(err) => Err(err),
                 };
 

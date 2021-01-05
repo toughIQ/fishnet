@@ -236,8 +236,7 @@ future versions of the server might start using them.
 * Client version sent as header `User-Agent: fishnet-<os>-<arch>/<version>`.
 * Key sent as header `Authorization: Bearer <key>`.
   In the future the key validation endpoint may be deprecated
-  in favor of a `GET /fishnet/status` request, validating the header if
-  present.
+  in favor of a `GET /fishnet/key` request, a no-op to validate the header.
 * New optional `work.depth`.
 * New optional `work.multipv`, to get top *multipv* scores and pvs
   at each depth.

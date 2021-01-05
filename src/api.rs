@@ -37,8 +37,7 @@ pub fn spawn(endpoint: Endpoint, key: Option<Key>, logger: Logger) -> ApiStub {
 #[derive(Debug)]
 enum ApiMessage {
     CheckKey {
-        key: Key,
-        callback: oneshot::Sender<Result<Key, KeyError>>,
+        callback: oneshot::Sender<Result<(), KeyError>>,
     },
     Status {
         callback: oneshot::Sender<AnalysisStatus>,
@@ -436,10 +435,9 @@ impl ApiStub {
         &self.endpoint
     }
 
-    pub async fn check_key(&mut self, key: Key) -> Option<Result<Key, KeyError>> {
+    pub async fn check_key(&mut self) -> Option<Result<(), KeyError>> {
         let (req, res) = oneshot::channel();
         self.tx.send(ApiMessage::CheckKey {
-            key,
             callback: req,
         }).expect("api actor alive");
         res.await.ok()
@@ -566,12 +564,30 @@ impl ApiActor {
 
     async fn handle_message_inner(&mut self, msg: ApiMessage) -> reqwest::Result<()> {
         match msg {
-            ApiMessage::CheckKey { key, callback } => {
-                let url = format!("{}/key/{}", self.endpoint, key.0);
+            ApiMessage::CheckKey { callback } => {
+                let url = format!("{}/key", self.endpoint);
                 let res = self.client.get(&url).send().await?;
                 match res.status() {
-                    StatusCode::NOT_FOUND => callback.send(Err(KeyError::AccessDenied)).nevermind("callback dropped"),
-                    StatusCode::OK => callback.send(Ok(key)).nevermind("callback dropped"),
+                    StatusCode::NO_CONTENT | StatusCode::OK => {
+                        callback.send(Ok(())).nevermind("callback dropped");
+                    }
+                    StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                        callback.send(Err(KeyError::AccessDenied)).nevermind("callback dropped");
+                    }
+                    StatusCode::NOT_FOUND => {
+                        // Legacy key validation.
+                        self.logger.debug("Falling back to legacy key validation");
+                        let url = format!("{}/key/{}", self.endpoint, self.key.as_ref().map_or("", |k| &k.0));
+                        let res = self.client.get(&url).send().await?;
+                        match res.status() {
+                            StatusCode::NOT_FOUND => callback.send(Err(KeyError::AccessDenied)).nevermind("callback dropped"),
+                            StatusCode::OK => callback.send(Ok(())).nevermind("callback dropped"),
+                            status => {
+                                self.logger.warn(&format!("Unexpected status while checking legacy key: {}", status));
+                                res.error_for_status()?;
+                            }
+                        }
+                    }
                     status => {
                         self.logger.warn(&format!("Unexpected status while checking key: {}", status));
                         res.error_for_status()?;
