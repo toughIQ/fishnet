@@ -10,7 +10,6 @@ mod logger;
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use std::error::Error;
 use std::thread;
 use std::path::PathBuf;
 use std::env;
@@ -34,7 +33,7 @@ async fn main() {
 
     if opt.auto_update {
         let current_exe = env::current_exe().expect("current exe");
-        match auto_update(!opt.command.map_or(false, Command::is_systemd), &logger) {
+        match auto_update(!opt.command.map_or(false, Command::is_systemd), logger.clone()).await {
             Err(err) => logger.error(&format!("Failed to update: {}", err)),
             Ok(self_update::Status::UpToDate(version)) => {
                 logger.fishnet_info(&format!("Fishnet {} is up to date", version));
@@ -126,7 +125,7 @@ async fn run(opt: Opt, logger: &Logger) {
         rx
     };
 
-    let restart = Arc::new(std::sync::Mutex::new(None));
+    let mut restart = None;
     let mut up_to_date = Instant::now();
     let mut summarized = Instant::now();
     let mut shutdown_soon = false;
@@ -136,25 +135,18 @@ async fn run(opt: Opt, logger: &Logger) {
         let now = Instant::now();
         if opt.auto_update && !shutdown_soon && now.duration_since(up_to_date) >= Duration::from_secs(60 * 60 * 5) {
             up_to_date = now;
-            let logger = logger.clone();
-            let inner_restart = restart.clone();
-            tokio::task::spawn_blocking(move || {
-                let current_exe = env::current_exe().expect("current exe");
-                match auto_update(false, &logger) {
-                    Err(err) => logger.error(&format!("Failed to update in the background: {}", err)),
-                    Ok(self_update::Status::UpToDate(version)) => {
-                        logger.fishnet_info(&format!("Fishnet {} is up to date", version));
-                    }
-                    Ok(self_update::Status::Updated(version)) => {
-                        logger.fishnet_info(&format!("Fishnet updated to {}. Will restart soon", version));
-                        *inner_restart.lock().expect("restart mutex") = Some(current_exe);
-                    }
+            let current_exe = env::current_exe().expect("current exe");
+            match auto_update(false, logger.clone()).await {
+                Err(err) => logger.error(&format!("Failed to update in the background: {}", err)),
+                Ok(self_update::Status::UpToDate(version)) => {
+                    logger.fishnet_info(&format!("Fishnet {} is up to date", version));
                 }
-            }).await.expect("spawn blocking update");
-
-            if restart.lock().expect("restart mutex").is_some() {
-                shutdown_soon = true;
-                queue.shutdown_soon().await;
+                Ok(self_update::Status::Updated(version)) => {
+                    logger.fishnet_info(&format!("Fishnet updated to {}. Will restart soon", version));
+                    restart = Some(current_exe);
+                    shutdown_soon = true;
+                    queue.shutdown_soon().await;
+                }
             }
         }
 
@@ -213,7 +205,6 @@ async fn run(opt: Opt, logger: &Logger) {
     }
 
     // Restart.
-    let mut restart = restart.lock().expect("restart mutex");
     if let Some(restart) = restart.take() {
         restart_process(restart, logger);
     }
@@ -359,19 +350,21 @@ fn restart_process(current_exe: PathBuf, logger: &Logger) {
     todo!("Restart on Windows");
 }
 
-fn auto_update(verbose: bool, logger: &Logger) -> Result<self_update::Status, Box<dyn Error>> {
-    if verbose {
-        logger.headline("Updating ...");
-    }
-    logger.fishnet_info("Checking for updates (--auto-update) ...");
-    Ok(self_update::backends::github::Update::configure()
-        .repo_owner("niklasf")
-        .repo_name("fishnet")
-        .bin_name("fishnet")
-        .show_output(verbose)
-        .show_download_progress(atty::is(Stream::Stdout) && verbose)
-        .current_version(env!("CARGO_PKG_VERSION"))
-        .no_confirm(true)
-        .build()?
-        .update()?)
+async fn auto_update(verbose: bool, logger: Logger) -> Result<self_update::Status, self_update::errors::Error> {
+    tokio::task::spawn_blocking(move || {
+        if verbose {
+            logger.headline("Updating ...");
+        }
+        logger.fishnet_info("Checking for updates (--auto-update) ...");
+        self_update::backends::github::Update::configure()
+            .repo_owner("niklasf")
+            .repo_name("fishnet")
+            .bin_name("fishnet")
+            .show_output(verbose)
+            .show_download_progress(atty::is(Stream::Stdout) && verbose)
+            .current_version(env!("CARGO_PKG_VERSION"))
+            .no_confirm(true)
+            .build().expect("self_update config")
+            .update()
+    }).await.expect("spawn blocking update")
 }
