@@ -93,8 +93,11 @@ fn new_process_group(command: &mut Command) -> &mut Command {
         // Safety: The closure is run in a fork, and is not allowed to break
         // invariants by using raw handles.
         command.pre_exec(|| {
-            libc::setpgid(0, 0);
-            Ok(())
+            if libc::setpgid(0, 0) == -1 {
+                Err(io::Error::last_os_error())
+            } else {
+                Ok(())
+            }
         })
     }
 }
