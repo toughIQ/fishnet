@@ -188,7 +188,7 @@ dependencies = [
 
 [[package]]
 name = "fishnet"
-version = "2.2.1"
+version = "2.2.2-dev"
 dependencies = [
  "arrayvec",
  "atty",
