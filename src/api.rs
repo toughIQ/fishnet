@@ -74,6 +74,9 @@ pub struct AnalysisStatus {
 #[serde_as]
 #[derive(Debug, Default, Deserialize)]
 pub struct QueueStatus {
+    // Using signed types here, because lila computes these values as
+    // differences of non-atomic measurements. The results may occasionally be
+    // negative.
     pub acquired: i64,
     pub queued: i64,
     #[serde_as(as = "DurationSeconds<u64>")]
