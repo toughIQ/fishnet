@@ -787,12 +787,11 @@ dependencies = [
 
 [[package]]
 name = "raw-cpuid"
-version = "8.1.2"
-source = "git+https://github.com/niklasf/rust-cpuid.git?branch=fix-transmutes#bb8a79b6f3a39d8a5af3eb1f4e9c9d2fe3501e3f"
+version = "9.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c27cb5785b85bd05d4eb171556c9a1a514552e26123aeae6bb7d811353148026"
 dependencies = [
  "bitflags",
- "cc",
- "rustc_version",
 ]
 
 [[package]]
@@ -880,15 +879,6 @@ dependencies = [
  "untrusted",
  "web-sys",
  "winapi",
-]
-
-[[package]]
-name = "rustc_version"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "397d411cfc34097bdb176984180f7d9980eb161aaf1368ceea96c9834d8f8b85"
-dependencies = [
- "semver",
 ]
 
 [[package]]

@@ -38,4 +38,4 @@ thousands = "0.2"
 libc = "0.2"
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
-raw-cpuid = { git = "https://github.com/niklasf/rust-cpuid.git", branch = "fix-transmutes", features = ["use_arch"] }
+raw-cpuid = "9.0"
