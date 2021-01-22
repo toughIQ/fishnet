@@ -13,6 +13,7 @@ use std::time::{Duration, Instant};
 use std::thread;
 use std::path::PathBuf;
 use std::env;
+use std::ptr;
 use atty::Stream;
 use thousands::Separable as _;
 use tokio::time;
@@ -26,8 +27,16 @@ use crate::stockfish::StockfishInit;
 use crate::logger::{Logger, ProgressAt};
 use crate::util::RandomizedBackoff;
 
+static COMPRESSED_DEPENDENCY_LIST: &[u8] = auditable::inject_dependency_list!();
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
+    unsafe {
+        // Work around https://github.com/Shnatsel/rust-audit/issues/9.
+        // Safety: u8 is Copy.
+        ptr::read_volatile(&COMPRESSED_DEPENDENCY_LIST[0]);
+    }
+
     let opt = configure::parse_and_configure().await;
     let logger = Logger::new(opt.verbose, opt.command.map_or(false, Command::is_systemd));
 
