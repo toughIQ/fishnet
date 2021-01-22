@@ -14,22 +14,22 @@ exclude = ["assets"]
 [dependencies]
 arrayvec = "0.5"
 atty = "0.2"
-bitflags = "1.2"
+bitflags = "1"
 clap = "3.0.0-beta.2"
-configparser = "2.0"
+configparser = "2"
 xz2 = "0.1"
-num_cpus = "1.13"
+num_cpus = "1"
 rand = "0.8"
 reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
 rustls = "0.19" # will fail at runtime if mismatch with reqwest
 self_update = { version = "0.23", features = ["rustls"], default-features = false }
-serde = "1.0"
-serde_with = "1.6"
+serde = "1"
+serde_with = "1"
 shakmaty = "0.17"
 shell-escape = "0.1"
-tempfile = "3.1"
-tokio = { version = "1.0", features = ["rt", "macros", "sync", "time", "signal", "process", "io-util"], default-features = false }
-url = "2.2"
+tempfile = "3"
+tokio = { version = "1", features = ["rt", "macros", "sync", "time", "signal", "process", "io-util"], default-features = false }
+url = "2"
 serde_repr = "0.1"
 webpki-roots = "0.21"
 thousands = "0.2"
@@ -38,4 +38,4 @@ thousands = "0.2"
 libc = "0.2"
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
-raw-cpuid = "9.0"
+raw-cpuid = "9"
