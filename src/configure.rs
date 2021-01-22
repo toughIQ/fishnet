@@ -348,7 +348,7 @@ pub async fn parse_and_configure() -> Opt {
     }
 
     // Handle config file.
-    if !opt.no_conf || opt.command == Some(Command::Configure) {
+    if opt.command == Some(Command::Configure) || (opt.command != Some(Command::License) && !opt.no_conf) {
         let mut ini = Ini::new();
         ini.set_default_section("Fishnet");
 
