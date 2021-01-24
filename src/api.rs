@@ -319,7 +319,7 @@ impl LichessVariant {
         Some(match self {
             LichessVariant::Antichess => "anti",
             LichessVariant::Atomic => "atomic",
-            LichessVariant::Chess960 => "960",
+            LichessVariant::Chess960 => "chess960",
             LichessVariant::Crazyhouse => "zh",
             LichessVariant::FromPosition => "setup",
             LichessVariant::Horde => "horde",
