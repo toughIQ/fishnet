@@ -157,7 +157,7 @@ impl QueueState {
         }
     }
 
-    fn handle_position_response(&mut self, mut queue: QueueStub, res: Result<PositionResponse, PositionFailed>) {
+    fn handle_position_response(&mut self, queue: QueueStub, res: Result<PositionResponse, PositionFailed>) {
         match res {
             Ok(res) => {
                 let progress_at = ProgressAt::from(&res);
@@ -171,9 +171,11 @@ impl QueueState {
                 self.maybe_finished(queue, batch_id);
             }
             Err(failed) => {
+                // Just forget about batches with failed positions,
+                // intentionally letting them time out, instead of handing
+                // them to the next client.
                 self.pending.remove(&failed.batch_id);
                 self.incoming.retain(|p| p.work.id() != failed.batch_id);
-                queue.api.abort(failed.batch_id);
             }
         }
     }

@@ -22,7 +22,7 @@ use tokio::sync::{mpsc, oneshot};
 use crate::configure::{Opt, Command, Cores};
 use crate::assets::{Assets, Cpu, ByEngineFlavor, EngineFlavor};
 use crate::api::Work;
-use crate::ipc::{Pull, Position};
+use crate::ipc::{Pull, Position, PositionFailed};
 use crate::stockfish::StockfishInit;
 use crate::logger::{Logger, ProgressAt};
 use crate::util::RandomizedBackoff;
@@ -267,6 +267,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
             };
 
             // Analyse or play.
+            let batch_id = job.work.id();
             tokio::select! {
                 _ = tx.closed() => {
                     logger.debug(&format!("Worker {} shutting down engine early", i));
@@ -275,10 +276,13 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                     break;
                 }
                 _ = time::sleep(timeout) => {
-                    logger.warn(&format!("Engine timed out in worker {}. If this happens frequently it is better to stop and defer to clients with better hardware. Context: {}", i, context));
+                    logger.warn(&match flavor {
+                        EngineFlavor::Official => format!("Official Stockfish timed out in worker {}. If this happens frequently it is better to stop and defer to clients with better hardware. Context: {}", i, context),
+                        EngineFlavor::MultiVariant => format!("Multi-Variant Stockfish timed out in worker {}. Context: {}", i, context),
+                    });
                     drop(sf);
                     join_handle.await.expect("join");
-                    break;
+                    Some(Err(PositionFailed { batch_id }))
                 }
                 res = sf.go(job) => {
                     match res {
