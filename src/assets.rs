@@ -116,7 +116,7 @@ const NNUE: Asset = Asset {
     executable: false,
 };
 
-#[cfg(all(unix, target_arch = "x86_64", not(target_os = "macos")))]
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 const STOCKFISH: &[Asset] = &[
     Asset {
         name: "stockfish-x86-64-bmi2",
@@ -150,7 +150,7 @@ const STOCKFISH: &[Asset] = &[
     },
 ];
 
-#[cfg(all(unix, target_arch = "x86_64", not(target_os = "macos")))]
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 const STOCKFISH_MV: &[Asset] = &[
     Asset {
         name: "stockfish-mv-x86-64-bmi2",
@@ -184,7 +184,7 @@ const STOCKFISH_MV: &[Asset] = &[
     },
 ];
 
-#[cfg(all(unix, target_arch = "aarch64", not(target_os = "macos")))]
+#[cfg(all(target_os = "linux", target_arch = "aarch64"))]
 const STOCKFISH: &[Asset] = &[
     Asset {
         name: "stockfish-aarch64",
@@ -194,7 +194,7 @@ const STOCKFISH: &[Asset] = &[
     },
 ];
 
-#[cfg(all(unix, target_arch = "aarch64", not(target_os = "macos")))]
+#[cfg(all(target_os = "linux", target_arch = "aarch64"))]
 const STOCKFISH_MV: &[Asset] = &[
     Asset {
         name: "stockfish-mv-aarch64",
