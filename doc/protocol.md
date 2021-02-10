@@ -1,5 +1,4 @@
-Protocol
-========
+# Protocol
 
 ![Fishnet sequence diagram](https://raw.githubusercontent.com/niklasf/fishnet/master/doc/sequence-diagram.png)
 
@@ -123,9 +122,9 @@ POST http://lichess.org/fishnet/move/{work_id}
 
 Query parameters:
 
-* `?slow=true`: Do not acquire user requested analysis. Speed is not important
+- `?slow=true`: Do not acquire user requested analysis. Speed is not important
   for system requested analysis.
-* `?stop=true`: Submit result. Do not acquire next job.
+- `?stop=true`: Submit result. Do not acquire next job.
 
 Accepted:
 
@@ -141,8 +140,7 @@ Accepted, with next job:
 [...]
 ```
 
-Aborting jobs
--------------
+## Aborting jobs
 
 The client should send a request like the following, when shutting down instead
 of completing an analysis. The server can then immediately give the job to
@@ -171,8 +169,7 @@ Or abort not supported:
 404 Not found
 ```
 
-Status
-------
+## Status
 
 Useful to monitor and react to queue status or spawn spot instances.
 
@@ -208,8 +205,7 @@ Or queue monitoring is not supported
 404 Not found
 ```
 
-Key validation
---------------
+## Key validation
 
 ```
 GET http://lichess.org/fishnet/key/XXX
@@ -227,20 +223,19 @@ Key invalid/inactive:
 404 Not found
 ```
 
-Prepared changes
-----------------
+## Prepared changes
 
 These experimental changes have already been implemented in the client, and
 future versions of the server might start using them.
 
-* Client version sent as header `User-Agent: fishnet-<os>-<arch>/<version>`.
-* Key sent as header `Authorization: Bearer <key>`.
+- Client version sent as header `User-Agent: fishnet-<os>-<arch>/<version>`.
+- Key sent as header `Authorization: Bearer <key>`.
   In the future the key validation endpoint may be deprecated
   in favor of a `GET /fishnet/key` request, a no-op to validate the header.
-* New optional `work.depth`.
-* New optional `work.multipv`, to get top *multipv* scores and pvs
+- New optional `work.depth`.
+- New optional `work.multipv`, to get top _multipv_ scores and pvs
   at each depth.
-* Reject client until update or reconfiguration with status code:
+- Reject client until update or reconfiguration with status code:
   - 400 Bad Request (Update required due to protocol change)
   - 401 Unauthorized (Unknown key)
   - 403 Forbidden (Key disabled)

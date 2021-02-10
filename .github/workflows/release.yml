@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-    - 'v*'
+      - "v*"
 
 jobs:
   release:
@@ -11,137 +11,137 @@ jobs:
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
-    - id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: fishnet ${{ github.ref }}
-        draft: true
-        prerelease: false
+      - id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: fishnet ${{ github.ref }}
+          draft: true
+          prerelease: false
   linux-x86-64:
     runs-on: ubuntu-16.04
     needs: release
     steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: true
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-    - uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --release
-    - run: strip target/release/fishnet
-    - uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.release.outputs.upload_url }}
-        asset_path: target/release/fishnet
-        asset_name: fishnet-x86_64-unknown-linux-gnu
-        asset_content_type: application/octet-stream
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+      - run: strip target/release/fishnet
+      - uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: target/release/fishnet
+          asset_name: fishnet-x86_64-unknown-linux-gnu
+          asset_content_type: application/octet-stream
   linux-aarch64:
     runs-on: ubuntu-16.04
     needs: release
     steps:
-    - run: sudo apt-get update && sudo apt-get install -y binutils-aarch64-linux-gnu
-    - uses: actions/checkout@v2
-      with:
-        submodules: true
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        target: aarch64-unknown-linux-gnu
-    - uses: actions-rs/cargo@v1
-      with:
-        use-cross: true
-        command: build
-        args: --release --target aarch64-unknown-linux-gnu
-    - run: aarch64-linux-gnu-strip target/aarch64-unknown-linux-gnu/release/fishnet
-    - uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.release.outputs.upload_url }}
-        asset_path: target/aarch64-unknown-linux-gnu/release/fishnet
-        asset_name: fishnet-aarch64-unknown-linux-gnu
-        asset_content_type: application/octet-stream
+      - run: sudo apt-get update && sudo apt-get install -y binutils-aarch64-linux-gnu
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: aarch64-unknown-linux-gnu
+      - uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --release --target aarch64-unknown-linux-gnu
+      - run: aarch64-linux-gnu-strip target/aarch64-unknown-linux-gnu/release/fishnet
+      - uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: target/aarch64-unknown-linux-gnu/release/fishnet
+          asset_name: fishnet-aarch64-unknown-linux-gnu
+          asset_content_type: application/octet-stream
   windows-x86-64:
     runs-on: windows-2016
     needs: release
     steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: true
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        target: x86_64-pc-windows-gnu
-    - uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --release --target x86_64-pc-windows-gnu
-    - run: strip target/x86_64-pc-windows-gnu/release/fishnet.exe
-    - uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.release.outputs.upload_url }}
-        asset_path: target/x86_64-pc-windows-gnu/release/fishnet.exe
-        asset_name: fishnet-x86_64-pc-windows-gnu.exe
-        asset_content_type: application/octet-stream
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: x86_64-pc-windows-gnu
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target x86_64-pc-windows-gnu
+      - run: strip target/x86_64-pc-windows-gnu/release/fishnet.exe
+      - uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: target/x86_64-pc-windows-gnu/release/fishnet.exe
+          asset_name: fishnet-x86_64-pc-windows-gnu.exe
+          asset_content_type: application/octet-stream
   macos-x86-64:
     runs-on: macos-10.15
     needs: release
     steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: true
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-    - uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --release
-    - run: strip target/release/fishnet
-    - uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.release.outputs.upload_url }}
-        asset_path: target/release/fishnet
-        asset_name: fishnet-x86_64-apple-darwin
-        asset_content_type: application/octet-stream
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+      - run: strip target/release/fishnet
+      - uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: target/release/fishnet
+          asset_name: fishnet-x86_64-apple-darwin
+          asset_content_type: application/octet-stream
   macos-aarch64:
     runs-on: macos-11.0
     needs: release
     steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: true
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        target: aarch64-apple-darwin
-    - uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --release --target aarch64-apple-darwin
-    - run: strip target/aarch64-apple-darwin/release/fishnet
-    - uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.release.outputs.upload_url }}
-        asset_path: target/aarch64-apple-darwin/release/fishnet
-        asset_name: fishnet-aarch64-apple-darwin
-        asset_content_type: application/octet-stream
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: aarch64-apple-darwin
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target aarch64-apple-darwin
+      - run: strip target/aarch64-apple-darwin/release/fishnet
+      - uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: target/aarch64-apple-darwin/release/fishnet
+          asset_name: fishnet-aarch64-apple-darwin
+          asset_content_type: application/octet-stream

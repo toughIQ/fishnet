@@ -6,105 +6,105 @@ jobs:
   linux-x86-64:
     runs-on: ubuntu-16.04
     steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: true
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-    - uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --release
-    - run: mv target/release/fishnet fishnet-x86_64-unknown-linux-gnu
-    - run: strip fishnet-x86_64-unknown-linux-gnu
-    - uses: actions/upload-artifact@v2
-      with:
-        name: fishnet-x86_64-unknown-linux-gnu
-        path: fishnet-x86_64-unknown-linux-gnu
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+      - run: mv target/release/fishnet fishnet-x86_64-unknown-linux-gnu
+      - run: strip fishnet-x86_64-unknown-linux-gnu
+      - uses: actions/upload-artifact@v2
+        with:
+          name: fishnet-x86_64-unknown-linux-gnu
+          path: fishnet-x86_64-unknown-linux-gnu
   linux-aarch64:
     runs-on: ubuntu-16.04
     steps:
-    - run: sudo apt-get update && sudo apt-get install -y binutils-aarch64-linux-gnu
-    - uses: actions/checkout@v2
-      with:
-        submodules: true
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        target: aarch64-unknown-linux-gnu
-    - uses: actions-rs/cargo@v1
-      with:
-        use-cross: true
-        command: build
-        args: --release --target aarch64-unknown-linux-gnu
-    - run: mv target/aarch64-unknown-linux-gnu/release/fishnet fishnet-aarch64-unknown-linux-gnu
-    - run: aarch64-linux-gnu-strip fishnet-aarch64-unknown-linux-gnu
-    - uses: actions/upload-artifact@v2
-      with:
-        name: fishnet-aarch64-unknown-linux-gnu
-        path: fishnet-aarch64-unknown-linux-gnu
+      - run: sudo apt-get update && sudo apt-get install -y binutils-aarch64-linux-gnu
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: aarch64-unknown-linux-gnu
+      - uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --release --target aarch64-unknown-linux-gnu
+      - run: mv target/aarch64-unknown-linux-gnu/release/fishnet fishnet-aarch64-unknown-linux-gnu
+      - run: aarch64-linux-gnu-strip fishnet-aarch64-unknown-linux-gnu
+      - uses: actions/upload-artifact@v2
+        with:
+          name: fishnet-aarch64-unknown-linux-gnu
+          path: fishnet-aarch64-unknown-linux-gnu
   windows-x86-64:
     runs-on: windows-2016
     steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: true
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        target: x86_64-pc-windows-gnu
-    - uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --release --target x86_64-pc-windows-gnu
-    - run: mv target/x86_64-pc-windows-gnu/release/fishnet.exe fishnet-x86_64-pc-windows-gnu.exe
-    - run: strip fishnet-x86_64-pc-windows-gnu.exe
-    - uses: actions/upload-artifact@v2
-      with:
-        name: fishnet-x86_64-pc-windows-gnu
-        path: fishnet-x86_64-pc-windows-gnu.exe
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: x86_64-pc-windows-gnu
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target x86_64-pc-windows-gnu
+      - run: mv target/x86_64-pc-windows-gnu/release/fishnet.exe fishnet-x86_64-pc-windows-gnu.exe
+      - run: strip fishnet-x86_64-pc-windows-gnu.exe
+      - uses: actions/upload-artifact@v2
+        with:
+          name: fishnet-x86_64-pc-windows-gnu
+          path: fishnet-x86_64-pc-windows-gnu.exe
   macos-x86-64:
     runs-on: macos-10.15
     steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: true
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-    - uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --release
-    - run: mv target/release/fishnet fishnet-x86_64-apple-darwin
-    - run: strip fishnet-x86_64-apple-darwin
-    - uses: actions/upload-artifact@v2
-      with:
-        name: fishnet-x86_64-apple-darwin
-        path: fishnet-x86_64-apple-darwin
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+      - run: mv target/release/fishnet fishnet-x86_64-apple-darwin
+      - run: strip fishnet-x86_64-apple-darwin
+      - uses: actions/upload-artifact@v2
+        with:
+          name: fishnet-x86_64-apple-darwin
+          path: fishnet-x86_64-apple-darwin
   macos-aarch64:
     runs-on: macos-11.0
     steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: true
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        target: aarch64-apple-darwin
-    - uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --release --target aarch64-apple-darwin
-    - run: mv target/aarch64-apple-darwin/release/fishnet fishnet-aarch64-apple-darwin
-    - run: strip fishnet-aarch64-apple-darwin
-    - uses: actions/upload-artifact@v2
-      with:
-        name: fishnet-aarch64-apple-darwin
-        path: fishnet-aarch64-apple-darwin
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: aarch64-apple-darwin
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target aarch64-apple-darwin
+      - run: mv target/aarch64-apple-darwin/release/fishnet fishnet-aarch64-apple-darwin
+      - run: strip fishnet-aarch64-apple-darwin
+      - uses: actions/upload-artifact@v2
+        with:
+          name: fishnet-aarch64-apple-darwin
+          path: fishnet-aarch64-apple-darwin
