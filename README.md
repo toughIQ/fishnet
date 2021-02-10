@@ -122,6 +122,9 @@ You can mitigate this by running fishnet as an unprivileged user.
 Stockfish builds are reproducible, so you can verify
 that the distributed binaries match the source.
 
+[`cargo-crev`](https://github.com/crev-dev/cargo-crev) is used to review the
+trustworthiness of dependencies.
+
 ### Is there a leaderboard of contributors?
 
 No, sorry, not publically. It would incentivize gaming the metrics.
