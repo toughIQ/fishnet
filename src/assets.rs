@@ -360,6 +360,74 @@ const STOCKFISH_MV: &[Asset] = &[
     },
 ];
 
+#[cfg(all(target_os = "freebsd", target_arch = "x86_64"))]
+const STOCKFISH: &[Asset] = &[
+    Asset {
+        name: "stockfish-freebsd-x86-64-bmi2",
+        data: include_bytes!("../assets/stockfish-x86-64-bmi2.xz"),
+        needs: Cpu::SF_BMI2,
+        executable: true,
+    },
+    Asset {
+        name: "stockfish-freebsd-x86-64-avx2",
+        data: include_bytes!("../assets/stockfish-x86-64-avx2.xz"),
+        needs: Cpu::SF_AVX2,
+        executable: true,
+    },
+    Asset {
+        name: "stockfish-freebsd-x86-64-sse41-popcnt",
+        data: include_bytes!("../assets/stockfish-x86-64-sse41-popcnt.xz"),
+        needs: Cpu::SF_SSE41_POPCNT,
+        executable: true,
+    },
+    Asset {
+        name: "stockfish-freebsd-x86-64-ssse3",
+        data: include_bytes!("../assets/stockfish-x86-64-ssse3.xz"),
+        needs: Cpu::SF_SSSE3,
+        executable: true,
+    },
+    Asset {
+        name: "stockfish-freebsd-x86-64",
+        data: include_bytes!("../assets/stockfish-x86-64.xz"),
+        needs: Cpu::SF_SSE2,
+        executable: true,
+    },
+];
+
+#[cfg(all(target_os = "freebsd", target_arch = "x86_64"))]
+const STOCKFISH_MV: &[Asset] = &[
+    Asset {
+        name: "stockfish-mv-freebsd-x86-64-bmi2",
+        data: include_bytes!("../assets/stockfish-mv-x86-64-bmi2.xz"),
+        needs: Cpu::SF_BMI2,
+        executable: true,
+    },
+    Asset {
+        name: "stockfish-mv-freebsd-x86-64-avx2",
+        data: include_bytes!("../assets/stockfish-mv-x86-64-avx2.xz"),
+        needs: Cpu::SF_AVX2,
+        executable: true,
+    },
+    Asset {
+        name: "stockfish-mv-freebsd-x86-64-sse41-popcnt",
+        data: include_bytes!("../assets/stockfish-mv-x86-64-sse41-popcnt.xz"),
+        needs: Cpu::SF_SSE41_POPCNT,
+        executable: true,
+    },
+    Asset {
+        name: "stockfish-mv-freebsd-x86-64-ssse3",
+        data: include_bytes!("../assets/stockfish-mv-x86-64-ssse3.xz"),
+        needs: Cpu::SF_SSSE3,
+        executable: true,
+    },
+    Asset {
+        name: "stockfish-mv-freebsd-x86-64",
+        data: include_bytes!("../assets/stockfish-mv-x86-64.xz"),
+        needs: Cpu::SF_SSE2,
+        executable: true,
+    },
+];
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum EngineFlavor {
     Official,

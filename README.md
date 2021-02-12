@@ -84,6 +84,7 @@ that the compiled binary matches the source).
 | **Linux**     | `x86_64-unknown-linux-gnu`  | `aarch64-unknown-linux-gnu` |
 | **Windows**   | `x86_64-pc-windows-gnu.exe` |                             |
 | **macOS**     | `x86_64-apple-darwin`       | `aarch64-apple-darwin`      |
+| **FreeBSD**   | build from source           |                             |
 
 - Needs an operating system from around 2016 or later
 - Will max out the configured number of CPU cores
