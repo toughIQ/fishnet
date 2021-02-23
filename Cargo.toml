@@ -26,7 +26,7 @@ rustls = "0.19" # will fail at runtime if mismatch with reqwest
 self_update = { version = "0.24", features = ["rustls"], default-features = false }
 serde = "1"
 serde_with = "1"
-shakmaty = "0.17"
+shakmaty = { version = "0.18", features = ["variant"] }
 shell-escape = "0.1"
 tempfile = "3"
 tokio = { version = "1", features = ["rt", "macros", "sync", "time", "signal", "process", "io-util"], default-features = false }

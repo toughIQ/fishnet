@@ -6,7 +6,7 @@ use std::fmt;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use shakmaty::uci::{Uci, IllegalUciError};
-use shakmaty::variants::VariantPosition;
+use shakmaty::variant::VariantPosition;
 use shakmaty::{CastlingMode, Position as _, PositionError};
 use url::Url;
 use tokio::sync::{mpsc, oneshot, Mutex, Notify};

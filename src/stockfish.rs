@@ -7,7 +7,7 @@ use tokio::sync::{mpsc, oneshot};
 use tokio::process::{Command, ChildStdin, ChildStdout};
 use tokio::io::{BufWriter, AsyncWriteExt as _, BufReader, AsyncBufReadExt as _, Lines};
 use shakmaty::fen::FenOpts;
-use shakmaty::variants::Variant;
+use shakmaty::variant::Variant;
 use crate::api::{Score, Work};
 use crate::ipc::{Position, Matrix, PositionResponse, PositionFailed};
 use crate::assets::EngineFlavor;
