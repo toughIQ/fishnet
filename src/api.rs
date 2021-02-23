@@ -186,7 +186,7 @@ pub struct NodeLimit {
 impl NodeLimit {
     pub fn get(&self, flavor: EvalFlavor) -> u64 {
         match flavor {
-            EvalFlavor::Classical => self.classical,
+            EvalFlavor::Hce => self.classical,
             EvalFlavor::Nnue => self.nnue,
         }
     }

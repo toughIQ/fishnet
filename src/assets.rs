@@ -438,7 +438,7 @@ impl EngineFlavor {
     pub fn eval_flavor(self) -> EvalFlavor {
         match self {
             EngineFlavor::Official => EvalFlavor::Nnue,
-            EngineFlavor::MultiVariant => EvalFlavor::Classical,
+            EngineFlavor::MultiVariant => EvalFlavor::Hce,
         }
     }
 }
@@ -468,7 +468,7 @@ impl<T> ByEngineFlavor<T> {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize)]
 pub enum EvalFlavor {
     #[serde(rename = "classical")]
-    Classical,
+    Hce,
     #[serde(rename = "nnue")]
     Nnue,
 }
@@ -476,6 +476,10 @@ pub enum EvalFlavor {
 impl EvalFlavor {
     pub fn is_nnue(self) -> bool {
         matches!(self, EvalFlavor::Nnue)
+    }
+
+    pub fn is_hce(self) -> bool {
+        matches!(self, EvalFlavor::Hce)
     }
 }
 

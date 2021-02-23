@@ -197,8 +197,8 @@ impl QueueState {
                 Ok(completed) => {
                     let mut extra = Vec::new();
                     extra.extend(completed.variant.short_name().map(|n| n.to_owned()));
-                    if completed.flavor.eval_flavor() != EvalFlavor::Nnue {
-                        extra.push("no nnue".to_owned());
+                    if completed.flavor.eval_flavor().is_hce() {
+                        extra.push("hce".to_owned());
                     }
                     extra.push(match completed.nps() {
                         Some(nps) => {
