@@ -96,8 +96,8 @@ impl Cpu {
             let cpuid = raw_cpuid::CpuId::new();
             match cpuid.get_vendor_info() {
                 Some(vendor) if vendor.as_string() == "GenuineIntel" => true,
-                Some(vendor) if vendor.as_string() == "AuthenticAMD" => {
-                    cpuid.get_feature_info().map_or(false, |f| f.family_id() >= 0x19) // Zen 3
+                Some(vendor) if dbg!(vendor.as_string()) == "AuthenticAMD" => {
+                    cpuid.get_feature_info().map_or(false, |f| dbg!(f.family_id()) >= 0x19) // Zen 3
                 },
                 _ => false,
             }
