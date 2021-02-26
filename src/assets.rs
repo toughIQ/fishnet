@@ -66,20 +66,19 @@ impl fmt::Debug for Asset {
 
 bitflags! {
     pub struct Cpu: u32 {
-        const POPCNT = 1 << 0;
-        const SSE    = 1 << 1;
-        const SSE2   = 1 << 2;
-        const SSSE3  = 1 << 3;
-        const SSE41  = 1 << 4;
-        const AVX2   = 1 << 5;
-        const BMI2   = 1 << 6;
-        const INTEL  = 1 << 7; // amd supports bmi2, but pext is too slow
+        const POPCNT    = 1 << 0;
+        const SSE       = 1 << 1;
+        const SSE2      = 1 << 2;
+        const SSSE3     = 1 << 3;
+        const SSE41     = 1 << 4;
+        const AVX2      = 1 << 5;
+        const FAST_BMI2 = 1 << 6;
 
         const SF_SSE2         = Cpu::SSE2.bits;
         const SF_SSSE3        = Cpu::SF_SSE2.bits | Cpu::SSE.bits | Cpu::SSE2.bits | Cpu::SSSE3.bits;
         const SF_SSE41_POPCNT = Cpu::SF_SSSE3.bits | Cpu::POPCNT.bits | Cpu::SSE41.bits;
         const SF_AVX2         = Cpu::SF_SSE41_POPCNT.bits | Cpu::AVX2.bits;
-        const SF_BMI2         = Cpu::SF_AVX2.bits | Cpu::BMI2.bits | Cpu::INTEL.bits;
+        const SF_BMI2         = Cpu::SF_AVX2.bits | Cpu::FAST_BMI2.bits;
     }
 }
 
@@ -93,13 +92,16 @@ impl Cpu {
         cpu.set(Cpu::SSSE3, is_x86_feature_detected!("ssse3"));
         cpu.set(Cpu::SSE41, is_x86_feature_detected!("sse4.1"));
         cpu.set(Cpu::AVX2, is_x86_feature_detected!("avx2"));
-        cpu.set(Cpu::BMI2, is_x86_feature_detected!("bmi2"));
-
-        cpu.set(Cpu::INTEL, match raw_cpuid::CpuId::new().get_vendor_info() {
-            Some(vendor) => vendor.as_string() == "GenuineIntel",
-            None => false,
+        cpu.set(Cpu::FAST_BMI2, is_x86_feature_detected!("bmi2") && {
+            let cpuid = raw_cpuid::CpuId::new();
+            match cpuid.get_vendor_info() {
+                Some(vendor) if vendor.as_string() == "GenuineIntel" => true,
+                Some(vendor) if vendor.as_string() == "AuthenticAMD" => {
+                    cpuid.get_feature_info().map_or(false, |f| f.family_id() >= 0x19) // Zen 3
+                },
+                _ => false,
+            }
         });
-
         cpu
     }
 
