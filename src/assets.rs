@@ -100,7 +100,7 @@ impl Cpu {
                 // Due to patents, AMD was using slow software emulation
                 // for PEXT for a long time. The Zen 3 family (0x19) is the
                 // first to implement it in hardware.
-                Some(vendor) if dbg!(vendor.as_string()) == "AuthenticAMD" => {
+                Some(vendor) if vendor.as_string() == "AuthenticAMD" => {
                     cpuid.get_feature_info().map_or(false, |f| {
                         let family = if f.family_id() == 15 {
                             f.extended_family_id() + f.family_id()
