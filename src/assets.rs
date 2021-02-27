@@ -95,9 +95,20 @@ impl Cpu {
         cpu.set(Cpu::FAST_BMI2, is_x86_feature_detected!("bmi2") && {
             let cpuid = raw_cpuid::CpuId::new();
             match cpuid.get_vendor_info() {
+                // Intel was implementing BMI2 in hardware from the beginning.
                 Some(vendor) if vendor.as_string() == "GenuineIntel" => true,
+                // Due to patents, AMD was using slow software emulation
+                // for PEXT for a long time. The Zen 3 family (0x19) is the
+                // first to implement it in hardware.
                 Some(vendor) if dbg!(vendor.as_string()) == "AuthenticAMD" => {
-                    cpuid.get_feature_info().map_or(false, |f| dbg!(f.family_id()) >= 0x19) // Zen 3
+                    cpuid.get_feature_info().map_or(false, |f| {
+                        let family = if f.family_id() == 15 {
+                            f.extended_family_id() + f.family_id()
+                        } else {
+                            f.family_id()
+                        };
+                        family >= 0x19
+                    })
                 },
                 _ => false,
             }
