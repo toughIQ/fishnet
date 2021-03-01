@@ -8,6 +8,7 @@ use std::str::FromStr;
 use std::num::{ParseIntError, NonZeroUsize};
 use std::time::Duration;
 use clap::Clap;
+use clap::crate_version;
 use url::Url;
 use configparser::ini::Ini;
 use crate::logger::Logger;
@@ -17,7 +18,7 @@ const DEFAULT_ENDPOINT: &str = "https://lichess.org/fishnet";
 
 /// Distributed Stockfish analysis for lichess.org.
 #[derive(Debug, Clap)]
-#[clap(setting = clap::AppSettings::DisableHelpSubcommand)]
+#[clap(setting = clap::AppSettings::DisableHelpSubcommand, version = crate_version!())]
 pub struct Opt {
     #[clap(flatten)]
     pub verbose: Verbose,
