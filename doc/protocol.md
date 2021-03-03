@@ -5,7 +5,7 @@
 Client asks server:
 
 ```javascript
-POST http://lichess.org/fishnet/acquire
+POST https://lichess.org/fishnet/acquire
 
 {
   "fishnet": {
@@ -59,7 +59,7 @@ The client can optionally report progress to the server, by sending null for
 the pending moves in `analysis`.
 
 ```javascript
-POST http://lichess.org/fishnet/analysis/{work_id}
+POST https://lichess.org/fishnet/analysis/{work_id}
 
 {
   "fishnet": {
@@ -107,7 +107,7 @@ POST http://lichess.org/fishnet/analysis/{work_id}
 Or the move:
 
 ```javascript
-POST http://lichess.org/fishnet/move/{work_id}
+POST https://lichess.org/fishnet/move/{work_id}
 
 {
   "fishnet": {
@@ -147,7 +147,7 @@ of completing an analysis. The server can then immediately give the job to
 another client.
 
 ```
-POST http://lichess.org/fishnet/abort/{work_id}
+POST https://lichess.org/fishnet/abort/{work_id}
 
 {
   "fishnet": {
@@ -174,7 +174,7 @@ Or abort not supported:
 Useful to monitor and react to queue status or spawn spot instances.
 
 ```
-GET http://lichess.org/fishnet/status
+GET https://lichess.org/fishnet/status
 ```
 
 ```javascript
@@ -208,7 +208,7 @@ Or queue monitoring is not supported
 ## Key validation
 
 ```
-GET http://lichess.org/fishnet/key/XXX
+GET https://lichess.org/fishnet/key/XXX
 ```
 
 Key valid:
