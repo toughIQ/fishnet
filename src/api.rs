@@ -161,7 +161,7 @@ impl Work {
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct BatchId(ArrayString<[u8; 24]>);
+pub struct BatchId(ArrayString<24>);
 
 impl FromStr for BatchId {
     type Err = arrayvec::CapacityError;
