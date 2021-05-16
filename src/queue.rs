@@ -1,22 +1,22 @@
-use std::cmp::{min, max};
-use std::convert::TryInto;
-use std::collections::{VecDeque, HashMap};
+use std::cmp::{max, min};
+use std::collections::{HashMap, VecDeque};
 use std::collections::hash_map::Entry;
-use std::fmt;
+use std::convert::TryInto;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use shakmaty::uci::{Uci, IllegalUciError};
-use shakmaty::variant::VariantPosition;
 use shakmaty::{CastlingMode, Position as _, PositionError};
-use url::Url;
-use tokio::sync::{mpsc, oneshot, Mutex, Notify};
+use shakmaty::uci::{IllegalUciError, Uci};
+use shakmaty::variant::VariantPosition;
+use tokio::sync::{mpsc, Mutex, Notify, oneshot};
 use tokio::time;
+use url::Url;
+use crate::api::{Acquired, AcquireQuery, AcquireResponseBody, AnalysisPart, ApiStub, BatchId, LichessVariant, Work};
 use crate::assets::{EngineFlavor, EvalFlavor};
-use crate::api::{AcquireQuery, AcquireResponseBody, Acquired, AnalysisPart, ApiStub, BatchId, Work, LichessVariant};
 use crate::configure::{BacklogOpt, Endpoint};
-use crate::ipc::{Position, PositionResponse, PositionFailed, PositionId, Pull};
+use crate::ipc::{Position, PositionFailed, PositionId, PositionResponse, Pull};
 use crate::logger::{Logger, ProgressAt, QueueStatusBar};
 use crate::util::{NevermindExt as _, RandomizedBackoff};
+use crate::stats::{StatsRecorder, StatsRecorderFactory};
 
 pub fn channel(opt: BacklogOpt, cores: usize, api: ApiStub, max_backoff: Duration, logger: Logger) -> (QueueStub, QueueActor) {
     let (tx, rx) = mpsc::unbounded_channel();
@@ -113,7 +113,7 @@ impl QueueState {
             incoming: VecDeque::new(),
             pending: HashMap::new(),
             move_submissions: VecDeque::new(),
-            stats: StatsRecorder::new(cores),
+            stats: StatsRecorderFactory::create_stats_recorder(cores),
             logger,
         }
     }
@@ -651,84 +651,5 @@ impl CompletedBatch {
         self.completed_at.checked_duration_since(self.started_at).and_then(|time| {
             (u128::from(self.total_nodes()) * 1000).checked_div(time.as_millis())
         }).and_then(|nps| nps.try_into().ok())
-    }
-}
-
-#[derive(Clone)]
-pub struct StatsRecorder {
-    pub total_batches: u64,
-    pub total_positions: u64,
-    pub total_nodes: u64,
-    pub nnue_nps: NpsRecorder,
-}
-
-impl StatsRecorder {
-    fn new(cores: usize) -> StatsRecorder {
-        StatsRecorder {
-            total_batches: 0,
-            total_positions: 0,
-            total_nodes: 0,
-            nnue_nps: NpsRecorder::new(cores),
-        }
-    }
-
-    fn record_batch(&mut self, positions: u64, nodes: u64, nnue_nps: Option<u32>) {
-        self.total_batches += 1;
-        self.total_positions += positions;
-        self.total_nodes += nodes;
-        if let Some(nnue_nps) = nnue_nps {
-            self.nnue_nps.record(nnue_nps);
-        }
-    }
-
-    fn min_user_backlog(&self) -> Duration {
-        // The average batch has 60 positions, analysed with 2_250_000 nodes
-        // each. Top end clients take no longer than 35 seconds.
-        let best_batch_seconds = 35;
-
-        // Estimate how long this client would take for the next batch,
-        // capped at timeout.
-        let estimated_batch_seconds = u64::from(min(6 * 60, 60 * 2_250_000 / max(1, self.nnue_nps.nps)));
-
-        // Its worth joining if queue wait time + estimated time < top client
-        // time on empty queue.
-        Duration::from_secs(estimated_batch_seconds.saturating_sub(best_batch_seconds))
-    }
-}
-
-#[derive(Clone)]
-pub struct NpsRecorder {
-    nps: u32,
-    uncertainty: f64,
-}
-
-impl NpsRecorder {
-    fn new(cores: usize) -> NpsRecorder {
-        NpsRecorder {
-            nps: 500_000 * cores as u32, // start with a low estimate
-            uncertainty: 1.0,
-        }
-    }
-
-    fn record(&mut self, nps: u32) {
-        let alpha = 0.9;
-        self.uncertainty *= alpha;
-        self.nps = (f64::from(self.nps) * alpha + f64::from(nps) * (1.0 - alpha)) as u32;
-    }
-}
-
-impl fmt::Display for NpsRecorder {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} knps", self.nps / 1000)?;
-        if self.uncertainty > 0.7 {
-            write!(f, "?")?;
-        }
-        if self.uncertainty > 0.4 {
-            write!(f, "?")?;
-        }
-        if self.uncertainty > 0.1 {
-            write!(f, "?")?;
-        }
-        Ok(())
     }
 }
