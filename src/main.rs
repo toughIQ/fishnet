@@ -7,6 +7,7 @@ mod queue;
 mod util;
 mod stockfish;
 mod logger;
+mod stats;
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -162,13 +163,13 @@ async fn run(opt: Opt, logger: &Logger) {
         // Print summary from time to time.
         if now.duration_since(summarized) >= Duration::from_secs(120) {
             summarized = now;
-            let stats = queue.stats().await;
+            let recorder = queue.stats().await;
             logger.fishnet_info(&format!("fishnet/{}: {} (nnue), {} batches, {} positions, {} total nodes",
                                          env!("CARGO_PKG_VERSION"),
-                                         stats.nnue_nps,
-                                         stats.total_batches.separate_with_dots(),
-                                         stats.total_positions.separate_with_dots(),
-                                         stats.total_nodes.separate_with_dots()));
+                                         recorder.nnue_nps,
+                                         recorder.stats.total_batches.separate_with_dots(),
+                                         recorder.stats.total_positions.separate_with_dots(),
+                                         recorder.stats.total_nodes.separate_with_dots()));
         }
 
         // Main loop. Handles signals, forwards worker results from rx to the
