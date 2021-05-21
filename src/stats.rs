@@ -1,15 +1,10 @@
-use core::fmt;
+use std::fmt;
 use std::cmp::{max, min};
-use std::fmt::Debug;
 use std::fs::File;
 use std::io::{Error, Read, Write, ErrorKind};
-use std::str::{FromStr, Split};
 use std::time::Duration;
-use serde::{Deserialize, Serialize};
-
-use crate::logger::Logger;
-use std::convert::TryInto;
 use std::path::PathBuf;
+use serde::{Deserialize, Serialize};
 
 const STATS_FILENAME: &str = ".fishnet-stats";
 
