@@ -60,16 +60,6 @@ fn stockfish_build() {
     }.build_both();
 
     Target {
-        arch: "x86-64-sse3-popcnt",
-        pgo: is_x86_feature_detected!("sse3") && is_x86_feature_detected!("popcnt"),
-    }.build_both();
-
-    Target {
-        arch: "x86-64-ssse3",
-        pgo: is_x86_feature_detected!("ssse3"),
-    }.build_both();
-
-    Target {
         arch: "x86-64-sse41-popcnt",
         pgo: is_x86_feature_detected!("sse4.1") && is_x86_feature_detected!("popcnt"),
     }.build_both();
