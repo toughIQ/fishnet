@@ -119,7 +119,7 @@ impl Cpu {
 
 const NNUE: Asset = Asset {
     name: "nn-7756374aaed3.nnue",
-    data: include_bytes!("../Stockfish/src/nn-7756374aaed3.nnue.xz"),
+    data: include_bytes!(concat!(env!("OUT_DIR"), "/nn-7756374aaed3.nnue.xz")),
     needs: Cpu::empty(),
     executable: false,
 };
@@ -146,7 +146,7 @@ const STOCKFISH: &[Asset] = &[
     },
     Asset {
         name: "stockfish-x86-64",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/Stockfish/src/stockfish-x86-64.xz")),
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64.xz")),
         needs: Cpu::SF_SSE2,
         executable: true,
     },

@@ -1,5 +1,9 @@
 use std::env;
 use std::process::Command;
+use std::fs;
+use std::fs::File;
+use std::io;
+use std::path::Path;
 use glob::glob;
 
 #[cfg(target_arch = "x86_64")]
@@ -19,9 +23,10 @@ struct Target {
 
 impl Target {
     fn build(&self, src_dir: &'static str, name: &'static str) {
-        let pgo = (self.pgo && not_cross_compiled()) || env::var("SDE_PATH").is_ok();
-        let exe = format!("{}/{}-{}{}", env::var("OUT_DIR").unwrap(), name, self.arch, if env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "windows" { ".exe" } else { "" });
-        if !pgo {
+        let release = env::var("PROFILE").unwrap() == "release";
+        let pgo = release && not_cross_compiled() && (self.pgo || env::var("SDE_PATH").is_ok());
+        let exe = format!("{}-{}{}", name, self.arch, if env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "windows" { ".exe" } else { "" });
+        if release && !pgo {
             println!("cargo:warning=Building {} without profile-guided optimization", exe);
         }
 
@@ -130,12 +135,15 @@ fn stockfish_build() {
 }
 
 fn compress(dir: &str, file: &str) {
-    assert!(Command::new("xz")
-        .current_dir(dir)
-        .args(&["--keep", "--force", file])
-        .status()
-        .unwrap()
-        .success());
+    let compressed = File::create(Path::new(&env::var("OUT_DIR").unwrap()).join(&format!("{}.xz", file))).unwrap();
+    let mut encoder = xz2::write::XzEncoder::new(compressed, 9);
+
+    let uncompressed_path = Path::new(dir).join(file);
+    let mut uncompressed = File::open(&uncompressed_path).unwrap();
+    io::copy(&mut uncompressed, &mut encoder).unwrap();
+    encoder.finish().unwrap();
+
+    fs::remove_file(uncompressed_path).unwrap();
 }
 
 fn hooks() {
