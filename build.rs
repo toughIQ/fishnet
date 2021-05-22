@@ -4,12 +4,12 @@ use glob::glob;
 
 #[cfg(target_arch = "x86_64")]
 fn not_cross_compiled() -> bool {
-    cfg!(target_arch = "x86_64")
+    env::var("CARGO_CFG_TARGET_ARCH").unwrap() == "x86_64"
 }
 
 #[cfg(target_arch = "aarch64")]
 fn not_cross_compiled() -> bool {
-    cfg!(target_arch = "aarch64")
+    env::var("CARGO_CFG_TARGET_ARCH").unwrap() == "aarch64"
 }
 
 struct Target {
