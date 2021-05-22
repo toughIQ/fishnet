@@ -32,7 +32,7 @@
 
    **From source**
 
-   Assuming you have [a recent Rust toolchain](https://rustup.rs/) installed:
+   Assuming you have [a recent Rust toolchain](https://rustup.rs/), a C++ compiler, strip, make, and xz installed:
 
    ```sh
    git clone --recursive https://github.com/niklasf/fishnet.git
