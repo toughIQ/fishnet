@@ -2,6 +2,16 @@ use std::env;
 use std::process::Command;
 use glob::glob;
 
+#[cfg(target_arch = "x86_64")]
+fn not_cross_compiled() -> bool {
+    cfg!(target_arch = "x86_64")
+}
+
+#[cfg(target_arch = "aarch64")]
+fn not_cross_compiled() -> bool {
+    cfg!(target_arch = "aarch64")
+}
+
 struct Target {
     arch: &'static str,
     pgo: bool,
@@ -9,7 +19,7 @@ struct Target {
 
 impl Target {
     fn build(&self, src_dir: &'static str, name: &'static str) {
-        let pgo = self.pgo || env::var("SDE_PATH").is_ok();
+        let pgo = (self.pgo && not_cross_compiled()) || env::var("SDE_PATH").is_ok();
         let exe = format!("{}-{}{}", name, self.arch, if env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "windows" { ".exe" } else { "" });
         if !pgo {
             println!("cargo:warning=Building {} without profile-guided optimization", exe);
