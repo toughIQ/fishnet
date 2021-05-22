@@ -1,3 +1,6 @@
 [submodule "fishnet-assets"]
 	path = assets
 	url = https://github.com/niklasf/fishnet-assets.git
+[submodule "Stockfish"]
+	path = Stockfish
+	url = https://github.com/official-stockfish/Stockfish.git
