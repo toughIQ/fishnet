@@ -261,7 +261,7 @@ const STOCKFISH_MV: &[Asset] = &[
 const STOCKFISH: &[Asset] = &[
     Asset {
         name: "stockfish-apple-silicon",
-        data: include_bytes!("../Stockfish/stockfish-apple-silicon.xz"),
+        data: include_bytes!("../Stockfish/src/stockfish-apple-silicon.xz"),
         needs: Cpu::empty(),
         executable: true,
     },
@@ -271,7 +271,7 @@ const STOCKFISH: &[Asset] = &[
 const STOCKFISH_MV: &[Asset] = &[
     Asset {
         name: "stockfish-mv-apple-silicon",
-        data: include_bytes!("../assets/stockfish-mv-apple-silicon.xz"),
+        data: include_bytes!("../Variant-Stockfish/src/stockfish-mv-apple-silicon.xz"),
         needs: Cpu::empty(),
         executable: true,
     },
