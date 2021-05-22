@@ -9,7 +9,20 @@ authors = ["Niklas Fiekas <niklas.fiekas@backscattering.de>"]
 categories = ["command-line-utilities", "web-programming::http-client", "games"]
 keywords = ["chess", "lichess"]
 edition = "2018"
-exclude = ["assets"]
+exclude = [
+    "Stockfish/**/*.o",
+    "Stockfish/**/*.s",
+    "Stockfish/**/.depend",
+    "Stockfish/**/*.xz",
+    "Stockfish/**/*.nnue",
+    "Stockfish/**/stockfish*",
+    "Variant-Stockfish/**/*.o",
+    "Variant-Stockfish/**/*.s",
+    "Variant-Stockfish/**/.depend",
+    "Variant-Stockfish/**/*.xz",
+    "Variant-Stockfish/**/*.nnue",
+    "Variant-Stockfish/**/stockfish*",
+]
 
 [dependencies]
 arrayvec = "0.7"
