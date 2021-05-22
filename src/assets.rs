@@ -66,17 +66,14 @@ impl fmt::Debug for Asset {
 
 bitflags! {
     pub struct Cpu: u32 {
-        const POPCNT    = 1 << 0;
-        const SSE       = 1 << 1;
-        const SSE2      = 1 << 2;
-        const SSSE3     = 1 << 3;
-        const SSE41     = 1 << 4;
-        const AVX2      = 1 << 5;
-        const FAST_BMI2 = 1 << 6;
+        const SSE2      = 1 << 0;
+        const POPCNT    = 1 << 1;
+        const SSE41     = 1 << 2;
+        const AVX2      = 1 << 3;
+        const FAST_BMI2 = 1 << 4;
 
         const SF_SSE2         = Cpu::SSE2.bits;
-        const SF_SSSE3        = Cpu::SF_SSE2.bits | Cpu::SSE.bits | Cpu::SSE2.bits | Cpu::SSSE3.bits;
-        const SF_SSE41_POPCNT = Cpu::SF_SSSE3.bits | Cpu::POPCNT.bits | Cpu::SSE41.bits;
+        const SF_SSE41_POPCNT = Cpu::SSE41.bits | Cpu::POPCNT.bits;
         const SF_AVX2         = Cpu::SF_SSE41_POPCNT.bits | Cpu::AVX2.bits;
         const SF_BMI2         = Cpu::SF_AVX2.bits | Cpu::FAST_BMI2.bits;
     }
@@ -86,10 +83,8 @@ impl Cpu {
     #[cfg(target_arch = "x86_64")]
     pub fn detect() -> Cpu {
         let mut cpu = Cpu::empty();
+        cpu.set(Cpu::SSE2, is_x86_feature_detected!("sse2"));
         cpu.set(Cpu::POPCNT, is_x86_feature_detected!("popcnt"));
-        cpu.set(Cpu::SSE, is_x86_feature_detected!("sse"));
-        cpu.set(Cpu::SSE2, is_x86_feature_detected!("sse"));
-        cpu.set(Cpu::SSSE3, is_x86_feature_detected!("ssse3"));
         cpu.set(Cpu::SSE41, is_x86_feature_detected!("sse4.1"));
         cpu.set(Cpu::AVX2, is_x86_feature_detected!("avx2"));
         cpu.set(Cpu::FAST_BMI2, is_x86_feature_detected!("bmi2") && {
@@ -123,96 +118,64 @@ impl Cpu {
 }
 
 const NNUE: Asset = Asset {
-    name: "nn-62ef826d1a6d.nnue",
-    data: include_bytes!("../assets/nn-62ef826d1a6d.nnue.xz"),
+    name: "nn-7756374aaed3.nnue",
+    data: include_bytes!("../Stockfish/src/nn-7756374aaed3.nnue.xz"),
     needs: Cpu::empty(),
     executable: false,
 };
 
-#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[cfg(all(unix, target_arch = "x86_64"))]
 const STOCKFISH: &[Asset] = &[
     Asset {
         name: "stockfish-x86-64-bmi2",
-        data: include_bytes!("../assets/stockfish-x86-64-bmi2.xz"),
+        data: include_bytes!("../Stockfish/src/stockfish-x86-64-bmi2.xz"),
         needs: Cpu::SF_BMI2,
         executable: true,
     },
     Asset {
         name: "stockfish-x86-64-avx2",
-        data: include_bytes!("../assets/stockfish-x86-64-avx2.xz"),
+        data: include_bytes!("../Stockfish/src/stockfish-x86-64-avx2.xz"),
         needs: Cpu::SF_AVX2,
         executable: true,
     },
     Asset {
         name: "stockfish-x86-64-sse41-popcnt",
-        data: include_bytes!("../assets/stockfish-x86-64-sse41-popcnt.xz"),
+        data: include_bytes!("../Stockfish/src/stockfish-x86-64-sse41-popcnt.xz"),
         needs: Cpu::SF_SSE41_POPCNT,
         executable: true,
     },
     Asset {
-        name: "stockfish-x86-64-ssse3",
-        data: include_bytes!("../assets/stockfish-x86-64-ssse3.xz"),
-        needs: Cpu::SF_SSSE3,
-        executable: true,
-    },
-    Asset {
         name: "stockfish-x86-64",
-        data: include_bytes!("../assets/stockfish-x86-64.xz"),
+        data: include_bytes!("../Stockfish/src/stockfish-x86-64.xz"),
         needs: Cpu::SF_SSE2,
         executable: true,
     },
 ];
 
-#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[cfg(all(unix, target_arch = "x86_64"))]
 const STOCKFISH_MV: &[Asset] = &[
     Asset {
         name: "stockfish-mv-x86-64-bmi2",
-        data: include_bytes!("../assets/stockfish-mv-x86-64-bmi2.xz"),
+        data: include_bytes!("../Variant-Stockfish/src/stockfish-mv-x86-64-bmi2.xz"),
         needs: Cpu::SF_BMI2,
         executable: true,
     },
     Asset {
         name: "stockfish-mv-x86-64-avx2",
-        data: include_bytes!("../assets/stockfish-mv-x86-64-avx2.xz"),
+        data: include_bytes!("../Variant-Stockfish/src/stockfish-mv-x86-64-avx2.xz"),
         needs: Cpu::SF_AVX2,
         executable: true,
     },
     Asset {
         name: "stockfish-mv-x86-64-sse41-popcnt",
-        data: include_bytes!("../assets/stockfish-mv-x86-64-sse41-popcnt.xz"),
+        data: include_bytes!("../Variant-Stockfish/src/stockfish-mv-x86-64-sse41-popcnt.xz"),
         needs: Cpu::SF_SSE41_POPCNT,
         executable: true,
     },
     Asset {
-        name: "stockfish-mv-x86-64-ssse3",
-        data: include_bytes!("../assets/stockfish-mv-x86-64-ssse3.xz"),
-        needs: Cpu::SF_SSSE3,
-        executable: true,
-    },
-    Asset {
         name: "stockfish-mv-x86-64",
-        data: include_bytes!("../assets/stockfish-mv-x86-64.xz"),
+        data: include_bytes!("../Variant-Stockfish/src/stockfish-mv-x86-64.xz"),
         needs: Cpu::SF_SSE2,
-        executable: true,
-    },
-];
-
-#[cfg(all(target_os = "linux", target_arch = "aarch64"))]
-const STOCKFISH: &[Asset] = &[
-    Asset {
-        name: "stockfish-aarch64",
-        data: include_bytes!("../assets/stockfish-aarch64.xz"),
-        needs: Cpu::empty(),
-        executable: true,
-    },
-];
-
-#[cfg(all(target_os = "linux", target_arch = "aarch64"))]
-const STOCKFISH_MV: &[Asset] = &[
-    Asset {
-        name: "stockfish-mv-aarch64",
-        data: include_bytes!("../assets/stockfish-mv-aarch64.xz"),
-        needs: Cpu::empty(),
         executable: true,
     },
 ];
@@ -221,31 +184,25 @@ const STOCKFISH_MV: &[Asset] = &[
 const STOCKFISH: &[Asset] = &[
     Asset {
         name: "stockfish-x86-64-bmi2.exe",
-        data: include_bytes!("../assets/stockfish-x86-64-bmi2.exe.xz"),
+        data: include_bytes!("../Stockfish/src/stockfish-x86-64-bmi2.exe.xz"),
         needs: Cpu::SF_BMI2,
         executable: true,
     },
     Asset {
         name: "stockfish-x86-64-avx2.exe",
-        data: include_bytes!("../assets/stockfish-x86-64-avx2.exe.xz"),
+        data: include_bytes!("../Stockfish/src/stockfish-x86-64-avx2.exe.xz"),
         needs: Cpu::SF_AVX2,
         executable: true,
     },
     Asset {
         name: "stockfish-x86-64-sse41-popcnt.exe",
-        data: include_bytes!("../assets/stockfish-x86-64-sse41-popcnt.exe.xz"),
+        data: include_bytes!("../Stockfish/src/stockfish-x86-64-sse41-popcnt.exe.xz"),
         needs: Cpu::SF_SSE41_POPCNT,
         executable: true,
     },
     Asset {
-        name: "stockfish-x86-64-ssse3.exe",
-        data: include_bytes!("../assets/stockfish-x86-64-ssse3.exe.xz"),
-        needs: Cpu::SF_SSSE3,
-        executable: true,
-    },
-    Asset {
         name: "stockfish-x86-64.exe",
-        data: include_bytes!("../assets/stockfish-x86-64.exe.xz"),
+        data: include_bytes!("../Stockfish/src/stockfish-x86-64.exe.xz"),
         needs: Cpu::SF_SSE2,
         executable: true,
     },
@@ -255,109 +212,56 @@ const STOCKFISH: &[Asset] = &[
 const STOCKFISH_MV: &[Asset] = &[
     Asset {
         name: "stockfish-mv-x86-64-bmi2.exe",
-        data: include_bytes!("../assets/stockfish-mv-x86-64-bmi2.exe.xz"),
+        data: include_bytes!("../Variant-Stockfish/src/stockfish-mv-x86-64-bmi2.exe.xz"),
         needs: Cpu::SF_BMI2,
         executable: true,
     },
     Asset {
         name: "stockfish-mv-x86-64-avx2.exe",
-        data: include_bytes!("../assets/stockfish-mv-x86-64-avx2.exe.xz"),
+        data: include_bytes!("../Variant-Stockfish/src/stockfish-mv-x86-64-avx2.exe.xz"),
         needs: Cpu::SF_AVX2,
         executable: true,
     },
     Asset {
         name: "stockfish-mv-x86-64-sse41-popcnt.exe",
-        data: include_bytes!("../assets/stockfish-mv-x86-64-sse41-popcnt.exe.xz"),
+        data: include_bytes!("../Variant-Stockfish/src/stockfish-mv-x86-64-sse41-popcnt.exe.xz"),
         needs: Cpu::SF_SSE41_POPCNT,
-        executable: true,
-    },
-    Asset {
-        name: "stockfish-mv-x86-64-ssse3.exe",
-        data: include_bytes!("../assets/stockfish-mv-x86-64-ssse3.exe.xz"),
-        needs: Cpu::SF_SSSE3,
         executable: true,
     },
     Asset {
         name: "stockfish-mv-x86-64.exe",
-        data: include_bytes!("../assets/stockfish-mv-x86-64.exe.xz"),
+        data: include_bytes!("../Variant-Stockfish/src/stockfish-mv-x86-64.exe.xz"),
         needs: Cpu::SF_SSE2,
         executable: true,
     },
 ];
 
-#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+#[cfg(all(target_os = "linux", target_arch = "aarch64"))]
 const STOCKFISH: &[Asset] = &[
     Asset {
-        name: "stockfish-macos-x86-64-bmi2",
-        data: include_bytes!("../assets/stockfish-macos-x86-64-bmi2.xz"),
-        needs: Cpu::SF_BMI2,
-        executable: true,
-    },
-    Asset {
-        name: "stockfish-macos-x86-64-avx2",
-        data: include_bytes!("../assets/stockfish-macos-x86-64-avx2.xz"),
-        needs: Cpu::SF_AVX2,
-        executable: true,
-    },
-    Asset {
-        name: "stockfish-macos-x86-64-sse41-popcnt",
-        data: include_bytes!("../assets/stockfish-macos-x86-64-sse41-popcnt.xz"),
-        needs: Cpu::SF_SSE41_POPCNT,
-        executable: true,
-    },
-    Asset {
-        name: "stockfish-macos-x86-64-ssse3",
-        data: include_bytes!("../assets/stockfish-macos-x86-64-ssse3.xz"),
-        needs: Cpu::SF_SSSE3,
-        executable: true,
-    },
-    Asset {
-        name: "stockfish-macos-x86-64",
-        data: include_bytes!("../assets/stockfish-macos-x86-64.xz"),
-        needs: Cpu::SF_SSE2,
+        name: "stockfish-aarch64",
+        data: include_bytes!("../Stockfish/src/stockfish-aarch64.xz"),
+        needs: Cpu::empty(),
         executable: true,
     },
 ];
 
-#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+#[cfg(all(target_os = "linux", target_arch = "aarch64"))]
 const STOCKFISH_MV: &[Asset] = &[
     Asset {
-        name: "stockfish-mv-macos-x86-64-bmi2",
-        data: include_bytes!("../assets/stockfish-mv-macos-x86-64-bmi2.xz"),
-        needs: Cpu::SF_BMI2,
-        executable: true,
-    },
-    Asset {
-        name: "stockfish-mv-macos-x86-64-avx2",
-        data: include_bytes!("../assets/stockfish-mv-macos-x86-64-avx2.xz"),
-        needs: Cpu::SF_AVX2,
-        executable: true,
-    },
-    Asset {
-        name: "stockfish-mv-macos-x86-64-sse41-popcnt",
-        data: include_bytes!("../assets/stockfish-mv-macos-x86-64-sse41-popcnt.xz"),
-        needs: Cpu::SF_SSE41_POPCNT,
-        executable: true,
-    },
-    Asset {
-        name: "stockfish-mv-macos-x86-64-ssse3",
-        data: include_bytes!("../assets/stockfish-mv-macos-x86-64-ssse3.xz"),
-        needs: Cpu::SF_SSSE3,
-        executable: true,
-    },
-    Asset {
-        name: "stockfish-mv-macos-x86-64",
-        data: include_bytes!("../assets/stockfish-mv-macos-x86-64.xz"),
-        needs: Cpu::SF_SSE2,
+        name: "stockfish-mv-aarch64",
+        data: include_bytes!("../Variant-Stockfish/src/stockfish-mv-aarch64.xz"),
+        needs: Cpu::empty(),
         executable: true,
     },
 ];
+
 
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 const STOCKFISH: &[Asset] = &[
     Asset {
-        name: "stockfish-macos-aarch64",
-        data: include_bytes!("../assets/stockfish-macos-aarch64.xz"),
+        name: "stockfish-apple-silicon",
+        data: include_bytes!("../Stockfish/src/stockfish-apple-silicon.xz"),
         needs: Cpu::empty(),
         executable: true,
     },
@@ -366,77 +270,9 @@ const STOCKFISH: &[Asset] = &[
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 const STOCKFISH_MV: &[Asset] = &[
     Asset {
-        name: "stockfish-mv-macos-aarch64",
-        data: include_bytes!("../assets/stockfish-mv-macos-aarch64.xz"),
+        name: "stockfish-mv-apple-silicon",
+        data: include_bytes!("../Variant-Stockfish/src/stockfish-mv-apple-silicon.xz"),
         needs: Cpu::empty(),
-        executable: true,
-    },
-];
-
-#[cfg(all(target_os = "freebsd", target_arch = "x86_64"))]
-const STOCKFISH: &[Asset] = &[
-    Asset {
-        name: "stockfish-freebsd-x86-64-bmi2",
-        data: include_bytes!("../assets/stockfish-freebsd-x86-64-bmi2.xz"),
-        needs: Cpu::SF_BMI2,
-        executable: true,
-    },
-    Asset {
-        name: "stockfish-freebsd-x86-64-avx2",
-        data: include_bytes!("../assets/stockfish-freebsd-x86-64-avx2.xz"),
-        needs: Cpu::SF_AVX2,
-        executable: true,
-    },
-    Asset {
-        name: "stockfish-freebsd-x86-64-sse41-popcnt",
-        data: include_bytes!("../assets/stockfish-freebsd-x86-64-sse41-popcnt.xz"),
-        needs: Cpu::SF_SSE41_POPCNT,
-        executable: true,
-    },
-    Asset {
-        name: "stockfish-freebsd-x86-64-ssse3",
-        data: include_bytes!("../assets/stockfish-freebsd-x86-64-ssse3.xz"),
-        needs: Cpu::SF_SSSE3,
-        executable: true,
-    },
-    Asset {
-        name: "stockfish-freebsd-x86-64",
-        data: include_bytes!("../assets/stockfish-freebsd-x86-64.xz"),
-        needs: Cpu::SF_SSE2,
-        executable: true,
-    },
-];
-
-#[cfg(all(target_os = "freebsd", target_arch = "x86_64"))]
-const STOCKFISH_MV: &[Asset] = &[
-    Asset {
-        name: "stockfish-mv-freebsd-x86-64-bmi2",
-        data: include_bytes!("../assets/stockfish-mv-freebsd-x86-64-bmi2.xz"),
-        needs: Cpu::SF_BMI2,
-        executable: true,
-    },
-    Asset {
-        name: "stockfish-mv-freebsd-x86-64-avx2",
-        data: include_bytes!("../assets/stockfish-mv-freebsd-x86-64-avx2.xz"),
-        needs: Cpu::SF_AVX2,
-        executable: true,
-    },
-    Asset {
-        name: "stockfish-mv-freebsd-x86-64-sse41-popcnt",
-        data: include_bytes!("../assets/stockfish-mv-freebsd-x86-64-sse41-popcnt.xz"),
-        needs: Cpu::SF_SSE41_POPCNT,
-        executable: true,
-    },
-    Asset {
-        name: "stockfish-mv-freebsd-x86-64-ssse3",
-        data: include_bytes!("../assets/stockfish-mv-freebsd-x86-64-ssse3.xz"),
-        needs: Cpu::SF_SSSE3,
-        executable: true,
-    },
-    Asset {
-        name: "stockfish-mv-freebsd-x86-64",
-        data: include_bytes!("../assets/stockfish-mv-freebsd-x86-64.xz"),
-        needs: Cpu::SF_SSE2,
         executable: true,
     },
 ];

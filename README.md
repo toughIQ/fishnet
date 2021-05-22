@@ -32,12 +32,13 @@
 
    **From source**
 
-   Assuming you have [a recent Rust toolchain](https://rustup.rs/) installed:
+   Assuming you have [a recent Rust toolchain](https://rustup.rs/), a C++ compiler, strip, make, and xz installed:
 
    ```sh
    git clone --recursive https://github.com/niklasf/fishnet.git
    cd fishnet
-   cargo run --release --
+   git submodule update
+   cargo run --release -vv --
    ```
 
    **Docker**
@@ -69,19 +70,14 @@ Watch [@arex](https://lichess.org/@/arex) explain fishnet.
 
 ### Which engine does fishnet use?
 
-fishnet uses [Stockfish 12](https://github.com/official-stockfish/Stockfish)
+fishnet uses [Stockfish 13](https://github.com/official-stockfish/Stockfish)
 (hence the name) and [a fork of Stockfish with multi-variant support](https://github.com/ddugovic/Stockfish).
-
-[Precompiled builds](https://github.com/niklasf/fishnet-assets)
-for various CPU models come bundled with fishnet. To get another architecture
-included, all we need is a reproducible build process (so everyone can verify
-that the compiled binary matches the source).
 
 ### What are the requirements?
 
 | Available for | 64-bit Intel and AMD        | ARMv8 / Silicon             |
 | ------------- | --------------------------- | --------------------------- |
-| **Linux**     | `x86_64-unknown-linux-gnu`  | `aarch64-unknown-linux-gnu` |
+| **Linux**     | `x86_64-unknown-linux-gnu`  | build from source           |
 | **Windows**   | `x86_64-pc-windows-gnu.exe` |                             |
 | **macOS**     | `x86_64-apple-darwin`       | `aarch64-apple-darwin`      |
 | **FreeBSD**   | build from source           |                             |
@@ -119,9 +115,6 @@ To the best of our knowledge. However you implicitly trust the authors and the
 GitHub infrastructure when running with `--auto-update`.
 
 You can mitigate this by running fishnet as an unprivileged user.
-
-Stockfish builds are reproducible, so you can verify
-that the distributed binaries match the source.
 
 [`cargo-crev`](https://github.com/crev-dev/cargo-crev) is used to review the
 trustworthiness of dependencies.
