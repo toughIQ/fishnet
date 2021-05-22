@@ -4,3 +4,6 @@
 [submodule "Stockfish"]
 	path = Stockfish
 	url = https://github.com/official-stockfish/Stockfish.git
+[submodule "Variant-Stockfish"]
+	path = Variant-Stockfish
+	url = https://github.com/niklasf/Stockfish.git
