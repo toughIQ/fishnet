@@ -20,7 +20,7 @@ struct Target {
 impl Target {
     fn build(&self, src_dir: &'static str, name: &'static str) {
         let pgo = (self.pgo && not_cross_compiled()) || env::var("SDE_PATH").is_ok();
-        let exe = format!("{}-{}{}", name, self.arch, if env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "windows" { ".exe" } else { "" });
+        let exe = format!("{}/{}-{}{}", env::var("OUT_DIR").unwrap(), name, self.arch, if env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "windows" { ".exe" } else { "" });
         if !pgo {
             println!("cargo:warning=Building {} without profile-guided optimization", exe);
         }
@@ -42,10 +42,19 @@ impl Target {
         }
         args.push(if pgo { "profile-build" } else { "build" });
 
-        assert!(Command::new(if env::var("CARGO_CFG_TARGET_OS").unwrap() == "freebsd" { "gmake" } else { "make" })
+        let make = if env::var("CARGO_CFG_TARGET_OS").unwrap() == "freebsd" { "gmake" } else { "make" };
+
+        assert!(Command::new(make)
             .current_dir(src_dir)
             .env("CXXFLAGS", format!("{} -DNNUE_EMBEDDING_OFF", env::var("CXXFLAGS").unwrap_or_default()))
             .args(&args)
+            .status()
+            .unwrap()
+            .success());
+
+        assert!(Command::new(make)
+            .current_dir(src_dir)
+            .args(&["clean"])
             .status()
             .unwrap()
             .success());

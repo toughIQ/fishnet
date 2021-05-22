@@ -128,25 +128,25 @@ const NNUE: Asset = Asset {
 const STOCKFISH: &[Asset] = &[
     Asset {
         name: "stockfish-x86-64-bmi2",
-        data: include_bytes!("../Stockfish/src/stockfish-x86-64-bmi2.xz"),
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-bmi2.xz")),
         needs: Cpu::SF_BMI2,
         executable: true,
     },
     Asset {
         name: "stockfish-x86-64-avx2",
-        data: include_bytes!("../Stockfish/src/stockfish-x86-64-avx2.xz"),
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-avx2.xz")),
         needs: Cpu::SF_AVX2,
         executable: true,
     },
     Asset {
         name: "stockfish-x86-64-sse41-popcnt",
-        data: include_bytes!("../Stockfish/src/stockfish-x86-64-sse41-popcnt.xz"),
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-sse41-popcnt.xz")),
         needs: Cpu::SF_SSE41_POPCNT,
         executable: true,
     },
     Asset {
         name: "stockfish-x86-64",
-        data: include_bytes!("../Stockfish/src/stockfish-x86-64.xz"),
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/Stockfish/src/stockfish-x86-64.xz")),
         needs: Cpu::SF_SSE2,
         executable: true,
     },
@@ -156,25 +156,25 @@ const STOCKFISH: &[Asset] = &[
 const STOCKFISH_MV: &[Asset] = &[
     Asset {
         name: "stockfish-mv-x86-64-bmi2",
-        data: include_bytes!("../Variant-Stockfish/src/stockfish-mv-x86-64-bmi2.xz"),
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-mv-x86-64-bmi2.xz")),
         needs: Cpu::SF_BMI2,
         executable: true,
     },
     Asset {
         name: "stockfish-mv-x86-64-avx2",
-        data: include_bytes!("../Variant-Stockfish/src/stockfish-mv-x86-64-avx2.xz"),
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-mv-x86-64-avx2.xz")),
         needs: Cpu::SF_AVX2,
         executable: true,
     },
     Asset {
         name: "stockfish-mv-x86-64-sse41-popcnt",
-        data: include_bytes!("../Variant-Stockfish/src/stockfish-mv-x86-64-sse41-popcnt.xz"),
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-mv-x86-64-sse41-popcnt.xz")),
         needs: Cpu::SF_SSE41_POPCNT,
         executable: true,
     },
     Asset {
         name: "stockfish-mv-x86-64",
-        data: include_bytes!("../Variant-Stockfish/src/stockfish-mv-x86-64.xz"),
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-mv-x86-64.xz")),
         needs: Cpu::SF_SSE2,
         executable: true,
     },
@@ -184,25 +184,25 @@ const STOCKFISH_MV: &[Asset] = &[
 const STOCKFISH: &[Asset] = &[
     Asset {
         name: "stockfish-x86-64-bmi2.exe",
-        data: include_bytes!("../Stockfish/src/stockfish-x86-64-bmi2.exe.xz"),
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-bmi2.exe.xz")),
         needs: Cpu::SF_BMI2,
         executable: true,
     },
     Asset {
         name: "stockfish-x86-64-avx2.exe",
-        data: include_bytes!("../Stockfish/src/stockfish-x86-64-avx2.exe.xz"),
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-avx2.exe.xz")),
         needs: Cpu::SF_AVX2,
         executable: true,
     },
     Asset {
         name: "stockfish-x86-64-sse41-popcnt.exe",
-        data: include_bytes!("../Stockfish/src/stockfish-x86-64-sse41-popcnt.exe.xz"),
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-sse41-popcnt.exe.xz")),
         needs: Cpu::SF_SSE41_POPCNT,
         executable: true,
     },
     Asset {
         name: "stockfish-x86-64.exe",
-        data: include_bytes!("../Stockfish/src/stockfish-x86-64.exe.xz"),
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64.exe.xz")),
         needs: Cpu::SF_SSE2,
         executable: true,
     },
@@ -212,25 +212,25 @@ const STOCKFISH: &[Asset] = &[
 const STOCKFISH_MV: &[Asset] = &[
     Asset {
         name: "stockfish-mv-x86-64-bmi2.exe",
-        data: include_bytes!("../Variant-Stockfish/src/stockfish-mv-x86-64-bmi2.exe.xz"),
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-mv-x86-64-bmi2.exe.xz")),
         needs: Cpu::SF_BMI2,
         executable: true,
     },
     Asset {
         name: "stockfish-mv-x86-64-avx2.exe",
-        data: include_bytes!("../Variant-Stockfish/src/stockfish-mv-x86-64-avx2.exe.xz"),
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-mv-x86-64-avx2.exe.xz")),
         needs: Cpu::SF_AVX2,
         executable: true,
     },
     Asset {
         name: "stockfish-mv-x86-64-sse41-popcnt.exe",
-        data: include_bytes!("../Variant-Stockfish/src/stockfish-mv-x86-64-sse41-popcnt.exe.xz"),
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-mv-x86-64-sse41-popcnt.exe.xz")),
         needs: Cpu::SF_SSE41_POPCNT,
         executable: true,
     },
     Asset {
         name: "stockfish-mv-x86-64.exe",
-        data: include_bytes!("../Variant-Stockfish/src/stockfish-mv-x86-64.exe.xz"),
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-mv-x86-64.exe.xz")),
         needs: Cpu::SF_SSE2,
         executable: true,
     },
@@ -240,7 +240,7 @@ const STOCKFISH_MV: &[Asset] = &[
 const STOCKFISH: &[Asset] = &[
     Asset {
         name: "stockfish-aarch64",
-        data: include_bytes!("../Stockfish/src/stockfish-aarch64.xz"),
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-aarch64.xz")),
         needs: Cpu::empty(),
         executable: true,
     },
@@ -250,7 +250,7 @@ const STOCKFISH: &[Asset] = &[
 const STOCKFISH_MV: &[Asset] = &[
     Asset {
         name: "stockfish-mv-aarch64",
-        data: include_bytes!("../Variant-Stockfish/src/stockfish-mv-aarch64.xz"),
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-mv-aarch64.xz")),
         needs: Cpu::empty(),
         executable: true,
     },
@@ -261,7 +261,7 @@ const STOCKFISH_MV: &[Asset] = &[
 const STOCKFISH: &[Asset] = &[
     Asset {
         name: "stockfish-apple-silicon",
-        data: include_bytes!("../Stockfish/src/stockfish-apple-silicon.xz"),
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-apple-silicon.xz")),
         needs: Cpu::empty(),
         executable: true,
     },
@@ -271,7 +271,7 @@ const STOCKFISH: &[Asset] = &[
 const STOCKFISH_MV: &[Asset] = &[
     Asset {
         name: "stockfish-mv-apple-silicon",
-        data: include_bytes!("../Variant-Stockfish/src/stockfish-mv-apple-silicon.xz"),
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-mv-apple-silicon.xz")),
         needs: Cpu::empty(),
         executable: true,
     },
