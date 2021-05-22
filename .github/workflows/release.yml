@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-16.04
     needs: release
     steps:
+      - run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test && sudo apt-get update && sudo apt-get install -y g++-7 && echo "CXX=g++-7" >> $GITHUB_ENV
       - uses: actions/checkout@v2
         with:
           submodules: true
@@ -34,7 +35,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release
+          args: --release -vv
       - run: strip target/release/fishnet
       - uses: actions/upload-release-asset@v1
         env:
@@ -43,33 +44,6 @@ jobs:
           upload_url: ${{ needs.release.outputs.upload_url }}
           asset_path: target/release/fishnet
           asset_name: fishnet-x86_64-unknown-linux-gnu
-          asset_content_type: application/octet-stream
-  linux-aarch64:
-    runs-on: ubuntu-16.04
-    needs: release
-    steps:
-      - run: sudo apt-get update && sudo apt-get install -y binutils-aarch64-linux-gnu
-      - uses: actions/checkout@v2
-        with:
-          submodules: true
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          target: aarch64-unknown-linux-gnu
-      - uses: actions-rs/cargo@v1
-        with:
-          use-cross: true
-          command: build
-          args: --release --target aarch64-unknown-linux-gnu
-      - run: aarch64-linux-gnu-strip target/aarch64-unknown-linux-gnu/release/fishnet
-      - uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.release.outputs.upload_url }}
-          asset_path: target/aarch64-unknown-linux-gnu/release/fishnet
-          asset_name: fishnet-aarch64-unknown-linux-gnu
           asset_content_type: application/octet-stream
   windows-x86-64:
     runs-on: windows-2016
@@ -86,7 +60,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --target x86_64-pc-windows-gnu
+          args: --release --target x86_64-pc-windows-gnu -vv
       - run: strip target/x86_64-pc-windows-gnu/release/fishnet.exe
       - uses: actions/upload-release-asset@v1
         env:
@@ -110,7 +84,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release
+          args: --release -vv
       - run: strip target/release/fishnet
       - uses: actions/upload-release-asset@v1
         env:
@@ -135,7 +109,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --target aarch64-apple-darwin
+          args: --release --target aarch64-apple-darwin -vv
       - run: strip target/aarch64-apple-darwin/release/fishnet
       - uses: actions/upload-release-asset@v1
         env:
