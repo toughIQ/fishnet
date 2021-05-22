@@ -37,7 +37,7 @@
    ```sh
    git clone --recursive https://github.com/niklasf/fishnet.git
    cd fishnet
-   cargo run --release --
+   cargo run --release -vv --
    ```
 
    **Docker**
@@ -81,7 +81,7 @@ that the compiled binary matches the source).
 
 | Available for | 64-bit Intel and AMD        | ARMv8 / Silicon             |
 | ------------- | --------------------------- | --------------------------- |
-| **Linux**     | `x86_64-unknown-linux-gnu`  | `aarch64-unknown-linux-gnu` |
+| **Linux**     | `x86_64-unknown-linux-gnu`  | build from source           |
 | **Windows**   | `x86_64-pc-windows-gnu.exe` |                             |
 | **macOS**     | `x86_64-apple-darwin`       | `aarch64-apple-darwin`      |
 | **FreeBSD**   | build from source           |                             |

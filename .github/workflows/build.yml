@@ -68,6 +68,7 @@ jobs:
   macos-aarch64:
     runs-on: macos-11.0
     steps:
+      - run: echo "CXXFLAGS=-target arm64-apple-macos11" >> $GITHUB_ENV
       - uses: actions/checkout@v2
         with:
           submodules: true

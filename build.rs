@@ -14,13 +14,10 @@ impl Target {
 
         Command::new(if cfg!(target_os = "freebsd") { "gmake" } else { "make" })
             .current_dir(src_dir)
-            .env("CXXFLAGS", format!("-DNNUE_EMBEDDING_OFF{}", if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
-                " -target arm64-apple-macos11"
-            } else {
-                ""
-            }))
+            .env("CXXFLAGS", format!("{} -DNNUE_EMBEDDING_OFF", env::var("CXXFLAGS").unwrap_or_default()))
             .args(&[
                   "-B",
+                  &format!("CXX={}", env::var("CXX").unwrap()),
                   &format!("COMP={}", if cfg!(windows) { "mingw" } else if cfg!(any(target_os = "macos", target_os = "freebsd")) { "clang" } else { "gcc" }),
                   &format!("ARCH={}", self.arch),
                   &format!("EXE={}", exe),
