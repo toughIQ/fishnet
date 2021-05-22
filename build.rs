@@ -111,7 +111,7 @@ fn stockfish_build() {
 fn compress(dir: &str, file: &str) {
     Command::new("xz")
         .current_dir(dir)
-        .args(&["--keep", file])
+        .args(&["--keep", "--force", file])
         .status()
         .unwrap();
 }
