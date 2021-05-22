@@ -66,12 +66,14 @@ impl fmt::Debug for Asset {
 
 bitflags! {
     pub struct Cpu: u32 {
-        const POPCNT    = 1 << 0;
-        const SSE41     = 1 << 4;
-        const AVX2      = 1 << 5;
-        const FAST_BMI2 = 1 << 6;
+        const SSE2      = 1 << 0;
+        const POPCNT    = 1 << 1;
+        const SSE41     = 1 << 2;
+        const AVX2      = 1 << 3;
+        const FAST_BMI2 = 1 << 4;
 
-        const SF_SSE41_POPCNT = Cpu::SF_SSSE3.bits | Cpu::POPCNT.bits | Cpu::SSE41.bits;
+        const SF_SSE2         = Cpu::SSE2.bits;
+        const SF_SSE41_POPCNT = Cpu::SSE41.bits | Cpu::POPCNT.bits;
         const SF_AVX2         = Cpu::SF_SSE41_POPCNT.bits | Cpu::AVX2.bits;
         const SF_BMI2         = Cpu::SF_AVX2.bits | Cpu::FAST_BMI2.bits;
     }
@@ -81,6 +83,7 @@ impl Cpu {
     #[cfg(target_arch = "x86_64")]
     pub fn detect() -> Cpu {
         let mut cpu = Cpu::empty();
+        cpu.set(Cpu::SSE2, is_x86_feature_detected!("sse2"));
         cpu.set(Cpu::POPCNT, is_x86_feature_detected!("popcnt"));
         cpu.set(Cpu::SSE41, is_x86_feature_detected!("sse4.1"));
         cpu.set(Cpu::AVX2, is_x86_feature_detected!("avx2"));
