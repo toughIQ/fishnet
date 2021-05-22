@@ -10,11 +10,10 @@ struct Target {
 impl Target {
     fn build(&self, src_dir: &'static str, name: &'static str) {
         let pgo = self.pgo || env::var("SDE_PATH").is_ok();
-        if !pgo {
-            println!("cargo:warning=Building {} without profile-guided optimization", name);
-        }
-
         let exe = format!("{}-{}{}", name, self.arch, if cfg!(windows) { ".exe" } else { "" });
+        if !pgo {
+            println!("cargo:warning=Building {} without profile-guided optimization", exe);
+        }
 
         let arg_comp = format!("COMP={}", if cfg!(windows) { "mingw" } else if cfg!(any(target_os = "macos", target_os = "freebsd")) { "clang" } else { "gcc" });
         let arg_arch = format!("ARCH={}", self.arch);
