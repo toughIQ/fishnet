@@ -12,25 +12,32 @@ impl Target {
         let pgo = self.pgo || env::var("SDE_PATH").is_ok();
         let exe = format!("{}-{}{}", name, self.arch, if cfg!(windows) { ".exe" } else { "" });
 
-        Command::new(if cfg!(target_os = "freebsd") { "gmake" } else { "make" })
+
+        let arg_comp = format!("COMP={}", if cfg!(windows) { "mingw" } else if cfg!(any(target_os = "macos", target_os = "freebsd")) { "clang" } else { "gcc" });
+        let arg_arch = format!("ARCH={}", self.arch);
+        let arg_exe = format!("EXE={}", exe);
+        let arg_cxx = env::var("CXX").ok().map(|cxx| format!("CXX={}", cxx));
+
+        let mut args = vec!["-B", &arg_comp, &arg_arch, &arg_exe];
+        if let Some(ref arg_cxx) = arg_cxx {
+            args.push(arg_cxx);
+        }
+        args.push(if pgo { "profile-build" } else { "build" });
+
+        assert!(Command::new(if cfg!(target_os = "freebsd") { "gmake" } else { "make" })
             .current_dir(src_dir)
             .env("CXXFLAGS", format!("{} -DNNUE_EMBEDDING_OFF", env::var("CXXFLAGS").unwrap_or_default()))
-            .args(&[
-                  "-B",
-                  &format!("CXX={}", env::var("CXX").unwrap()),
-                  &format!("COMP={}", if cfg!(windows) { "mingw" } else if cfg!(any(target_os = "macos", target_os = "freebsd")) { "clang" } else { "gcc" }),
-                  &format!("ARCH={}", self.arch),
-                  &format!("EXE={}", exe),
-                  if pgo { "profile-build" } else { "build" },
-            ])
+            .args(&args)
             .status()
-            .unwrap();
+            .unwrap()
+            .success());
 
-        Command::new("strip")
+        assert!(Command::new("strip")
             .current_dir(src_dir)
             .args(&[&exe])
             .status()
-            .unwrap();
+            .unwrap()
+            .success());
 
         compress(src_dir, &exe);
     }
@@ -96,11 +103,12 @@ fn stockfish_build() {
 }
 
 fn compress(dir: &str, file: &str) {
-    Command::new("xz")
+    assert!(Command::new("xz")
         .current_dir(dir)
         .args(&["--keep", "--force", file])
         .status()
-        .unwrap();
+        .unwrap()
+        .success());
 }
 
 fn hooks() {
