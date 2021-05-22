@@ -174,5 +174,6 @@ fn main() {
     hooks();
     stockfish_build();
     compress("Stockfish/src", "nn-7756374aaed3.nnue");
+    let _ = fs::remove_file("Variant-Stockfish/src/nn-62ef826d1a6d.nnue");
     auditable_build::collect_dependency_list();
 }
