@@ -150,6 +150,7 @@ fn hooks() {
     println!("cargo:rerun-if-changed=Cargo.lock");
 
     println!("cargo:rerun-if-env-changed=CXX");
+    println!("cargo:rerun-if-env-changed=CXXFLAGS");
     println!("cargo:rerun-if-env-changed=SDE_PATH");
 
     println!("cargo:rerun-if-changed=Stockfish/src/Makefile");
