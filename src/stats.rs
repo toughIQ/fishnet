@@ -18,7 +18,7 @@ impl StatsRecorderFactory {
             .and_then(|path| File::open(path))
             .and_then(|file| StatsRecorderFactory::try_create_recorder_from_stats_file(file, cores))
             .unwrap_or_else(|_| {
-                println!("Creating a new stats file in home directory called {}", STATS_FILENAME);
+                println!("Creating a new stats file ~/{}", STATS_FILENAME);
                 StatsRecorder::new(cores, Some(StatsRecorderFactory::try_update_stats))
             })
     }
@@ -30,17 +30,17 @@ impl StatsRecorderFactory {
                 Ok(path)
             }
             None => Err(())
-        }.map_err(|_| Error::new(ErrorKind::Other, "Couldn't determine stats file path."))
+        }.map_err(|_| Error::new(ErrorKind::Other, "E: Couldn't determine stats file path"))
     }
 
     fn try_create_recorder_from_stats_file(file: File, cores: usize) -> Result<StatsRecorder, Error> {
         match StatsRecorderFactory::create_recorder_from_stats_file(file, cores) {
             Ok(it) => {
-                println!("Found a stats file, resuming computation. In order to reset the statistics, delete stats file.");
+                println!("Found ~/{}. Resuming ...", STATS_FILENAME);
                 Ok(it)
             }
             Err(error) => {
-                eprintln!("Error while parsing stats file, starting computation from scratch.");
+                eprintln!("E: Error parsing ~/{}. Starting from scratch ...", STATS_FILENAME);
                 Err(error)
             }
         }
@@ -55,7 +55,7 @@ impl StatsRecorderFactory {
     fn try_update_stats(recorder: &StatsRecorder) {
         match StatsRecorderFactory::update_stats(recorder) {
             Ok(_) => (),
-            Err(_) => eprintln!("While trying to update stats file, failed to either create, find or write to a it."),
+            Err(_) => eprintln!("E: Failed to find, create, read or write ~/{}", STATS_FILENAME),
         }
     }
 
