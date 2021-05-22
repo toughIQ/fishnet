@@ -10,12 +10,18 @@ struct Target {
 impl Target {
     fn build(&self, src_dir: &'static str, name: &'static str) {
         let pgo = self.pgo || env::var("SDE_PATH").is_ok();
-        let exe = format!("{}-{}{}", name, self.arch, if cfg!(windows) { ".exe" } else { "" });
+        let exe = format!("{}-{}{}", name, self.arch, if env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "windows" { ".exe" } else { "" });
         if !pgo {
             println!("cargo:warning=Building {} without profile-guided optimization", exe);
         }
 
-        let arg_comp = format!("COMP={}", if cfg!(windows) { "mingw" } else if cfg!(any(target_os = "macos", target_os = "freebsd")) { "clang" } else { "gcc" });
+        let arg_comp = format!("COMP={}", if env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "windows" {
+            "mingw"
+        } else if env::var("CARGO_CFG_TARGET_OS").unwrap() == "linux" {
+            "gcc"
+        } else {
+            "clang"
+        });
         let arg_arch = format!("ARCH={}", self.arch);
         let arg_exe = format!("EXE={}", exe);
         let arg_cxx = env::var("CXX").ok().map(|cxx| format!("CXX={}", cxx));
@@ -26,7 +32,7 @@ impl Target {
         }
         args.push(if pgo { "profile-build" } else { "build" });
 
-        assert!(Command::new(if cfg!(target_os = "freebsd") { "gmake" } else { "make" })
+        assert!(Command::new(if env::var("CARGO_CFG_TARGET_OS").unwrap() == "freebsd" { "gmake" } else { "make" })
             .current_dir(src_dir)
             .env("CXXFLAGS", format!("{} -DNNUE_EMBEDDING_OFF", env::var("CXXFLAGS").unwrap_or_default()))
             .args(&args)
@@ -49,6 +55,7 @@ impl Target {
     }
 
     fn build_mv(&self) {
+        // TODO: Switch to Fairy-Stockfish.
         self.build("Variant-Stockfish/src", "stockfish-mv");
     }
 
@@ -58,50 +65,47 @@ impl Target {
     }
 }
 
-#[cfg(target_arch = "x86_64")]
 fn stockfish_build() {
-    Target {
-        arch: "x86-64",
-        pgo: true,
-    }.build_both();
+    if env::var("CARGO_CFG_TARGET_ARCH").unwrap() == "x86_64" {
+        Target {
+            arch: "x86-64",
+            pgo: true,
+        }.build_both();
 
-    Target {
-        arch: "x86-64-sse41-popcnt",
-        pgo: is_x86_feature_detected!("sse4.1") && is_x86_feature_detected!("popcnt"),
-    }.build_both();
+        Target {
+            arch: "x86-64-sse41-popcnt",
+            pgo: is_x86_feature_detected!("sse4.1") && is_x86_feature_detected!("popcnt"),
+        }.build_both();
 
-    Target {
-        arch: "x86-64-avx2",
-        pgo: is_x86_feature_detected!("avx2"),
-    }.build_both();
+        Target {
+            arch: "x86-64-avx2",
+            pgo: is_x86_feature_detected!("avx2"),
+        }.build_both();
 
-    Target {
-        arch: "x86-64-bmi2",
-        pgo: is_x86_feature_detected!("bmi2"),
-    }.build_both();
+        Target {
+            arch: "x86-64-bmi2",
+            pgo: is_x86_feature_detected!("bmi2"),
+        }.build_both();
 
-    // TODO: Could support:
-    // - x86-64-avx512
-    // - x86-64-vnni256
-    // - x86-64-vnni512
-
-    // TODO: Switch to Fairy-Stockfish.
-}
-
-#[cfg(all(target_os = "linux", target_arch = "aarch64"))]
-fn stockfish_build() {
-    Target {
-        arch: "aarch64",
-        pgo: true,
-    }.build_both();
-}
-
-#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
-fn stockfish_build() {
-    Target {
-        arch: "apple-silicon",
-        pgo: true,
-    }.build_both();
+        // TODO: Could support:
+        // - x86-64-avx512
+        // - x86-64-vnni256
+        // - x86-64-vnni512
+    } else if env::var("CARGO_CFG_TARGET_ARCH").unwrap() == "aarch64" {
+        if env::var("CARGO_CFG_TARGET_OS").unwrap() == "macos" {
+            Target {
+                arch: "apple-silicon",
+                pgo: true,
+            }.build_both();
+        } else {
+            Target {
+                arch: "aarch64",
+                pgo: true,
+            }.build_both();
+        }
+    } else {
+        unimplemented!("Stockfish build for {} not supported", env::var("CARGO_CFG_TARGET_ARCH").unwrap());
+    }
 }
 
 fn compress(dir: &str, file: &str) {
