@@ -155,26 +155,26 @@ const STOCKFISH: &[Asset] = &[
 #[cfg(all(unix, target_arch = "x86_64"))]
 const STOCKFISH_MV: &[Asset] = &[
     Asset {
-        name: "stockfish-mv-x86-64-bmi2",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-mv-x86-64-bmi2.xz")),
+        name: "fairy-stockfish-x86-64-bmi2",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64-bmi2.xz")),
         needs: Cpu::SF_BMI2,
         executable: true,
     },
     Asset {
-        name: "stockfish-mv-x86-64-avx2",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-mv-x86-64-avx2.xz")),
+        name: "fairy-stockfish-x86-64-avx2",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64-avx2.xz")),
         needs: Cpu::SF_AVX2,
         executable: true,
     },
     Asset {
-        name: "stockfish-mv-x86-64-sse41-popcnt",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-mv-x86-64-sse41-popcnt.xz")),
+        name: "fairy-stockfish-x86-64-sse41-popcnt",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64-sse41-popcnt.xz")),
         needs: Cpu::SF_SSE41_POPCNT,
         executable: true,
     },
     Asset {
-        name: "stockfish-mv-x86-64",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-mv-x86-64.xz")),
+        name: "fairy-stockfish-x86-64",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64.xz")),
         needs: Cpu::SF_SSE2,
         executable: true,
     },
@@ -211,26 +211,26 @@ const STOCKFISH: &[Asset] = &[
 #[cfg(all(windows, target_arch = "x86_64"))]
 const STOCKFISH_MV: &[Asset] = &[
     Asset {
-        name: "stockfish-mv-x86-64-bmi2.exe",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-mv-x86-64-bmi2.exe.xz")),
+        name: "fairy-stockfish-x86-64-bmi2.exe",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64-bmi2.exe.xz")),
         needs: Cpu::SF_BMI2,
         executable: true,
     },
     Asset {
-        name: "stockfish-mv-x86-64-avx2.exe",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-mv-x86-64-avx2.exe.xz")),
+        name: "fairy-stockfish-x86-64-avx2.exe",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64-avx2.exe.xz")),
         needs: Cpu::SF_AVX2,
         executable: true,
     },
     Asset {
-        name: "stockfish-mv-x86-64-sse41-popcnt.exe",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-mv-x86-64-sse41-popcnt.exe.xz")),
+        name: "fairy-stockfish-x86-64-sse41-popcnt.exe",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64-sse41-popcnt.exe.xz")),
         needs: Cpu::SF_SSE41_POPCNT,
         executable: true,
     },
     Asset {
-        name: "stockfish-mv-x86-64.exe",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-mv-x86-64.exe.xz")),
+        name: "fairy-stockfish-x86-64.exe",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64.exe.xz")),
         needs: Cpu::SF_SSE2,
         executable: true,
     },
@@ -249,8 +249,8 @@ const STOCKFISH: &[Asset] = &[
 #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
 const STOCKFISH_MV: &[Asset] = &[
     Asset {
-        name: "stockfish-mv-aarch64",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-mv-aarch64.xz")),
+        name: "fairy-stockfish-aarch64",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-aarch64.xz")),
         needs: Cpu::empty(),
         executable: true,
     },
@@ -270,8 +270,8 @@ const STOCKFISH: &[Asset] = &[
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 const STOCKFISH_MV: &[Asset] = &[
     Asset {
-        name: "stockfish-mv-apple-silicon",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-mv-apple-silicon.xz")),
+        name: "fairy-stockfish-apple-silicon",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-apple-silicon.xz")),
         needs: Cpu::empty(),
         executable: true,
     },

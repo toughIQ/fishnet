@@ -66,9 +66,10 @@ impl Target {
             .unwrap()
             .success());
 
-        assert!(Command::new("strip")
+        assert!(Command::new(make)
             .current_dir(src_dir)
-            .args(&[&exe])
+            .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
+            .args(&[&arg_exe, "strip"])
             .status()
             .unwrap()
             .success());
@@ -80,14 +81,13 @@ impl Target {
         self.build("Stockfish/src", "stockfish");
     }
 
-    fn build_mv(&self) {
-        // TODO: Switch to Fairy-Stockfish.
-        self.build("Variant-Stockfish/src", "stockfish-mv");
+    fn build_fairy(&self) {
+        self.build("Fairy-Stockfish/src", "fairy-stockfish");
     }
 
     fn build_both(&self) {
         self.build_official();
-        self.build_mv();
+        self.build_fairy();
     }
 }
 
@@ -161,11 +161,11 @@ fn hooks() {
         println!("cargo:rerun-if-changed={}", entry.unwrap().display());
     }
 
-    println!("cargo:rerun-if-changed=Variant-Stockfish/src/Makefile");
-    for entry in glob("Variant-Stockfish/src/**/*.cpp").unwrap() {
+    println!("cargo:rerun-if-changed=Fairy-Stockfish/src/Makefile");
+    for entry in glob("Fairy-Stockfish/src/**/*.cpp").unwrap() {
         println!("cargo:rerun-if-changed={}", entry.unwrap().display());
     }
-    for entry in glob("Variant-Stockfish/src/**/*.h").unwrap() {
+    for entry in glob("Fairy-Stockfish/src/**/*.h").unwrap() {
         println!("cargo:rerun-if-changed={}", entry.unwrap().display());
     }
 }
@@ -174,6 +174,6 @@ fn main() {
     hooks();
     stockfish_build();
     compress("Stockfish/src", "nn-7756374aaed3.nnue");
-    let _ = fs::remove_file("Variant-Stockfish/src/nn-62ef826d1a6d.nnue");
+    let _ = fs::remove_file("Fairy-Stockfish/src/nn-62ef826d1a6d.nnue");
     auditable_build::collect_dependency_list();
 }
