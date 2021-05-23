@@ -61,20 +61,20 @@ impl Target {
         assert!(Command::new(make)
             .current_dir(src_dir)
             .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
-            .args(&["clean"])
-            .status()
-            .unwrap()
-            .success());
-
-        assert!(Command::new(make)
-            .current_dir(src_dir)
-            .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
             .args(&[&arg_exe, "strip"])
             .status()
             .unwrap()
             .success());
 
         compress(src_dir, &exe);
+
+        assert!(Command::new(make)
+            .current_dir(src_dir)
+            .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
+            .args(&["clean"])
+            .status()
+            .unwrap()
+            .success());
     }
 
     fn build_official(&self) {
