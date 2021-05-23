@@ -5,8 +5,10 @@ on: [push, pull_request]
 jobs:
   linux-x86-64:
     runs-on: ubuntu-16.04
+    env:
+      CXX: g++-7
     steps:
-      - run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test && sudo apt-get update && sudo apt-get install -y g++-7 && echo "CXX=g++-7" >> $GITHUB_ENV
+      - run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test && sudo apt-get update && sudo apt-get install -y g++-7
       - uses: actions/checkout@v2
         with:
           submodules: true
@@ -67,8 +69,9 @@ jobs:
           path: fishnet-x86_64-apple-darwin
   macos-aarch64:
     runs-on: macos-11.0
+    env:
+      CXXFLAGS: -target arm64-apple-macos11
     steps:
-      - run: echo "CXXFLAGS=-target arm64-apple-macos11" >> $GITHUB_ENV
       - uses: actions/checkout@v2
         with:
           submodules: true
