@@ -71,7 +71,7 @@ Watch [@arex](https://lichess.org/@/arex) explain fishnet.
 ### Which engine does fishnet use?
 
 fishnet uses [Stockfish](https://github.com/official-stockfish/Stockfish)
-(hence the name) and [Fairy Stockfish](https://github.com/ianfab/Fairy-Stockfish)
+(hence the name) and [Fairy-Stockfish](https://github.com/ianfab/Fairy-Stockfish)
 for chess variants.
 
 ### What are the requirements?
