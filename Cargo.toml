@@ -14,10 +14,10 @@ exclude = [
     "Stockfish/**/*.s",
     "Stockfish/**/.depend",
     "Stockfish/**/*.nnue",
-    "Variant-Stockfish/**/*.o",
-    "Variant-Stockfish/**/*.s",
-    "Variant-Stockfish/**/.depend",
-    "Variant-Stockfish/**/*.nnue",
+    "Fairy-Stockfish/**/*.o",
+    "Fairy-Stockfish/**/*.s",
+    "Fairy-Stockfish/**/.depend",
+    "Fairy-Stockfish/**/*.nnue",
 ]
 
 [dependencies]
