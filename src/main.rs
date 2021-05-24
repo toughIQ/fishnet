@@ -279,7 +279,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                 _ = time::sleep(timeout) => {
                     logger.warn(&match flavor {
                         EngineFlavor::Official => format!("Official Stockfish timed out in worker {}. If this happens frequently it is better to stop and defer to clients with better hardware. Context: {}", i, context),
-                        EngineFlavor::MultiVariant => format!("Multi-Variant Stockfish timed out in worker {}. Context: {}", i, context),
+                        EngineFlavor::MultiVariant => format!("Fairy-Stockfish timed out in worker {}. Context: {}", i, context),
                     });
                     drop(sf);
                     join_handle.await.expect("join");
