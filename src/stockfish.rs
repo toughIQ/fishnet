@@ -248,6 +248,7 @@ impl StockfishActor {
 
         loop {
             let line = stdout.read_line().await?;
+            dbg!(&line);
             let mut parts = line.split(' ');
             match parts.next() {
                 Some("bestmove") => {
