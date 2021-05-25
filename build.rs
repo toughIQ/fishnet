@@ -136,7 +136,7 @@ fn stockfish_build() {
 
 fn compress(dir: &str, file: &str) {
     let compressed = File::create(Path::new(&env::var("OUT_DIR").unwrap()).join(&format!("{}.xz", file))).unwrap();
-    let mut encoder = xz2::write::XzEncoder::new(compressed, 9);
+    let mut encoder = xz2::write::XzEncoder::new(compressed, 6);
 
     let uncompressed_path = Path::new(dir).join(file);
     let mut uncompressed = File::open(&uncompressed_path).unwrap();
