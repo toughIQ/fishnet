@@ -105,13 +105,13 @@ impl StatsRecorder {
     }
 
     pub fn min_user_backlog(&self) -> Duration {
-        // The average batch has 60 positions, analysed with 2_250_000 nodes
+        // The average batch has 60 positions, analysed with 2_000_000 nodes
         // each. Top end clients take no longer than 35 seconds.
         let best_batch_seconds = 35;
 
         // Estimate how long this client would take for the next batch,
         // capped at timeout.
-        let estimated_batch_seconds = u64::from(min(6 * 60, 60 * 2_250_000 / max(1, self.nnue_nps.nps)));
+        let estimated_batch_seconds = u64::from(min(6 * 60, 60 * 2_000_000 / max(1, self.nnue_nps.nps)));
 
         // Its worth joining if queue wait time + estimated time < top client
         // time on empty queue.
@@ -141,7 +141,7 @@ pub struct NpsRecorder {
 impl NpsRecorder {
     fn new(cores: usize) -> NpsRecorder {
         NpsRecorder {
-            nps: 500_000 * cores as u32, // start with a low estimate
+            nps: 400_000 * cores as u32, // start with a low estimate
             uncertainty: 1.0,
         }
     }

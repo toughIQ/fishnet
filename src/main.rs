@@ -263,7 +263,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
             // Heuristic for timeout, based on fixed communication
             // cost and nodes.
             let timeout = match job.work {
-                Work::Analysis { nodes, .. } => Duration::from_secs(4 + nodes.get(flavor.eval_flavor()) / 250_000),
+                Work::Analysis { nodes, .. } => Duration::from_secs(5 + nodes.get(flavor.eval_flavor()) / 200_000),
                 Work::Move { .. } => Duration::from_secs(5),
             };
 
@@ -275,15 +275,6 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                     drop(sf);
                     join_handle.await.expect("join");
                     break;
-                }
-                _ = time::sleep(timeout) => {
-                    logger.warn(&match flavor {
-                        EngineFlavor::Official => format!("Official Stockfish timed out in worker {}. If this happens frequently it is better to stop and defer to clients with better hardware. Context: {}", i, context),
-                        EngineFlavor::MultiVariant => format!("Fairy-Stockfish timed out in worker {}. Context: {}", i, context),
-                    });
-                    drop(sf);
-                    join_handle.await.expect("join");
-                    Some(Err(PositionFailed { batch_id }))
                 }
                 res = sf.go(job) => {
                     match res {
@@ -299,6 +290,15 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                             Some(Err(failed))
                         },
                     }
+                }
+                _ = time::sleep(timeout) => {
+                    logger.warn(&match flavor {
+                        EngineFlavor::Official => format!("Official Stockfish timed out in worker {}. If this happens frequently it is better to stop and defer to clients with better hardware. Context: {}", i, context),
+                        EngineFlavor::MultiVariant => format!("Fairy-Stockfish timed out in worker {}. Context: {}", i, context),
+                    });
+                    drop(sf);
+                    join_handle.await.expect("join");
+                    Some(Err(PositionFailed { batch_id }))
                 }
             }
         } else {
