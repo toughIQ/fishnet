@@ -16,7 +16,7 @@ use crate::configure::{BacklogOpt, Endpoint};
 use crate::ipc::{Position, PositionFailed, PositionId, PositionResponse, Pull};
 use crate::logger::{Logger, ProgressAt, QueueStatusBar};
 use crate::util::{NevermindExt as _, RandomizedBackoff};
-use crate::stats::{StatsRecorder, StatsRecorderFactory};
+use crate::stats::{StatsRecorder, Stats, NpsRecorder};
 
 pub fn channel(opt: BacklogOpt, cores: usize, api: ApiStub, max_backoff: Duration, logger: Logger) -> (QueueStub, QueueActor) {
     let (tx, rx) = mpsc::unbounded_channel();
@@ -89,9 +89,9 @@ impl QueueStub {
         }
     }
 
-    pub async fn stats(&self) -> StatsRecorder {
+    pub async fn stats(&self) -> (Stats, NpsRecorder) {
         let state = self.state.lock().await;
-        state.stats.clone()
+        (state.stats_recorder.stats.clone(), state.stats_recorder.nnue_nps.clone())
     }
 }
 
@@ -101,7 +101,7 @@ struct QueueState {
     incoming: VecDeque<Position>,
     pending: HashMap<BatchId, PendingBatch>,
     move_submissions: VecDeque<CompletedBatch>,
-    stats: StatsRecorder,
+    stats_recorder: StatsRecorder,
     logger: Logger,
 }
 
@@ -113,7 +113,7 @@ impl QueueState {
             incoming: VecDeque::new(),
             pending: HashMap::new(),
             move_submissions: VecDeque::new(),
-            stats: StatsRecorderFactory::create_stats_recorder(cores),
+            stats_recorder: StatsRecorder::open(cores),
             logger,
         }
     }
@@ -203,7 +203,7 @@ impl QueueState {
                     extra.push(match completed.nps() {
                         Some(nps) => {
                             let nnue_nps = if completed.flavor.eval_flavor() == EvalFlavor::Nnue { Some(nps) } else { None };
-                            self.stats.record_batch(completed.total_positions(), completed.total_nodes(), nnue_nps);
+                            self.stats_recorder.record_batch(completed.total_positions(), completed.total_nodes(), nnue_nps);
                             format!("{} knps", nps / 1000)
                         }
                         None => "? nps".to_owned(),
@@ -268,7 +268,7 @@ impl QueueActor {
         let sec = Duration::from_secs(1);
         let min_user_backlog = {
             let state = self.state.lock().await;
-            state.stats.min_user_backlog()
+            state.stats_recorder.min_user_backlog()
         };
         let user_backlog = max(min_user_backlog, self.opt.user.map(Duration::from).unwrap_or_default());
         let system_backlog = self.opt.system.map(Duration::from).unwrap_or_default();
