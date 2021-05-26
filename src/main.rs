@@ -307,7 +307,13 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                     Some(Err(PositionFailed { batch_id }))
                 }
             };
+
+            // Update budget.
             budget = budget.checked_sub(timer.elapsed()).unwrap_or_default();
+            if budget + Duration::from_secs(6) < max_budget {
+                logger.debug(&format!("Low engine timeout budget: {:?}", budget));
+            }
+
             res
         } else {
             None
