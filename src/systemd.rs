@@ -39,7 +39,7 @@ pub fn systemd_system(opt: Opt) {
         eprintln!("# {} systemd | sudo tee /etc/systemd/system/fishnet.service", command);
         eprintln!("# systemctl enable fishnet.service");
         eprintln!("# systemctl start fishnet.service");
-        eprintln!("# Live view of log: journalctl -u fishnet --follow");
+        eprintln!("# Live view of log: journalctl --unit fishnet --follow");
         eprintln!("# Need a user unit? {} systemd-user", command);
     }
 }
@@ -75,7 +75,7 @@ pub fn systemd_user(opt: Opt) {
         eprintln!("# {} systemd-user | tee ~/.config/systemd/user/fishnet.service", command);
         eprintln!("# systemctl enable --user fishnet.service");
         eprintln!("# systemctl start --user fishnet.service");
-        eprintln!("# Live view of log: journalctl --user -u fishnet --follow");
+        eprintln!("# Live view of log: journalctl --user --user-unit fishnet --follow");
     }
 }
 
