@@ -266,7 +266,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
             };
 
             // Heuristic for timeout. Compare to
-            // https://github.com/ornicar/lila/blob/master/modules/fishnet/src/main/Cleaner.scala.
+            // https://github.com/ornicar/lila/blob/master/modules/fishnet/src/main/Cleaner.scala
             budget = min(max_budget, budget + match job.work {
                 Work::Analysis { nodes, .. } => Duration::from_millis(nodes.get(flavor.eval_flavor()) / (2_000_000 / 6000)),
                 Work::Move { .. } => Duration::from_secs(2),
@@ -287,13 +287,13 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                         Ok(res) => {
                             *engine.get_mut(flavor) = Some((sf, join_handle));
                             engine_backoff.reset();
-                            Some(Ok(res))
+                            Ok(res)
                         }
                         Err(failed) => {
                             drop(sf);
                             logger.warn(&format!("Worker {} waiting for engine to shut down after error. Context: {}", i, context));
                             join_handle.await.expect("join");
-                            Some(Err(failed))
+                            Err(failed)
                         },
                     }
                 }
@@ -304,7 +304,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                     });
                     drop(sf);
                     join_handle.await.expect("join");
-                    Some(Err(PositionFailed { batch_id }))
+                    Err(PositionFailed { batch_id })
                 }
             };
 
@@ -314,7 +314,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                 logger.debug(&format!("Low engine timeout budget: {:?}", budget));
             }
 
-            res
+            Some(res)
         } else {
             None
         };
