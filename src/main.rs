@@ -9,6 +9,7 @@ mod stockfish;
 mod logger;
 mod stats;
 
+use std::cmp::min;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::thread;
@@ -230,6 +231,9 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
     };
     let mut engine_backoff = RandomizedBackoff::default();
 
+    let max_budget = Duration::from_secs(60);
+    let mut budget = max_budget;
+
     loop {
         let response = if let Some(job) = job.take() {
             // Ensure engine process is ready.
@@ -250,27 +254,28 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                     _ = time::sleep(engine_backoff.next()) => (),
                 }
 
-                // Start engine and spawn actor.
-                let (mut sf, sf_actor) = stockfish::channel(assets.stockfish.get(flavor).clone(), StockfishInit {
+                // Reset budget, start engine and spawn actor.
+                budget = max_budget;
+                let (sf, sf_actor) = stockfish::channel(assets.stockfish.get(flavor).clone(), StockfishInit {
                     nnue: assets.nnue.clone(),
                 }, logger.clone());
                 let join_handle = tokio::spawn(async move {
                     sf_actor.run().await;
                 });
-                sf.init().await;
                 (sf, join_handle)
             };
 
-            // Heuristic for timeout, based on fixed communication
-            // cost and nodes.
-            let timeout = match job.work {
-                Work::Analysis { nodes, .. } => Duration::from_secs(4 + nodes.get(flavor.eval_flavor()) / 200_000),
-                Work::Move { .. } => Duration::from_secs(5),
-            };
+            // Heuristic for timeout. Compare to
+            // https://github.com/ornicar/lila/blob/master/modules/fishnet/src/main/Cleaner.scala.
+            budget = min(max_budget, budget + match job.work {
+                Work::Analysis { nodes, .. } => Duration::from_millis(nodes.get(flavor.eval_flavor()) / (2_000_000 / 6000)),
+                Work::Move { .. } => Duration::from_millis(6000),
+            });
 
             // Analyse or play.
+            let timer = Instant::now();
             let batch_id = job.work.id();
-            tokio::select! {
+            let res = tokio::select! {
                 _ = tx.closed() => {
                     logger.debug(&format!("Worker {} shutting down engine early", i));
                     drop(sf);
@@ -292,7 +297,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                         },
                     }
                 }
-                _ = time::sleep(timeout) => {
+                _ = time::sleep(dbg!(budget)) => {
                     logger.warn(&match flavor {
                         EngineFlavor::Official => format!("Official Stockfish timed out in worker {}. If this happens frequently it is better to stop and defer to clients with better hardware. Context: {}", i, context),
                         EngineFlavor::MultiVariant => format!("Fairy-Stockfish timed out in worker {}. Context: {}", i, context),
@@ -301,7 +306,9 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                     join_handle.await.expect("join");
                     Some(Err(PositionFailed { batch_id }))
                 }
-            }
+            };
+            budget = budget.checked_sub(timer.elapsed()).unwrap_or_default();
+            res
         } else {
             None
         };

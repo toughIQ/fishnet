@@ -24,14 +24,6 @@ pub struct StockfishStub {
 }
 
 impl StockfishStub {
-    pub async fn init(&mut self) {
-        let (callback, response) = oneshot::channel();
-        self.tx.send(StockfishMessage::Init {
-            callback,
-        }).await.nevermind("init failed");
-        response.await.nevermind("init failed");
-    }
-
     pub async fn go(&mut self, position: Position) -> Result<PositionResponse, PositionFailed> {
         let (callback, response) = oneshot::channel();
         let batch_id = position.work.id();
@@ -52,9 +44,6 @@ pub struct StockfishActor {
 
 #[derive(Debug)]
 enum StockfishMessage {
-    Init {
-        callback: oneshot::Sender<()>,
-    },
     Go {
         position: Position,
         callback: oneshot::Sender<PositionResponse>,
@@ -169,15 +158,6 @@ impl StockfishActor {
 
     async fn handle_message(&mut self, stdout: &mut Stdout, stdin: &mut BufWriter<ChildStdin>, msg: StockfishMessage) -> Result<(), EngineError> {
         match msg {
-            StockfishMessage::Init { mut callback } => {
-                tokio::select! {
-                    _ = callback.closed() => Err(EngineError::Shutdown),
-                    res = self.init(stdout, stdin) => {
-                        callback.send(res?).nevermind("init receiver dropped");
-                        Ok(())
-                    }
-                }
-            }
             StockfishMessage::Go { mut callback, position } => {
                 tokio::select! {
                     _ = callback.closed() => Err(EngineError::Shutdown),
@@ -191,7 +171,6 @@ impl StockfishActor {
     }
 
     async fn init(&mut self, stdout: &mut Stdout, stdin: &mut BufWriter<ChildStdin>) -> io::Result<()> {
-        // Set global options (once).
         if let Some(init) = self.init.take() {
             stdin.write_all(format!("setoption name EvalFile value {}\n", init.nnue).as_bytes()).await?;
             stdin.write_all(b"setoption name Analysis Contempt value Off\n").await?;
@@ -212,8 +191,8 @@ impl StockfishActor {
     }
 
     async fn go(&mut self, stdout: &mut Stdout, stdin: &mut BufWriter<ChildStdin>, position: Position) -> io::Result<PositionResponse> {
-        // Ensure global options were set.
-        assert!(self.init.is_none());
+        // Set global options (once).
+        self.init(stdout, stdin).await?;
 
         // Clear hash.
         stdin.write_all(b"ucinewgame\n").await?;
