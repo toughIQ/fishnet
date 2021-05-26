@@ -251,12 +251,13 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                 }
 
                 // Start engine and spawn actor.
-                let (sf, sf_actor) = stockfish::channel(assets.stockfish.get(flavor).clone(), StockfishInit {
+                let (mut sf, sf_actor) = stockfish::channel(assets.stockfish.get(flavor).clone(), StockfishInit {
                     nnue: assets.nnue.clone(),
                 }, logger.clone());
                 let join_handle = tokio::spawn(async move {
                     sf_actor.run().await;
                 });
+                sf.init().await;
                 (sf, join_handle)
             };
 
