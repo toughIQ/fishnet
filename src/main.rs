@@ -263,8 +263,8 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
             // Heuristic for timeout, based on fixed communication
             // cost and nodes.
             let timeout = match job.work {
-                Work::Analysis { nodes, .. } => Duration::from_secs(8 + nodes.get(flavor.eval_flavor()) / 200_000),
-                Work::Move { .. } => Duration::from_secs(8),
+                Work::Analysis { nodes, .. } => Duration::from_secs(4 + nodes.get(flavor.eval_flavor()) / 200_000),
+                Work::Move { .. } => Duration::from_secs(5),
             };
 
             // Analyse or play.
