@@ -30,8 +30,7 @@ use crate::util::RandomizedBackoff;
 
 static COMPRESSED_DEPENDENCY_LIST: &[u8] = auditable::inject_dependency_list!();
 
-#[cfg_attr(unix, tokio::main(flavor = "current_thread"))]
-#[cfg_attr(not(unix), tokio::main)]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     unsafe {
         // Work around https://github.com/Shnatsel/rust-audit/issues/9.
