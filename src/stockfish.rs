@@ -203,7 +203,7 @@ impl StockfishActor {
                 if line.trim_end() == "readyok" {
                     self.logger.debug("Engine is ready");
                     break;
-                } else if !line.starts_with("Stockfish ") { // ignore preamble
+                } else if !line.starts_with("Stockfish ") && !line.starts_with("Fairy-Stockfish ") { // ignore preamble
                     self.logger.warn(&format!("Unexpected engine initialization output: {}", line.trim_end()));
                 }
             }
