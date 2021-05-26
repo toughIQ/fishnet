@@ -269,7 +269,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
             // https://github.com/ornicar/lila/blob/master/modules/fishnet/src/main/Cleaner.scala.
             budget = min(max_budget, budget + match job.work {
                 Work::Analysis { nodes, .. } => Duration::from_millis(nodes.get(flavor.eval_flavor()) / (2_000_000 / 6000)),
-                Work::Move { .. } => Duration::from_millis(6000),
+                Work::Move { .. } => Duration::from_secs(2),
             });
 
             // Analyse or play.
