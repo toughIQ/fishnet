@@ -51,7 +51,7 @@ impl Target {
 
         assert!(Command::new(make)
             .current_dir(src_dir)
-            .env("TODO_MAKEFLAGS", dbg!(env::var("CARGO_MAKEFLAGS").unwrap()))
+            .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
             .env("CXXFLAGS", format!("{} -DNNUE_EMBEDDING_OFF", env::var("CXXFLAGS").unwrap_or_default()))
             .args(&args)
             .status()
@@ -60,7 +60,7 @@ impl Target {
 
         assert!(Command::new(make)
             .current_dir(src_dir)
-            .env("TODO_MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
+            .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
             .args(&[&arg_exe, "strip"])
             .status()
             .unwrap()
@@ -70,7 +70,7 @@ impl Target {
 
         assert!(Command::new(make)
             .current_dir(src_dir)
-            .env("TODO_MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
+            .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
             .args(&["clean"])
             .status()
             .unwrap()
