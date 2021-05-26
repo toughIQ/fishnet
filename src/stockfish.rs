@@ -199,8 +199,9 @@ impl StockfishActor {
             stdin.flush().await?;
 
             loop {
-                let line = dbg!(stdout.read_line().await?);
+                let line = stdout.read_line().await?;
                 if line.trim_end() == "readyok" {
+                    self.logger.debug("Engine is ready");
                     break;
                 } else if !line.starts_with("Stockfish ") { // ignore preamble
                     self.logger.warn(&format!("Unexpected engine initialization output: {}", line.trim_end()));
