@@ -24,15 +24,18 @@ struct Target {
 impl Target {
     fn build(&self, src_dir: &'static str, name: &'static str) {
         let release = env::var("PROFILE").unwrap() == "release";
+        let windows = env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "windows";
+        let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
         let pgo = release && not_cross_compiled() && (self.pgo || env::var("SDE_PATH").is_ok());
-        let exe = format!("{}-{}{}", name, self.arch, if env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "windows" { ".exe" } else { "" });
+
+        let exe = format!("{}-{}{}", name, self.arch, if windows { ".exe" } else { "" });
         if release && !pgo {
             println!("cargo:warning=Building {} without profile-guided optimization", exe);
         }
 
-        let arg_comp = format!("COMP={}", if env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "windows" {
+        let arg_comp = format!("COMP={}", if windows {
             "mingw"
-        } else if env::var("CARGO_CFG_TARGET_OS").unwrap() == "linux" {
+        } else if target_os == "linux" {
             "gcc"
         } else {
             "clang"
@@ -47,7 +50,7 @@ impl Target {
         }
         args.push(if pgo { "profile-build" } else { "build" });
 
-        let make = if env::var("CARGO_CFG_TARGET_OS").unwrap() == "freebsd" { "gmake" } else { "make" };
+        let make = if target_os == "freebsd" { "gmake" } else { "make" };
 
         assert!(Command::new(make)
             .current_dir(src_dir)
@@ -71,7 +74,7 @@ impl Target {
         assert!(Command::new(make)
             .current_dir(src_dir)
             .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
-            .args(&["clean"])
+            .arg("clean")
             .status()
             .unwrap()
             .success());
@@ -92,45 +95,49 @@ impl Target {
 }
 
 fn stockfish_build() {
-    if env::var("CARGO_CFG_TARGET_ARCH").unwrap() == "x86_64" {
-        Target {
-            arch: "x86-64",
-            pgo: true,
-        }.build_both();
-
-        Target {
-            arch: "x86-64-sse41-popcnt",
-            pgo: is_x86_feature_detected!("sse4.1") && is_x86_feature_detected!("popcnt"),
-        }.build_both();
-
-        Target {
-            arch: "x86-64-avx2",
-            pgo: is_x86_feature_detected!("avx2"),
-        }.build_both();
-
-        Target {
-            arch: "x86-64-bmi2",
-            pgo: is_x86_feature_detected!("bmi2"),
-        }.build_both();
-
-        // TODO: Could support:
-        // - x86-64-avx512
-        // - x86-64-vnni256
-        // - x86-64-vnni512
-    } else if env::var("CARGO_CFG_TARGET_ARCH").unwrap() == "aarch64" {
-        if env::var("CARGO_CFG_TARGET_OS").unwrap() == "macos" {
+    match env::var("CARGO_CFG_TARGET_ARCH").unwrap().as_str() {
+        "x86_64" => {
             Target {
-                arch: "apple-silicon",
+                arch: "x86-64-bmi2",
+                pgo: is_x86_feature_detected!("bmi2"),
+            }.build_both();
+
+            Target {
+                arch: "x86-64-avx2",
+                pgo: is_x86_feature_detected!("avx2"),
+            }.build_both();
+
+            Target {
+                arch: "x86-64-sse41-popcnt",
+                pgo: is_x86_feature_detected!("sse4.1") && is_x86_feature_detected!("popcnt"),
+            }.build_both();
+
+            Target {
+                arch: "x86-64",
                 pgo: true,
             }.build_both();
-        } else {
-            Target {
-                arch: "aarch64",
-                pgo: true,
-            }.build_both();
+
+            // TODO: Could support:
+            // - x86-64-avx512
+            // - x86-64-vnni256
+            // - x86-64-vnni512
         }
-    } else {
-        unimplemented!("Stockfish build for {} not supported", env::var("CARGO_CFG_TARGET_ARCH").unwrap());
+        "aarch64" => {
+            if env::var("CARGO_CFG_TARGET_OS").unwrap() == "macos" {
+                Target {
+                    arch: "apple-silicon",
+                    pgo: true,
+                }.build_both();
+            } else {
+                Target {
+                    arch: "aarch64",
+                    pgo: true,
+                }.build_both();
+            }
+        }
+        target_arch @ _ => {
+            unimplemented!("Stockfish build for {} not supported", target_arch);
+        }
     }
 }
 
@@ -140,9 +147,9 @@ fn compress(dir: &str, file: &str) {
 
     let uncompressed_path = Path::new(dir).join(file);
     let mut uncompressed = File::open(&uncompressed_path).unwrap();
+
     io::copy(&mut uncompressed, &mut encoder).unwrap();
     encoder.finish().unwrap();
-
     fs::remove_file(uncompressed_path).unwrap();
 }
 
