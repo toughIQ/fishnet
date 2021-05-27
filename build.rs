@@ -33,30 +33,18 @@ impl Target {
             println!("cargo:warning=Building {} without profile-guided optimization", exe);
         }
 
-        let arg_comp = format!("COMP={}", if windows {
-            "mingw"
-        } else if target_os == "linux" {
-            "gcc"
-        } else {
-            "clang"
-        });
-        let arg_arch = format!("ARCH={}", self.arch);
-        let arg_exe = format!("EXE={}", exe);
-        let arg_cxx = env::var("CXX").ok().map(|cxx| format!("CXX={}", cxx));
-
-        let mut args = vec!["-B", &arg_comp, &arg_arch, &arg_exe];
-        if let Some(ref arg_cxx) = arg_cxx {
-            args.push(arg_cxx);
-        }
-        args.push(if pgo { "profile-build" } else { "build" });
-
         let make = if target_os == "freebsd" { "gmake" } else { "make" };
 
         assert!(Command::new(make)
             .current_dir(src_dir)
             .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
             .env("CXXFLAGS", format!("{} -DNNUE_EMBEDDING_OFF", env::var("CXXFLAGS").unwrap_or_default()))
-            .args(&args)
+            .arg("-B")
+            .args(env::var("CXX").ok().map(|cxx| format!("CXX={}", cxx)))
+            .arg(format!("COMP={}", if windows { "mingw" } else if target_os == "linux" { "gcc" } else { "clang" }))
+            .arg(format!("ARCH={}", self.arch))
+            .arg(format!("EXE={}", exe))
+            .arg(if pgo { "profile-build" } else { "build" })
             .status()
             .unwrap()
             .success());
@@ -64,7 +52,8 @@ impl Target {
         assert!(Command::new(make)
             .current_dir(src_dir)
             .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
-            .args(&[&arg_exe, "strip"])
+            .arg(format!("EXE={}", exe))
+            .arg("strip")
             .status()
             .unwrap()
             .success());
