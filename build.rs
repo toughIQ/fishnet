@@ -124,7 +124,7 @@ fn stockfish_build() {
                 }.build_both();
             }
         }
-        target_arch @ _ => {
+        target_arch => {
             unimplemented!("Stockfish build for {} not supported", target_arch);
         }
     }
