@@ -1,4 +1,4 @@
-name: Docker build
+name: Docker
 
 on:
   push:
@@ -26,9 +26,8 @@ jobs:
         id: meta
         uses: docker/metadata-action@v3
         with:
-          images: niklasf/fishnet
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/fishnet
           tags: |
-            type=ref,event=branch
             type=semver,pattern={{major}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{version}}
