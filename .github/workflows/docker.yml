@@ -32,6 +32,8 @@ jobs:
             type=semver,pattern={{major}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{version}}
+          labels: |
+            org.opencontainers.image.licenses=GPL-3.0-or-later
       - name: Login to DockerHub
         uses: docker/login-action@v1
         with:
