@@ -437,10 +437,7 @@ impl IncomingBatch {
     fn from_acquired(endpoint: &Endpoint, body: AcquireResponseBody) -> Result<IncomingBatch, IncomingError> {
         let url = body.batch_url(endpoint);
 
-        let maybe_pos = VariantPosition::from_setup(body.variant.into(), &body.position, match body.variant {
-            LichessVariant::Chess960 | LichessVariant::FromPosition => CastlingMode::Chess960,
-            _ => CastlingMode::detect(&body.position),
-        });
+        let maybe_pos = VariantPosition::from_setup(body.variant.into(), &body.position, CastlingMode::Chess960);
 
         let (flavor, mut pos) = match maybe_pos {
             Ok(pos @ VariantPosition::Chess(_)) if body.work.is_analysis() => (EngineFlavor::Official, pos),
