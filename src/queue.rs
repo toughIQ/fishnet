@@ -448,11 +448,10 @@ impl IncomingBatch {
             Err(pos) => (EngineFlavor::MultiVariant, pos.ignore_impossible_material()?),
         };
 
-        let castling_mode = pos.castles().mode();
         let mut body_moves = Vec::new();
         for uci in body.moves {
             let m = uci.to_move(&pos)?;
-            body_moves.push(m.to_uci(castling_mode));
+            body_moves.push(m.to_uci(CastlingMode::Chess960));
             pos.play_unchecked(&m);
         }
 
@@ -469,7 +468,6 @@ impl IncomingBatch {
                         flavor,
                         position_id: PositionId(0),
                         variant: body.variant,
-                        castling_mode,
                         fen: body.position,
                         moves: body_moves,
                     })]
@@ -485,7 +483,6 @@ impl IncomingBatch {
                         flavor,
                         position_id: PositionId(0),
                         variant: body.variant,
-                        castling_mode,
                         fen: body.position.clone(),
                         moves: moves.clone(),
                     })];
@@ -501,7 +498,6 @@ impl IncomingBatch {
                             flavor,
                             position_id: PositionId(1 + i),
                             variant: body.variant,
-                            castling_mode,
                             fen: body.position.clone(),
                             moves: moves.clone(),
                         }));

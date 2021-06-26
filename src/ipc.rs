@@ -1,7 +1,6 @@
 use url::Url;
 use std::time::Duration;
 use std::num::NonZeroU8;
-use shakmaty::CastlingMode;
 use shakmaty::fen::Fen;
 use shakmaty::uci::Uci;
 use tokio::sync::oneshot;
@@ -20,7 +19,6 @@ pub struct Position {
     pub url: Option<Url>,
 
     pub variant: LichessVariant,
-    pub castling_mode: CastlingMode,
     pub fen: Fen,
     pub moves: Vec<Uci>,
 }
