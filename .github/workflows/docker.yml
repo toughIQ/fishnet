@@ -28,6 +28,7 @@ jobs:
         with:
           images: ${{ secrets.DOCKERHUB_USERNAME }}/fishnet
           tags: |
+            type=ref,event=branch
             type=semver,pattern={{major}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{version}}
