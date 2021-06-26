@@ -174,6 +174,7 @@ impl StockfishActor {
         if let Some(init) = self.init.take() {
             stdin.write_all(format!("setoption name EvalFile value {}\n", init.nnue).as_bytes()).await?;
             stdin.write_all(b"setoption name Analysis Contempt value Off\n").await?;
+            stdin.write_all(b"setoption name UCI_Chess960 value true\n").await?;
             stdin.write_all(b"isready\n").await?;
             stdin.flush().await?;
 
@@ -203,7 +204,6 @@ impl StockfishActor {
         if position.flavor == EngineFlavor::MultiVariant {
             stdin.write_all(format!("setoption name UCI_Variant value {}\n", variant.uci()).as_bytes()).await?;
         }
-        stdin.write_all("setoption name UCI_Chess960 value true\n".as_bytes()).await?;
         stdin.write_all(format!("setoption name MultiPV value {}\n", position.work.multipv()).as_bytes()).await?;
 
         // Setup position.
