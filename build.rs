@@ -169,6 +169,6 @@ fn hooks() {
 fn main() {
     hooks();
     stockfish_build();
-    compress("Stockfish/src", "nn-7756374aaed3.nnue");
+    compress("Stockfish/src", "nn-190f102a22c3.nnue");
     auditable_build::collect_dependency_list();
 }

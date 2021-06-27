@@ -118,8 +118,8 @@ impl Cpu {
 }
 
 const NNUE: Asset = Asset {
-    name: "nn-7756374aaed3.nnue",
-    data: include_bytes!(concat!(env!("OUT_DIR"), "/nn-7756374aaed3.nnue.xz")),
+    name: "nn-190f102a22c3.nnue",
+    data: include_bytes!(concat!(env!("OUT_DIR"), "/nn-190f102a22c3.nnue.xz")),
     needs: Cpu::empty(),
     executable: false,
 };

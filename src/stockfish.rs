@@ -173,7 +173,6 @@ impl StockfishActor {
     async fn init(&mut self, stdout: &mut Stdout, stdin: &mut BufWriter<ChildStdin>) -> io::Result<()> {
         if let Some(init) = self.init.take() {
             stdin.write_all(format!("setoption name EvalFile value {}\n", init.nnue).as_bytes()).await?;
-            stdin.write_all(b"setoption name Analysis Contempt value Off\n").await?;
             stdin.write_all(b"setoption name UCI_Chess960 value true\n").await?;
             stdin.write_all(b"isready\n").await?;
             stdin.flush().await?;
@@ -202,6 +201,7 @@ impl StockfishActor {
         stdin.write_all(format!("setoption name Use NNUE value {}\n", position.flavor.eval_flavor().is_nnue()).as_bytes()).await?;
         let variant = Variant::from(position.variant);
         if position.flavor == EngineFlavor::MultiVariant {
+            stdin.write_all(b"setoption name Analysis Contempt value Off\n").await?;
             stdin.write_all(format!("setoption name UCI_Variant value {}\n", variant.uci()).as_bytes()).await?;
         }
         stdin.write_all(format!("setoption name MultiPV value {}\n", position.work.multipv()).as_bytes()).await?;
