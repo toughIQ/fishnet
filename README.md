@@ -44,7 +44,7 @@
    **Docker**
 
    ```sh
-   docker run -it -e KEY=abcdef niklasf/fishnet:2
+   docker run -it --name fishnet -e KEY=abcdef niklasf/fishnet:2
    ```
 
 3. Pick an update strategy.
@@ -59,6 +59,16 @@
 
    With a GitHub account, you can watch this repository (can be set to only
    release announcements). See the top right corner on this page.
+   
+   **Docker**
+   
+   The docker container was named fishnet, so we can update the image and restart it
+   
+   ```sh
+   docker rm fishnet
+   docker pull niklasf/fishnet:2
+   docker run -it --name fishnet -e KEY=abcdef niklasf/fishnet:2
+   ```
 
 ## Video introduction
 
