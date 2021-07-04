@@ -79,11 +79,11 @@
 
    With a GitHub account, you can watch this repository (can be set to only
    release announcements). See the top right corner on this page.
-   
+
    **Docker**
-   
-   The docker container was named fishnet, so we can update the image and restart it
-   
+
+   The docker container was named fishnet, so we can update the image and restart it.
+
    ```sh
    docker rm fishnet
    docker pull niklasf/fishnet:2
