@@ -6,6 +6,8 @@ use std::io;
 use std::path::Path;
 use glob::glob;
 
+const EVAL_FILE: &'static str = "nn-190f102a22c3.nnue";
+
 #[cfg(target_arch = "x86_64")]
 fn not_cross_compiled() -> bool {
     env::var("CARGO_CFG_TARGET_ARCH").unwrap() == "x86_64"
@@ -149,6 +151,7 @@ fn hooks() {
     println!("cargo:rerun-if-env-changed=CXXFLAGS");
     println!("cargo:rerun-if-env-changed=SDE_PATH");
 
+    println!("cargo:rustc-env=EVAL_FILE={}", EVAL_FILE);
     println!("cargo:rerun-if-changed=Stockfish/src/Makefile");
     for entry in glob("Stockfish/src/**/*.cpp").unwrap() {
         println!("cargo:rerun-if-changed={}", entry.unwrap().display());
@@ -169,6 +172,6 @@ fn hooks() {
 fn main() {
     hooks();
     stockfish_build();
-    compress("Stockfish/src", "nn-190f102a22c3.nnue");
+    compress("Stockfish/src", EVAL_FILE);
     auditable_build::collect_dependency_list();
 }
