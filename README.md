@@ -22,6 +22,8 @@
    ./fishnet-x86_64-unknown-linux-gnu --auto-update
    ```
 
+   For Arch Linux users, there is [a PKGBUILD available](https://aur.archlinux.org/packages/fishnet-bin/).
+   
    Other useful commands:
 
    ```sh
@@ -41,6 +43,8 @@
    cargo run --release -vv --
    ```
 
+   There is also a PKGBUILD for compiling [the latest release](https://aur.archlinux.org/packages/fishnet/) or even [from the latest commit](https://aur.archlinux.org/packages/fishnet-git/).
+   
    **Docker**
 
    ```sh
