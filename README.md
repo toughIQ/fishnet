@@ -60,6 +60,9 @@
     Base64 encoded text  
     KEY=YWJjZGVm
     ```
+      
+    Logs  
+    `` kubectl logs fishnet-pod -n=fishnet ``  
 3. Pick an update strategy.
 
    **Automatic updates**
