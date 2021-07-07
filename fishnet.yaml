@@ -27,4 +27,4 @@ metadata:
   name: lichess
   namespace: fishnet
 data:
-  fishnet-private-key: <UPDATE here with your fishnet private key encoded with BASE64>
+  fishnet-private-key: <UPDATE here with your fishnet private key as BASE64 encoded string>
