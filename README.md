@@ -22,51 +22,17 @@
    ./fishnet-x86_64-unknown-linux-gnu --auto-update
    ```
 
-   For Arch Linux users, there is [a PKGBUILD available](https://aur.archlinux.org/packages/fishnet-bin/).
-   
-   Other useful commands:
+   **Useful commands**
 
    ```sh
    ./fishnet-x86_64-unknown-linux-gnu configure              # Rerun config dialog
    ./fishnet-x86_64-unknown-linux-gnu systemd --auto-update  # Print a .service file
    ./fishnet-x86_64-unknown-linux-gnu --help                 # List commands and options
    ```
+   **Other installation methods:** [From source](/INSTALL.md#From_Source),
+   [AUR](/INSTALL.md#AUR), [Docker](/INSTALL.md#Docker),
+   [Kubernetes](/INSTALL.md#Kubernetes)
 
-   **From source**
-
-   Assuming you have [a recent Rust toolchain](https://rustup.rs/), a C++ compiler, strip, and make installed:
-
-   ```sh
-   git clone --recursive https://github.com/niklasf/fishnet.git
-   cd fishnet
-   git submodule update
-   cargo run --release -vv --
-   ```
-
-   There is also a PKGBUILD for compiling [the latest release](https://aur.archlinux.org/packages/fishnet/) or even [from the latest commit](https://aur.archlinux.org/packages/fishnet-git/).
-   
-   **Docker**
-
-   ```sh
-   docker run -it --name fishnet -e KEY=abcdef niklasf/fishnet:2
-   ```
-    **Kubernetes**  
-    Docker desktop? You can enable support for kubernetes and run inside it!  
-      
-    Edit fishnet.yaml file, Search for property named: <code>'fishnet-private-key'</code>.  
-    Replace the value with your actual <i>fishnet private key</i> encoded with BASE64. 
-      
-    Sample:  
-    ```sh
-    
-    Plain text:  
-    KEY=abcdef
-    Base64 encoded text  
-    KEY=YWJjZGVm
-    ```
-      
-    Logs  
-    `` kubectl logs fishnet-pod -n=fishnet ``  
 3. Pick an update strategy.
 
    **Automatic updates**
@@ -79,23 +45,6 @@
 
    With a GitHub account, you can watch this repository (can be set to only
    release announcements). See the top right corner on this page.
-
-   **Docker**
-
-   The docker container was named fishnet, so we can update the image and restart it.
-
-   ```sh
-   docker rm fishnet
-   docker pull niklasf/fishnet:2
-   docker run -it --name fishnet -e KEY=abcdef niklasf/fishnet:2
-   ```
-   **Kubernetes**  
-   Pod has imagepull policy set to Always, deleting the pod and recreating will update to latest version.  
-   ```sh
-   kubectl delete pod fishnet-pod -n=fishnet
-   kubectl apply -f fishnet.yaml
-   ```
-   You can always update the fishnet.yaml file to use specific version of image.  
 
 ## Video introduction
 
@@ -169,9 +118,9 @@ is provided.
 
 ## Protocol
 
-![Sequence diagram](https://raw.githubusercontent.com/niklasf/fishnet/master/doc/sequence-diagram.png)
+![Sequence diagram](/doc/sequence-diagram.png)
 
-See [protocol.md](https://github.com/niklasf/fishnet/blob/master/doc/protocol.md) for details.
+See [protocol.md](/doc/protocol.md) for details.
 Also supports [`SSLKEYLOGFILE`](https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS/Key_Log_Format) for inspection at runtime.
 
 ## License
