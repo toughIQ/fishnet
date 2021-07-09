@@ -50,7 +50,23 @@
    ```sh
    docker run -it --name fishnet -e KEY=abcdef niklasf/fishnet:2
    ```
-
+    **Kubernetes**  
+    Docker desktop? You can enable support for kubernetes and run inside it!  
+      
+    Edit fishnet.yaml file, Search for property named: <code>'fishnet-private-key'</code>.  
+    Replace the value with your actual <i>fishnet private key</i> encoded with BASE64. 
+      
+    Sample:  
+    ```sh
+    
+    Plain text:  
+    KEY=abcdef
+    Base64 encoded text  
+    KEY=YWJjZGVm
+    ```
+      
+    Logs  
+    `` kubectl logs fishnet-pod -n=fishnet ``  
 3. Pick an update strategy.
 
    **Automatic updates**
@@ -73,6 +89,13 @@
    docker pull niklasf/fishnet:2
    docker run -it --name fishnet -e KEY=abcdef niklasf/fishnet:2
    ```
+   **Kubernetes**  
+   Pod has imagepull policy set to Always, deleting the pod and recreating will update to latest version.  
+   ```sh
+   kubectl delete pod fishnet-pod -n=fishnet
+   kubectl apply -f fishnet.yaml
+   ```
+   You can always update the fishnet.yaml file to use specific version of image.  
 
 ## Video introduction
 
