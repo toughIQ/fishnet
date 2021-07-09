@@ -125,5 +125,5 @@ Also supports [`SSLKEYLOGFILE`](https://developer.mozilla.org/en-US/docs/Mozilla
 
 ## License
 
-fishnet is licensed under the GPLv3+. See LICENSE.txt for the full
-license text.
+fishnet is licensed under the GPLv3+. See LICENSE.txt or
+`./fishnet-x86_64-unknown-linux-gnu license` for the full license text.
