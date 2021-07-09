@@ -17,17 +17,18 @@ cargo run --release -vv --
 To update, do not forget `git submodule update` before building again:
 
 ```sh
+git pull
 git submodule update
 cargo run --release -vv --
 ```
 
 ## AUR
 
-For Arch Linux the following third-party packages are available on AUR:
+For Arch Linux users, the following third-party packages are available on AUR:
 
-* [https://aur.archlinux.org/packages/fishnet-bin/](fishnet-bin)
-* [https://aur.archlinux.org/packages/fishnet/](fishnet)
-* [https://aur.archlinux.org/packages/fishnet-git/](fishnet-git)
+* https://aur.archlinux.org/packages/fishnet-bin/
+* https://aur.archlinux.org/packages/fishnet/
+* https://aur.archlinux.org/packages/fishnet-git/
 
 ## Docker
 
@@ -86,7 +87,7 @@ To view logs:
 kubectl logs fishnet-pod -n=fishnet
 ```
 
-Delete to update, since imagepull policy is set to `Always`:
+Delete to update, since the image pull policy is set to `Always`:
 
 ```sh
 kubectl delete pod fishnet-pod -n=fishnet

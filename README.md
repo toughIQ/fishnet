@@ -29,9 +29,9 @@
    ./fishnet-x86_64-unknown-linux-gnu systemd --auto-update  # Print a .service file
    ./fishnet-x86_64-unknown-linux-gnu --help                 # List commands and options
    ```
-   **Other installation methods:** [From source](/INSTALL.md#From_Source),
-   [AUR](/INSTALL.md#AUR), [Docker](/INSTALL.md#Docker),
-   [Kubernetes](/INSTALL.md#Kubernetes)
+   **Other installation methods:** [From source](/INSTALL.md#from-source),
+   [AUR](/INSTALL.md#aur), [Docker](/INSTALL.md#docker),
+   [Kubernetes](/INSTALL.md#kubernetes)
 
 3. Pick an update strategy.
 
@@ -43,8 +43,8 @@
 
    **Subscribe to release announcements**
 
-   With a GitHub account, you can watch this repository (can be set to only
-   release announcements). See the top right corner on this page.
+   With a GitHub account, you can *watch* this repository (can be set to
+   release announcements only). See the top right corner on this page.
 
 ## Video introduction
 
