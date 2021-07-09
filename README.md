@@ -29,9 +29,9 @@
    ./fishnet-x86_64-unknown-linux-gnu systemd --auto-update  # Print a .service file
    ./fishnet-x86_64-unknown-linux-gnu --help                 # List commands and options
    ```
-   **Other installation methods:** [From source](/INSTALL.md#from-source),
-   [AUR](/INSTALL.md#aur), [Docker](/INSTALL.md#docker),
-   [Kubernetes](/INSTALL.md#kubernetes)
+   **Other installation methods:** [From source](/doc/install.md#from-source),
+   [AUR](/doc/install.md#aur), [Docker](/doc/install.md#docker),
+   [Kubernetes](/doc/install.md#kubernetes)
 
 3. Pick an update strategy.
 
@@ -113,7 +113,7 @@ No, sorry, not publically. It would incentivize gaming the metrics.
 ### Can I autoscale fishnet in the cloud?
 
 There is currently no ready-made solution, but
-[an API for monitoring the job queue status](https://github.com/niklasf/fishnet/blob/master/doc/protocol.md#status)
+[an API for monitoring the job queue status](/doc/protocol.md#status)
 is provided.
 
 ## Protocol
