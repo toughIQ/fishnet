@@ -134,7 +134,7 @@ fn stockfish_build() {
                 }.build_both();
             } else {
                 Target {
-                    arch: "aarch64",
+                    arch: "armv8",
                     pgo: cfg!(target_arch = "aarch64"),
                 }.build_both();
             }
