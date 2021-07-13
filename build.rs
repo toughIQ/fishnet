@@ -86,26 +86,39 @@ impl Target {
 }
 
 fn stockfish_build() {
+    // Note: The target arch of the build script is the architecture of the
+    // builder and decides if pgo is possible. It is not necessarily the same
+    // as CARGO_CFG_TARGET_ARCH, the target arch of the fishnet binary.
+
     match env::var("CARGO_CFG_TARGET_ARCH").unwrap().as_str() {
         "x86_64" => {
             Target {
                 arch: "x86-64-bmi2",
+                #[cfg(target_arch = "x86_64")]
                 pgo: is_x86_feature_detected!("bmi2"),
+                #[cfg(not(target_arch = "x86_64"))]
+                pgo: false,
             }.build_both();
 
             Target {
                 arch: "x86-64-avx2",
+                #[cfg(target_arch = "x86_64")]
                 pgo: is_x86_feature_detected!("avx2"),
+                #[cfg(not(target_arch = "x86_64"))]
+                pgo: false,
             }.build_both();
 
             Target {
                 arch: "x86-64-sse41-popcnt",
+                #[cfg(target_arch = "x86_64")]
                 pgo: is_x86_feature_detected!("sse4.1") && is_x86_feature_detected!("popcnt"),
+                #[cfg(not(target_arch = "x86_64"))]
+                pgo: false,
             }.build_both();
 
             Target {
                 arch: "x86-64",
-                pgo: true,
+                pgo: cfg!(target_arch = "x86_64"),
             }.build_both();
 
             // TODO: Could support:
@@ -117,12 +130,12 @@ fn stockfish_build() {
             if env::var("CARGO_CFG_TARGET_OS").unwrap() == "macos" {
                 Target {
                     arch: "apple-silicon",
-                    pgo: true,
+                    pgo: cfg!(target_arch = "aarch64"),
                 }.build_both();
             } else {
                 Target {
                     arch: "aarch64",
-                    pgo: true,
+                    pgo: cfg!(target_arch = "aarch64"),
                 }.build_both();
             }
         }
