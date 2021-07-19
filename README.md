@@ -50,7 +50,7 @@
 
 Watch [@arex](https://lichess.org/@/arex) explain fishnet.
 
-[![Video introduction](http://i3.ytimg.com/vi/C2SjcVbRfp0/maxresdefault.jpg)](https://youtu.be/C2SjcVbRfp0)
+[![Video introduction](https://i3.ytimg.com/vi/C2SjcVbRfp0/maxresdefault.jpg)](https://youtu.be/C2SjcVbRfp0)
 
 ## FAQ
 
