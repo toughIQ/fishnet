@@ -82,12 +82,14 @@ pub fn systemd_user(opt: Opt) {
 fn exec_start(opt: &Opt) -> String {
     let exe = env::current_exe().expect("current exe").to_str().expect("printable exec path").to_owned();
     let mut builder = vec![escape(exe.into()).into_owned()];
+
     if opt.verbose.level > 0 {
         builder.push(format!("-{}", "v".repeat(opt.verbose.level)));
     }
     if opt.auto_update {
         builder.push("--auto-update".to_owned());
     }
+
     if opt.no_conf {
         builder.push("--no-conf".to_owned());
     } else {
@@ -98,10 +100,19 @@ fn exec_start(opt: &Opt) -> String {
             .expect("printable config path").to_owned();
         builder.push(escape(canonical.into()).into_owned());
     }
-    if let Some(Key(ref key)) = opt.key {
+
+    if let Some(ref key_file) = opt.key_file {
+        builder.push("--key-file".to_owned());
+        let canonical = fs::canonicalize(key_file)
+            .expect("canonicalize key file path")
+            .to_str()
+            .expect("printable key file path").to_owned();
+        builder.push(escape(canonical.into()).into_owned());
+    } else if let Some(Key(ref key)) = opt.key {
         builder.push("--key".to_owned());
         builder.push(escape(key.into()).into_owned());
     }
+
     if let Some(ref endpoint) = opt.endpoint {
         builder.push("--endpoint".to_owned());
         builder.push(escape(endpoint.to_string().into()).into_owned());
@@ -118,6 +129,7 @@ fn exec_start(opt: &Opt) -> String {
         builder.push("--system_backlog".to_owned());
         builder.push(escape(system_backlog.to_string().into()).into_owned());
     }
+
     builder.push("run".to_owned());
     builder.join(" ")
 }
