@@ -36,9 +36,13 @@ pub struct Opt {
     #[clap(long, conflicts_with = "conf", global = true)]
     pub no_conf: bool,
 
-    /// Fishnet API key.
+    /// Fishnet key.
     #[clap(long, alias = "apikey", short = 'k', global = true)]
     pub key: Option<Key>,
+
+    /// Fishnet key file.
+    #[clap(long, parse(from_os_str), conflicts_with = "key", global = true)]
+    pub key_file: Option<PathBuf>,
 
     /// Lichess HTTP endpoint.
     #[clap(long, global = true)]
@@ -346,6 +350,16 @@ pub async fn parse_and_configure() -> Opt {
     let logger = Logger::new(opt.verbose, is_systemd);
     if !is_systemd {
         intro();
+    }
+
+    // Handle key file.
+    if let Some(key_file) = opt.key_file.take() {
+        opt.key = Some(
+            fs::read_to_string(key_file)
+                .expect("read key file")
+                .trim()
+                .parse()
+                .expect("valid key from key file"));
     }
 
     // Handle config file.
