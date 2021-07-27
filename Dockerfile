@@ -7,5 +7,4 @@ RUN (git submodule update --init --recursive || true) && cargo build --release -
 FROM debian:buster-slim
 COPY --from=builder /fishnet/target/release/fishnet /fishnet
 COPY docker-entrypoint.sh /docker-entrypoint.sh
-ENV CORES=auto USER_BACKLOG=0s SYSTEM_BACKLOG=0s ENDPOINT=https://lichess.org/fishnet
 CMD ["/docker-entrypoint.sh"]
