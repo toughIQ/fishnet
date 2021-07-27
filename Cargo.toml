@@ -50,7 +50,7 @@ thousands = "0.2"
 libc = "0.2"
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
-raw-cpuid = "9"
+raw-cpuid = "10"
 
 [build-dependencies]
 auditable-build = "0.1"
