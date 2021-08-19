@@ -1,4 +1,4 @@
-FROM rust:1.51 AS builder
+FROM rust:1.54 AS builder
 WORKDIR /fishnet
 COPY . .
 RUN (git submodule update --init --recursive || true) && cargo build --release -vv && strip target/release/fishnet
