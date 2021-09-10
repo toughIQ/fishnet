@@ -2,6 +2,7 @@ use std::fs;
 use std::io;
 use std::cmp::max;
 use std::fmt;
+use std::error::Error;
 use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -132,6 +133,8 @@ impl fmt::Display for KeyError {
         })
     }
 }
+
+impl Error for KeyError {}
 
 impl FromStr for Key {
     type Err = KeyError;
