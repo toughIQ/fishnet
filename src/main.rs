@@ -270,7 +270,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
             // Heuristic for timeout. Compare to
             // https://github.com/ornicar/lila/blob/master/modules/fishnet/src/main/Cleaner.scala
             budget = min(max_budget, budget + match job.work {
-                Work::Analysis { nodes, .. } => Duration::from_millis(nodes.get(flavor.eval_flavor()) / (2_000_000 / 6000)),
+                Work::Analysis { nodes, .. } => Duration::from_millis(nodes.get(flavor.eval_flavor()) / (2_100_000 / 7000)),
                 Work::Move { .. } => Duration::from_secs(2),
             });
 
