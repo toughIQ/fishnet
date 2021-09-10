@@ -6,7 +6,7 @@ use std::io;
 use std::path::Path;
 use glob::glob;
 
-const EVAL_FILE: &str = "nn-9e3c6298299a.nnue";
+const EVAL_FILE: &str = "nn-6762d36ad265.nnue";
 
 #[cfg(target_arch = "x86_64")]
 fn not_cross_compiled() -> bool {
