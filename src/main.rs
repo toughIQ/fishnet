@@ -180,12 +180,11 @@ async fn run(opt: Opt, logger: &Logger) {
         tokio::select! {
             res = sig_int.recv() => {
                 res.expect("sigint handler installed");
+                logger.clear_echo();
                 if shutdown_soon {
-                    logger.clear_echo();
                     logger.fishnet_info("Stopping now.");
                     rx.close();
                 } else {
-                    logger.clear_echo();
                     logger.headline(&format!("Stopping soon. {} again to abort pending batches ...", to_stop));
                     queue.shutdown_soon().await;
                     shutdown_soon = true;

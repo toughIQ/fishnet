@@ -321,7 +321,7 @@ impl StockfishActor {
                             }
                             "pv" => {
                                 let mut pv = Vec::new();
-                                while let Some(part) = parts.next() {
+                                for part in &mut parts {
                                     pv.push(part.parse().map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid pv"))?);
                                 }
                                 pvs.set(multipv, depth, pv);

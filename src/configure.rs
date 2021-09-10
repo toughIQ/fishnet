@@ -94,7 +94,7 @@ impl FromStr for Endpoint {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut url: Url = s.parse()?;
-        if let Some(stripped_path) = url.path().to_owned().strip_suffix("/") {
+        if let Some(stripped_path) = url.path().to_owned().strip_suffix('/') {
             url.set_path(stripped_path);
         }
         Ok(Endpoint { url })
@@ -264,16 +264,16 @@ impl FromStr for ParsedDuration {
     type Err = ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (s, factor) = if let Some(s) = s.strip_suffix("d") {
+        let (s, factor) = if let Some(s) = s.strip_suffix('d') {
             (s, 1000 * 60 * 60 * 24)
-        } else if let Some(s) = s.strip_suffix("h") {
+        } else if let Some(s) = s.strip_suffix('h') {
             (s, 1000 * 60 * 60)
-        } else if let Some(s) = s.strip_suffix("m") {
+        } else if let Some(s) = s.strip_suffix('m') {
             (s, 1000 * 60)
         } else if let Some(s) = s.strip_suffix("ms") {
             (s, 1)
         } else {
-            (s.strip_suffix("s").unwrap_or(s), 1000)
+            (s.strip_suffix('s').unwrap_or(s), 1000)
         };
         Ok(ParsedDuration(Duration::from_millis(u64::from(s.trim().parse::<u32>()?) * factor)))
     }
@@ -419,7 +419,7 @@ pub async fn parse_and_configure() -> Opt {
                     } else {
                         break;
                     }
-                } else if let Some(key) = key.strip_suffix("!") {
+                } else if let Some(key) = key.strip_suffix('!') {
                     (key, false)
                 } else {
                     (key, true)
