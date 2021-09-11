@@ -187,4 +187,14 @@ fn main() {
     stockfish_build();
     compress("Stockfish/src", EVAL_FILE);
     auditable_build::collect_dependency_list();
+
+    #[cfg(target_family = "windows")]
+    {
+        let res = winres::WindowsResource::new();
+        // Resuorce compilation may fail when toolchain does not match target,
+        // e.g. windows-msvc toolchain with windows-gnu target. 
+        res.compile().unwrap_or_else(|err| {
+            println!("cargo:warning=Resource compiler not invoked: {}", err);
+        });
+    }
 }
