@@ -232,7 +232,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
     };
     let mut engine_backoff = RandomizedBackoff::default();
 
-    let max_budget = Duration::from_secs(60);
+    let max_budget = Duration::from_secs(80);
     let mut budget = max_budget;
 
     loop {
@@ -269,7 +269,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
             // Heuristic for timeout. Compare to
             // https://github.com/ornicar/lila/blob/master/modules/fishnet/src/main/Cleaner.scala
             budget = min(max_budget, budget + match job.work {
-                Work::Analysis { nodes, .. } => Duration::from_millis(nodes.get(flavor.eval_flavor()) / (2_100_000 / 7000)),
+                Work::Analysis { nodes, .. } => Duration::from_millis(nodes.get(flavor.eval_flavor()) / (2_100_000 / 8000)),
                 Work::Move { .. } => Duration::from_secs(2),
             });
 
@@ -311,7 +311,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
 
             // Update budget.
             budget = budget.checked_sub(timer.elapsed()).unwrap_or_default();
-            if budget + Duration::from_secs(6) < max_budget {
+            if budget + Duration::from_secs(8) < max_budget {
                 logger.debug(&format!("Low engine timeout budget: {:?}", budget));
             }
 
