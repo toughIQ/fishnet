@@ -230,7 +230,7 @@ dependencies = [
 
 [[package]]
 name = "fishnet"
-version = "2.3.4-dev"
+version = "2.3.4"
 dependencies = [
  "arrayvec",
  "atty",
