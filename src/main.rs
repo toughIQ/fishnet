@@ -376,7 +376,9 @@ fn restart_process(current_exe: PathBuf, logger: &Logger) {
 fn restart_process(current_exe: PathBuf, logger: &Logger) {
     logger.headline(&format!("Waiting 5s before restarting {:?} ...", current_exe));
     thread::sleep(Duration::from_secs(5));
-    todo!("Restart on Windows");
+    std::process::Command::new(current_exe)
+        .args(std::env::args().into_iter().skip(1))
+        .spawn().expect("restarted");
 }
 
 async fn auto_update(verbose: bool, logger: Logger) -> Result<self_update::Status, self_update::errors::Error> {
