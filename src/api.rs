@@ -10,7 +10,7 @@ use url::Url;
 use tokio::time;
 use tokio::sync::{mpsc, oneshot};
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, NoneAsEmptyString, DurationSeconds, DisplayFromStr, SpaceSeparator, StringWithSeparator};
+use serde_with::{serde_as, NoneAsEmptyString, DurationSeconds, DurationMilliSeconds, DisplayFromStr, SpaceSeparator, StringWithSeparator};
 use serde_repr::Deserialize_repr as DeserializeRepr;
 use shakmaty::fen::Fen;
 use shakmaty::uci::Uci;
@@ -126,6 +126,9 @@ pub enum Work {
         depth: Option<u8>,
         #[serde(default)]
         multipv: Option<NonZeroU8>,
+        #[serde_as(as = "Option<DurationMilliSeconds<u64>>")]
+        #[serde(default)]
+        timeout: Option<Duration>,
     },
     #[serde(rename = "move")]
     Move {

@@ -28,7 +28,8 @@ Response with work:
       "sf15": 1500000,
       "sf14": 2100000,
       "classical": 4050000
-    }
+    },
+    "timeout": 7000 // milliseconds per ply
   },
   // or:
   // "work": {

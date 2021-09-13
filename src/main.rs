@@ -11,7 +11,7 @@ mod stockfish;
 mod logger;
 mod stats;
 
-use std::cmp::max;
+use std::cmp::min;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::thread;
@@ -24,7 +24,7 @@ use tokio::time;
 use tokio::signal;
 use tokio::sync::{mpsc, oneshot};
 use crate::configure::{Opt, Command, Cores};
-use crate::assets::{Assets, Cpu, ByEngineFlavor, EngineFlavor, EvalFlavor};
+use crate::assets::{Assets, Cpu, ByEngineFlavor, EngineFlavor};
 use crate::api::Work;
 use crate::ipc::{Pull, Position, PositionFailed};
 use crate::stockfish::StockfishInit;
@@ -232,8 +232,8 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
     };
     let mut engine_backoff = RandomizedBackoff::default();
 
-    let max_budget = Duration::from_secs(60);
-    let mut budget = max_budget;
+    let default_budget = Duration::from_secs(60);
+    let mut budget = default_budget;
 
     loop {
         let response = if let Some(job) = job.take() {
@@ -256,7 +256,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                 }
 
                 // Reset budget, start engine and spawn actor.
-                budget = max_budget;
+                budget = default_budget;
                 let (sf, sf_actor) = stockfish::channel(assets.stockfish.get(flavor).clone(), StockfishInit {
                     nnue: assets.nnue.clone(),
                 }, logger.clone());
@@ -266,15 +266,13 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                 (sf, join_handle)
             };
 
-            // Heuristic for timeout. Compare to
+            // Timeout. Compare to
             // https://github.com/ornicar/lila/blob/master/modules/fishnet/src/main/Cleaner.scala
-            budget = min(max_budget, budget + match job.work {
-                Work::Analysis { nodes, .. } => Duration::from_millis(match flavor.eval_flavor() {
-                    EvalFlavor::Hce => nodes.get(EvalFlavor::Hce) / (4_100_000 / 7000),
-                    EvalFlavor::Nnue => nodes.get(EvalFlavor::Nnue) / (1_500_000 / 7000),
-                }),
+            let timeout = match job.work {
+                Work::Analysis { timeout, .. } => timeout.unwrap_or_else(|| Duration::from_secs(7)),
                 Work::Move { .. } => Duration::from_secs(2),
-            });
+            };
+            budget = min(default_budget, budget) + timeout;
 
             // Analyse or play.
             let timer = Instant::now();
@@ -314,7 +312,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
 
             // Update budget.
             budget = budget.checked_sub(timer.elapsed()).unwrap_or_default();
-            if budget + Duration::from_secs(7) < max_budget {
+            if budget < default_budget {
                 logger.debug(&format!("Low engine timeout budget: {:?}", budget));
             }
 
