@@ -9,7 +9,7 @@ POST https://lichess.org/fishnet/acquire
 
 {
   "fishnet": {
-    "version": "1.15.7",
+    "version": "2.3.4",
     "apikey": "XXX"
   }
 }
@@ -24,8 +24,9 @@ Response with work:
   "work": {
     "type": "analysis",
     "id": "work_id",
-    "nodes": { // node limit for each eval flavor
-      "nnue": 2250000,
+    "nodes": { // node limit for each sf version
+      "sf15": 1500000,
+      "sf14": 2100000,
       "classical": 4050000
     }
   },
@@ -63,7 +64,7 @@ POST https://lichess.org/fishnet/analysis/{work_id}
 
 {
   "fishnet": {
-    "version": "0.0.1",
+    "version": "2.3.4",
     "apikey": "XXX"
   },
   "stockfish": {
@@ -111,7 +112,7 @@ POST https://lichess.org/fishnet/move/{work_id}
 
 {
   "fishnet": {
-    "version": "0.0.1",
+    "version": "2.3.4",
     "apikey": "XXX"
   },
   "move": {
@@ -151,7 +152,7 @@ POST https://lichess.org/fishnet/abort/{work_id}
 
 {
   "fishnet": {
-    "version": "0.0.1",
+    "version": "2.3.4",
     "apikey": "XXX"
   }
 }

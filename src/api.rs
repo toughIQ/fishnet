@@ -180,14 +180,15 @@ impl fmt::Display for BatchId {
 #[derive(Debug, Copy, Clone, Deserialize)]
 pub struct NodeLimit {
     classical: u64,
-    nnue: u64,
+    #[serde(default)]
+    sf15: Option<u64>,
 }
 
 impl NodeLimit {
     pub fn get(&self, flavor: EvalFlavor) -> u64 {
         match flavor {
             EvalFlavor::Hce => self.classical,
-            EvalFlavor::Nnue => self.nnue,
+            EvalFlavor::Nnue => self.sf15.unwrap_or(1_500_000),
         }
     }
 }
