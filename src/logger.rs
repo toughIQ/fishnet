@@ -1,14 +1,14 @@
-use std::sync::{Arc, Mutex};
+use crate::api::BatchId;
+use crate::configure::Verbose;
+use crate::ipc::{Position, PositionId, PositionResponse};
+use crate::util::NevermindExt as _;
+use atty::Stream;
+use std::cmp::{max, min};
 use std::fmt;
 use std::io;
 use std::io::Write as _;
-use std::cmp::{min, max};
-use atty::Stream;
+use std::sync::{Arc, Mutex};
 use url::Url;
-use crate::api::BatchId;
-use crate::ipc::{PositionId, Position, PositionResponse};
-use crate::configure::Verbose;
-use crate::util::NevermindExt as _;
 
 #[derive(Clone)]
 pub struct Logger {
@@ -24,9 +24,7 @@ impl Logger {
             verbose,
             stderr,
             atty: atty::is(Stream::Stdout),
-            state: Arc::new(Mutex::new(LoggerState {
-                progress_line: 0,
-            })),
+            state: Arc::new(Mutex::new(LoggerState { progress_line: 0 })),
         }
     }
 
@@ -39,7 +37,8 @@ impl Logger {
         } else if let Err(e) = writeln!(io::stdout(), "{}", line) {
             // Error when printing to stdout - print error and original
             // line to stderr.
-            writeln!(io::stderr(), "E: {} while logging to stdout: {}", e, line).nevermind("log to stderr");
+            writeln!(io::stderr(), "E: {} while logging to stdout: {}", e, line)
+                .nevermind("log to stderr");
         }
     }
 
@@ -78,10 +77,20 @@ impl Logger {
     where
         P: Into<ProgressAt>,
     {
-        let line = format!("{} {} cores, {} queued, latest: {}", queue, queue.cores, queue.pending, progress.into());
+        let line = format!(
+            "{} {} cores, {} queued, latest: {}",
+            queue,
+            queue.cores,
+            queue.pending,
+            progress.into()
+        );
         if self.atty {
             let mut state = self.state.lock().expect("logger state");
-            print!("\r{}{}", line, " ".repeat(state.progress_line.saturating_sub(line.len())));
+            print!(
+                "\r{}{}",
+                line,
+                " ".repeat(state.progress_line.saturating_sub(line.len()))
+            );
             io::stdout().flush().expect("flush stdout");
             state.progress_line = line.len();
         } else if self.verbose.level > 0 {
@@ -159,7 +168,9 @@ impl fmt::Display for QueueStatusBar {
         let cores_width = self.cores * width / virtual_width;
         let pending_width = self.pending * width / virtual_width;
         let overhang_width = pending_width.saturating_sub(cores_width);
-        let empty_width = width.checked_sub(cores_width).and_then(|w| w.checked_sub(overhang_width));
+        let empty_width = width
+            .checked_sub(cores_width)
+            .and_then(|w| w.checked_sub(overhang_width));
 
         f.write_str("[")?;
         f.write_str(&"=".repeat(min(pending_width, cores_width)))?;

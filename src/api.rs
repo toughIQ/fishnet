@@ -1,28 +1,37 @@
-use std::env;
-use std::fmt;
-use std::time::Duration;
-use std::str::FromStr;
-use std::sync::Arc;
-use std::num::NonZeroU8;
-use arrayvec::ArrayString;
-use reqwest::{StatusCode, header};
-use url::Url;
-use tokio::time;
-use tokio::sync::{mpsc, oneshot};
-use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, NoneAsEmptyString, DurationSeconds, DurationMilliSeconds, DisplayFromStr, SpaceSeparator, StringWithSeparator};
-use serde_repr::Deserialize_repr as DeserializeRepr;
-use shakmaty::fen::Fen;
-use shakmaty::uci::Uci;
-use shakmaty::variant::Variant;
 use crate::assets::EvalFlavor;
 use crate::configure::{Endpoint, Key, KeyError};
 use crate::logger::Logger;
 use crate::util::{NevermindExt as _, RandomizedBackoff};
+use arrayvec::ArrayString;
+use reqwest::{header, StatusCode};
+use serde::{Deserialize, Serialize};
+use serde_repr::Deserialize_repr as DeserializeRepr;
+use serde_with::{
+    serde_as, DisplayFromStr, DurationMilliSeconds, DurationSeconds, NoneAsEmptyString,
+    SpaceSeparator, StringWithSeparator,
+};
+use shakmaty::fen::Fen;
+use shakmaty::uci::Uci;
+use shakmaty::variant::Variant;
+use std::env;
+use std::fmt;
+use std::num::NonZeroU8;
+use std::str::FromStr;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::sync::{mpsc, oneshot};
+use tokio::time;
+use url::Url;
 
 pub fn channel(endpoint: Endpoint, key: Option<Key>, logger: Logger) -> (ApiStub, ApiActor) {
     let (tx, rx) = mpsc::unbounded_channel();
-    (ApiStub { tx, endpoint: endpoint.clone() }, ApiActor::new(rx, endpoint, key, logger))
+    (
+        ApiStub {
+            tx,
+            endpoint: endpoint.clone(),
+        },
+        ApiActor::new(rx, endpoint, key, logger),
+    )
 }
 
 pub fn spawn(endpoint: Endpoint, key: Option<Key>, logger: Logger) -> ApiStub {
@@ -57,7 +66,7 @@ enum ApiMessage {
         batch_id: BatchId,
         best_move: Option<Uci>,
         callback: oneshot::Sender<Acquired>,
-    }
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -155,11 +164,18 @@ impl Work {
         match *self {
             Work::Analysis { multipv, .. } => multipv,
             Work::Move { .. } => None,
-        }.unwrap_or_else(|| NonZeroU8::new(1).unwrap())
+        }
+        .unwrap_or_else(|| NonZeroU8::new(1).unwrap())
     }
 
     pub fn matrix_wanted(&self) -> bool {
-        matches!(*self, Work::Analysis { multipv: Some(_), .. })
+        matches!(
+            *self,
+            Work::Analysis {
+                multipv: Some(_),
+                ..
+            }
+        )
     }
 }
 
@@ -340,7 +356,9 @@ impl From<LichessVariant> for Variant {
         match lichess {
             LichessVariant::Antichess => Variant::Antichess,
             LichessVariant::Atomic => Variant::Atomic,
-            LichessVariant::Chess960 | LichessVariant::Standard | LichessVariant::FromPosition => Variant::Chess,
+            LichessVariant::Chess960 | LichessVariant::Standard | LichessVariant::FromPosition => {
+                Variant::Chess
+            }
             LichessVariant::Crazyhouse => Variant::Crazyhouse,
             LichessVariant::Horde => Variant::Horde,
             LichessVariant::KingOfTheHill => Variant::KingOfTheHill,
@@ -443,48 +461,65 @@ impl ApiStub {
 
     pub async fn check_key(&mut self) -> Option<Result<(), KeyError>> {
         let (req, res) = oneshot::channel();
-        self.tx.send(ApiMessage::CheckKey {
-            callback: req,
-        }).expect("api actor alive");
+        self.tx
+            .send(ApiMessage::CheckKey { callback: req })
+            .expect("api actor alive");
         res.await.ok()
     }
 
     pub async fn status(&mut self) -> Option<AnalysisStatus> {
         let (req, res) = oneshot::channel();
-        self.tx.send(ApiMessage::Status {
-            callback: req,
-        }).expect("api actor alive");
+        self.tx
+            .send(ApiMessage::Status { callback: req })
+            .expect("api actor alive");
         res.await.ok()
     }
 
     pub fn abort(&mut self, batch_id: BatchId) {
-        self.tx.send(ApiMessage::Abort { batch_id }).expect("api actor alive");
+        self.tx
+            .send(ApiMessage::Abort { batch_id })
+            .expect("api actor alive");
     }
 
     pub async fn acquire(&mut self, query: AcquireQuery) -> Option<Acquired> {
         let (req, res) = oneshot::channel();
-        self.tx.send(ApiMessage::Acquire {
-            query,
-            callback: req,
-        }).expect("api actor alive");
+        self.tx
+            .send(ApiMessage::Acquire {
+                query,
+                callback: req,
+            })
+            .expect("api actor alive");
         res.await.ok()
     }
 
-    pub fn submit_analysis(&mut self, batch_id: BatchId, flavor: EvalFlavor, analysis: Vec<Option<AnalysisPart>>) {
-        self.tx.send(ApiMessage::SubmitAnalysis {
-            batch_id,
-            flavor,
-            analysis,
-        }).expect("api actor alive");
+    pub fn submit_analysis(
+        &mut self,
+        batch_id: BatchId,
+        flavor: EvalFlavor,
+        analysis: Vec<Option<AnalysisPart>>,
+    ) {
+        self.tx
+            .send(ApiMessage::SubmitAnalysis {
+                batch_id,
+                flavor,
+                analysis,
+            })
+            .expect("api actor alive");
     }
 
-    pub async fn submit_move_and_acquire(&mut self, batch_id: BatchId, best_move: Option<Uci>) -> Option<Acquired> {
+    pub async fn submit_move_and_acquire(
+        &mut self,
+        batch_id: BatchId,
+        best_move: Option<Uci>,
+    ) -> Option<Acquired> {
         let (req, res) = oneshot::channel();
-        self.tx.send(ApiMessage::SubmitMove {
-            batch_id,
-            best_move,
-            callback: req,
-        }).expect("api actor alive");
+        self.tx
+            .send(ApiMessage::SubmitMove {
+                batch_id,
+                best_move,
+                callback: req,
+            })
+            .expect("api actor alive");
         res.await.ok()
     }
 }
@@ -499,11 +534,17 @@ pub struct ApiActor {
 }
 
 impl ApiActor {
-    fn new(rx: mpsc::UnboundedReceiver<ApiMessage>, endpoint: Endpoint, key: Option<Key>, logger: Logger) -> ApiActor {
+    fn new(
+        rx: mpsc::UnboundedReceiver<ApiMessage>,
+        endpoint: Endpoint,
+        key: Option<Key>,
+        logger: Logger,
+    ) -> ApiActor {
         // Build TLS backend that supports SSLKEYLOGFILE.
         let mut tls = rustls::ClientConfig::new();
         tls.set_protocols(&["h2".into(), "http/1.1".into()]);
-        tls.root_store.add_server_trust_anchors(&webpki_roots::TLS_SERVER_ROOTS);
+        tls.root_store
+            .add_server_trust_anchors(&webpki_roots::TLS_SERVER_ROOTS);
         tls.key_log = Arc::new(rustls::KeyLogFile::new());
 
         ApiActor {
@@ -512,14 +553,26 @@ impl ApiActor {
             client: reqwest::Client::builder()
                 .default_headers(
                     key.iter()
-                        .map(|Key(k)| (header::AUTHORIZATION, format!("Bearer {}", k).parse().expect("header value")))
-                        .collect()
+                        .map(|Key(k)| {
+                            (
+                                header::AUTHORIZATION,
+                                format!("Bearer {}", k).parse().expect("header value"),
+                            )
+                        })
+                        .collect(),
                 )
-                .user_agent(format!("{}-{}-{}/{}", env!("CARGO_PKG_NAME"), env::consts::OS, env::consts::ARCH, env!("CARGO_PKG_VERSION")))
+                .user_agent(format!(
+                    "{}-{}-{}/{}",
+                    env!("CARGO_PKG_NAME"),
+                    env::consts::OS,
+                    env::consts::ARCH,
+                    env!("CARGO_PKG_VERSION")
+                ))
                 .timeout(Duration::from_secs(30))
                 .pool_idle_timeout(Duration::from_secs(25))
                 .use_preconfigured_tls(tls)
-                .build().expect("client"),
+                .build()
+                .expect("client"),
             key,
             error_backoff: RandomizedBackoff::default(),
             logger,
@@ -540,11 +593,15 @@ impl ApiActor {
                 self.error_backoff.reset();
             } else if err.status() == Some(StatusCode::TOO_MANY_REQUESTS) {
                 let backoff = Duration::from_secs(60) + self.error_backoff.next();
-                self.logger.error(&format!("Too many requests. Suspending requests for {:?}.", backoff));
+                self.logger.error(&format!(
+                    "Too many requests. Suspending requests for {:?}.",
+                    backoff
+                ));
                 time::sleep(backoff).await;
             } else {
                 let backoff = self.error_backoff.next();
-                self.logger.error(&format!("{}. Backing off {:?}.", err, backoff));
+                self.logger
+                    .error(&format!("{}. Backing off {:?}.", err, backoff));
                 time::sleep(backoff).await;
             }
         } else {
@@ -555,12 +612,20 @@ impl ApiActor {
     async fn abort(&mut self, batch_id: BatchId) -> reqwest::Result<()> {
         let url = format!("{}/abort/{}", self.endpoint, batch_id);
         self.logger.warn(&format!("Aborting batch {}.", batch_id));
-        let res = self.client.post(&url).json(&VoidRequestBody {
-            fishnet: Fishnet::authenticated(self.key.clone()),
-        }).send().await?;
+        let res = self
+            .client
+            .post(&url)
+            .json(&VoidRequestBody {
+                fishnet: Fishnet::authenticated(self.key.clone()),
+            })
+            .send()
+            .await?;
 
         if res.status() == StatusCode::NOT_FOUND {
-            self.logger.warn(&format!("Fishnet server does not support abort (404 for {}).", batch_id));
+            self.logger.warn(&format!(
+                "Fishnet server does not support abort (404 for {}).",
+                batch_id
+            ));
             Ok(())
         } else {
             res.error_for_status().map(|_| ())
@@ -577,24 +642,36 @@ impl ApiActor {
                         callback.send(Ok(())).nevermind("callback dropped");
                     }
                     StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
-                        callback.send(Err(KeyError::AccessDenied)).nevermind("callback dropped");
+                        callback
+                            .send(Err(KeyError::AccessDenied))
+                            .nevermind("callback dropped");
                     }
                     StatusCode::NOT_FOUND => {
                         // Legacy key validation.
                         self.logger.debug("Falling back to legacy key validation");
-                        let url = format!("{}/key/{}", self.endpoint, self.key.as_ref().map_or("", |k| &k.0));
+                        let url = format!(
+                            "{}/key/{}",
+                            self.endpoint,
+                            self.key.as_ref().map_or("", |k| &k.0)
+                        );
                         let res = self.client.get(&url).send().await?;
                         match res.status() {
-                            StatusCode::NOT_FOUND => callback.send(Err(KeyError::AccessDenied)).nevermind("callback dropped"),
+                            StatusCode::NOT_FOUND => callback
+                                .send(Err(KeyError::AccessDenied))
+                                .nevermind("callback dropped"),
                             StatusCode::OK => callback.send(Ok(())).nevermind("callback dropped"),
                             status => {
-                                self.logger.warn(&format!("Unexpected status while checking legacy key: {}", status));
+                                self.logger.warn(&format!(
+                                    "Unexpected status while checking legacy key: {}",
+                                    status
+                                ));
                                 res.error_for_status()?;
                             }
                         }
                     }
                     status => {
-                        self.logger.warn(&format!("Unexpected status while checking key: {}", status));
+                        self.logger
+                            .warn(&format!("Unexpected status while checking key: {}", status));
                         res.error_for_status()?;
                     }
                 }
@@ -603,10 +680,13 @@ impl ApiActor {
                 let url = format!("{}/status", self.endpoint);
                 let res = self.client.get(&url).send().await?;
                 match res.status() {
-                    StatusCode::OK => callback.send(res.json::<StatusResponseBody>().await?.analysis).nevermind("callback dropped"),
+                    StatusCode::OK => callback
+                        .send(res.json::<StatusResponseBody>().await?.analysis)
+                        .nevermind("callback dropped"),
                     StatusCode::NOT_FOUND => (),
                     status => {
-                        self.logger.warn(&format!("Unexpected status for queue status: {}", status));
+                        self.logger
+                            .warn(&format!("Unexpected status for queue status: {}", status));
                         res.error_for_status()?;
                     }
                 }
@@ -616,65 +696,113 @@ impl ApiActor {
             }
             ApiMessage::Acquire { callback, query } => {
                 let url = format!("{}/acquire", self.endpoint);
-                let res = self.client.post(&url).query(&query).json(&VoidRequestBody {
-                    fishnet: Fishnet::authenticated(self.key.clone()),
-                }).send().await?;
+                let res = self
+                    .client
+                    .post(&url)
+                    .query(&query)
+                    .json(&VoidRequestBody {
+                        fishnet: Fishnet::authenticated(self.key.clone()),
+                    })
+                    .send()
+                    .await?;
 
                 match res.status() {
-                    StatusCode::NO_CONTENT => callback.send(Acquired::NoContent).nevermind("callback dropped"),
-                    StatusCode::BAD_REQUEST | StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN | StatusCode::NOT_ACCEPTABLE => {
+                    StatusCode::NO_CONTENT => callback
+                        .send(Acquired::NoContent)
+                        .nevermind("callback dropped"),
+                    StatusCode::BAD_REQUEST
+                    | StatusCode::UNAUTHORIZED
+                    | StatusCode::FORBIDDEN
+                    | StatusCode::NOT_ACCEPTABLE => {
                         let text = res.text().await?;
-                        self.logger.error(&format!("Server rejected request: {}", text));
-                        callback.send(Acquired::Rejected).nevermind("callback dropped");
+                        self.logger
+                            .error(&format!("Server rejected request: {}", text));
+                        callback
+                            .send(Acquired::Rejected)
+                            .nevermind("callback dropped");
                     }
                     StatusCode::OK | StatusCode::ACCEPTED => {
-                        if let Err(Acquired::Accepted(res)) = callback.send(Acquired::Accepted(res.json().await?)) {
-                            self.logger.error("Acquired a batch, but callback dropped. Aborting.");
+                        if let Err(Acquired::Accepted(res)) =
+                            callback.send(Acquired::Accepted(res.json().await?))
+                        {
+                            self.logger
+                                .error("Acquired a batch, but callback dropped. Aborting.");
                             self.abort(res.work.id()).await?;
                         }
                     }
                     status => {
-                        self.logger.warn(&format!("Unexpected status for acquire: {}", status));
+                        self.logger
+                            .warn(&format!("Unexpected status for acquire: {}", status));
                         res.error_for_status()?;
                     }
                 }
             }
-            ApiMessage::SubmitAnalysis { batch_id, flavor, analysis } => {
+            ApiMessage::SubmitAnalysis {
+                batch_id,
+                flavor,
+                analysis,
+            } => {
                 let url = format!("{}/analysis/{}", self.endpoint, batch_id);
-                let res = self.client.post(&url).query(&SubmitQuery {
-                    stop: true,
-                    slow: false,
-                }).json(&AnalysisRequestBody {
-                    fishnet: Fishnet::authenticated(self.key.clone()),
-                    stockfish: Stockfish { flavor },
-                    analysis,
-                }).send().await?.error_for_status()?;
+                let res = self
+                    .client
+                    .post(&url)
+                    .query(&SubmitQuery {
+                        stop: true,
+                        slow: false,
+                    })
+                    .json(&AnalysisRequestBody {
+                        fishnet: Fishnet::authenticated(self.key.clone()),
+                        stockfish: Stockfish { flavor },
+                        analysis,
+                    })
+                    .send()
+                    .await?
+                    .error_for_status()?;
 
                 if res.status() != StatusCode::NO_CONTENT {
-                    self.logger.warn(&format!("Unexpected status for submitting analysis: {}", res.status()));
+                    self.logger.warn(&format!(
+                        "Unexpected status for submitting analysis: {}",
+                        res.status()
+                    ));
                 }
             }
-            ApiMessage::SubmitMove { batch_id, best_move, callback } => {
+            ApiMessage::SubmitMove {
+                batch_id,
+                best_move,
+                callback,
+            } => {
                 let url = format!("{}/move/{}", self.endpoint, batch_id);
-                let res = self.client.post(&url).json(&MoveRequestBody {
-                    fishnet: Fishnet::authenticated(self.key.clone()),
-                    m: BestMove {
-                        best_move: best_move.clone(),
-                    },
-                }).send().await?;
+                let res = self
+                    .client
+                    .post(&url)
+                    .json(&MoveRequestBody {
+                        fishnet: Fishnet::authenticated(self.key.clone()),
+                        m: BestMove {
+                            best_move: best_move.clone(),
+                        },
+                    })
+                    .send()
+                    .await?;
 
                 match res.status() {
-                    StatusCode::NO_CONTENT => callback.send(Acquired::NoContent).nevermind("callback dropped"),
+                    StatusCode::NO_CONTENT => callback
+                        .send(Acquired::NoContent)
+                        .nevermind("callback dropped"),
                     StatusCode::OK | StatusCode::ACCEPTED => {
-                        if let Err(Acquired::Accepted(res)) = callback.send(Acquired::Accepted(res.json().await?)) {
+                        if let Err(Acquired::Accepted(res)) =
+                            callback.send(Acquired::Accepted(res.json().await?))
+                        {
                             self.logger.error("Acquired a batch while submitting move, but callback dropped. Aborting.");
                             self.abort(res.work.id()).await?;
                         }
                     }
                     status => {
-                        self.logger.warn(&format!("Unexpected status submitting move {} for batch {}: {}",
-                                                  best_move.unwrap_or(Uci::Null),
-                                                  batch_id, status));
+                        self.logger.warn(&format!(
+                            "Unexpected status submitting move {} for batch {}: {}",
+                            best_move.unwrap_or(Uci::Null),
+                            batch_id,
+                            status
+                        ));
                         res.error_for_status()?;
                     }
                 }

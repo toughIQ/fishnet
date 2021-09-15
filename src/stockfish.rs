@@ -1,22 +1,34 @@
-use std::io;
-use std::time::Duration;
-use std::process::Stdio;
-use std::path::PathBuf;
-use std::num::NonZeroU8;
-use tokio::sync::{mpsc, oneshot};
-use tokio::process::{Command, ChildStdin, ChildStdout};
-use tokio::io::{BufWriter, AsyncWriteExt as _, BufReader, AsyncBufReadExt as _, Lines};
-use shakmaty::fen::FenOpts;
-use shakmaty::variant::Variant;
 use crate::api::{Score, Work};
-use crate::ipc::{Position, Matrix, PositionResponse, PositionFailed};
 use crate::assets::EngineFlavor;
+use crate::ipc::{Matrix, Position, PositionFailed, PositionResponse};
 use crate::logger::Logger;
 use crate::util::NevermindExt as _;
+use shakmaty::fen::FenOpts;
+use shakmaty::variant::Variant;
+use std::io;
+use std::num::NonZeroU8;
+use std::path::PathBuf;
+use std::process::Stdio;
+use std::time::Duration;
+use tokio::io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader, BufWriter, Lines};
+use tokio::process::{ChildStdin, ChildStdout, Command};
+use tokio::sync::{mpsc, oneshot};
 
-pub fn channel(exe: PathBuf, init: StockfishInit, logger: Logger) -> (StockfishStub, StockfishActor) {
+pub fn channel(
+    exe: PathBuf,
+    init: StockfishInit,
+    logger: Logger,
+) -> (StockfishStub, StockfishActor) {
     let (tx, rx) = mpsc::channel(1);
-    (StockfishStub { tx }, StockfishActor { rx, exe, init: Some(init), logger })
+    (
+        StockfishStub { tx },
+        StockfishActor {
+            rx,
+            exe,
+            init: Some(init),
+            logger,
+        },
+    )
 }
 
 pub struct StockfishStub {
@@ -27,10 +39,10 @@ impl StockfishStub {
     pub async fn go(&mut self, position: Position) -> Result<PositionResponse, PositionFailed> {
         let (callback, response) = oneshot::channel();
         let batch_id = position.work.id();
-        self.tx.send(StockfishMessage::Go {
-            position,
-            callback,
-        }).await.map_err(|_| PositionFailed { batch_id })?;
+        self.tx
+            .send(StockfishMessage::Go { position, callback })
+            .await
+            .map_err(|_| PositionFailed { batch_id })?;
         response.await.map_err(|_| PositionFailed { batch_id })
     }
 }
@@ -124,11 +136,23 @@ impl StockfishActor {
             Command::new(&self.exe)
                 .stdout(Stdio::piped())
                 .stdin(Stdio::piped())
-                .kill_on_drop(true)).spawn()?;
+                .kill_on_drop(true),
+        )
+        .spawn()?;
 
         let pid = child.id().expect("pid");
-        let mut stdout = Stdout::new(child.stdout.take().ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "stdout closed"))?);
-        let mut stdin = BufWriter::new(child.stdin.take().ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "stdin closed"))?);
+        let mut stdout = Stdout::new(
+            child
+                .stdout
+                .take()
+                .ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "stdout closed"))?,
+        );
+        let mut stdin = BufWriter::new(
+            child
+                .stdin
+                .take()
+                .ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "stdin closed"))?,
+        );
 
         loop {
             tokio::select! {
@@ -156,9 +180,17 @@ impl StockfishActor {
         Ok(())
     }
 
-    async fn handle_message(&mut self, stdout: &mut Stdout, stdin: &mut BufWriter<ChildStdin>, msg: StockfishMessage) -> Result<(), EngineError> {
+    async fn handle_message(
+        &mut self,
+        stdout: &mut Stdout,
+        stdin: &mut BufWriter<ChildStdin>,
+        msg: StockfishMessage,
+    ) -> Result<(), EngineError> {
         match msg {
-            StockfishMessage::Go { mut callback, position } => {
+            StockfishMessage::Go {
+                mut callback,
+                position,
+            } => {
                 tokio::select! {
                     _ = callback.closed() => Err(EngineError::Shutdown),
                     res = self.go(stdout, stdin, position) => {
@@ -170,10 +202,18 @@ impl StockfishActor {
         }
     }
 
-    async fn init(&mut self, stdout: &mut Stdout, stdin: &mut BufWriter<ChildStdin>) -> io::Result<()> {
+    async fn init(
+        &mut self,
+        stdout: &mut Stdout,
+        stdin: &mut BufWriter<ChildStdin>,
+    ) -> io::Result<()> {
         if let Some(init) = self.init.take() {
-            stdin.write_all(format!("setoption name EvalFile value {}\n", init.nnue).as_bytes()).await?;
-            stdin.write_all(b"setoption name UCI_Chess960 value true\n").await?;
+            stdin
+                .write_all(format!("setoption name EvalFile value {}\n", init.nnue).as_bytes())
+                .await?;
+            stdin
+                .write_all(b"setoption name UCI_Chess960 value true\n")
+                .await?;
             stdin.write_all(b"isready\n").await?;
             stdin.flush().await?;
 
@@ -182,15 +222,24 @@ impl StockfishActor {
                 if line.trim_end() == "readyok" {
                     self.logger.debug("Engine is ready");
                     break;
-                } else if !line.starts_with("Stockfish ") && !line.starts_with("Fairy-Stockfish ") { // ignore preamble
-                    self.logger.warn(&format!("Unexpected engine initialization output: {}", line.trim_end()));
+                } else if !line.starts_with("Stockfish ") && !line.starts_with("Fairy-Stockfish ") {
+                    // ignore preamble
+                    self.logger.warn(&format!(
+                        "Unexpected engine initialization output: {}",
+                        line.trim_end()
+                    ));
                 }
             }
         }
         Ok(())
     }
 
-    async fn go(&mut self, stdout: &mut Stdout, stdin: &mut BufWriter<ChildStdin>, position: Position) -> io::Result<PositionResponse> {
+    async fn go(
+        &mut self,
+        stdout: &mut Stdout,
+        stdin: &mut BufWriter<ChildStdin>,
+        position: Position,
+    ) -> io::Result<PositionResponse> {
         // Set global options (once).
         self.init(stdout, stdin).await?;
 
@@ -198,48 +247,91 @@ impl StockfishActor {
         stdin.write_all(b"ucinewgame\n").await?;
 
         // Set basic options.
-        stdin.write_all(format!("setoption name Use NNUE value {}\n", position.flavor.eval_flavor().is_nnue()).as_bytes()).await?;
+        stdin
+            .write_all(
+                format!(
+                    "setoption name Use NNUE value {}\n",
+                    position.flavor.eval_flavor().is_nnue()
+                )
+                .as_bytes(),
+            )
+            .await?;
         let variant = Variant::from(position.variant);
         if position.flavor == EngineFlavor::MultiVariant {
-            stdin.write_all(format!("setoption name UCI_Variant value {}\n", variant.uci()).as_bytes()).await?;
+            stdin
+                .write_all(
+                    format!("setoption name UCI_Variant value {}\n", variant.uci()).as_bytes(),
+                )
+                .await?;
         }
-        stdin.write_all(format!("setoption name MultiPV value {}\n", position.work.multipv()).as_bytes()).await?;
+        stdin
+            .write_all(
+                format!("setoption name MultiPV value {}\n", position.work.multipv()).as_bytes(),
+            )
+            .await?;
 
         // Setup position.
-        let moves = position.moves.iter().map(|m| m.to_string()).collect::<Vec<_>>().join(" ");
-        let fen = FenOpts::new().promoted(variant.distinguishes_promoted()).fen(&position.fen);
-        stdin.write_all(format!("position fen {} moves {}\n", fen, moves).as_bytes()).await?;
+        let moves = position
+            .moves
+            .iter()
+            .map(|m| m.to_string())
+            .collect::<Vec<_>>()
+            .join(" ");
+        let fen = FenOpts::new()
+            .promoted(variant.distinguishes_promoted())
+            .fen(&position.fen);
+        stdin
+            .write_all(format!("position fen {} moves {}\n", fen, moves).as_bytes())
+            .await?;
 
         // Go.
         let go = match &position.work {
             Work::Move { level, clock, .. } => {
-                stdin.write_all(b"setoption name UCI_AnalyseMode value false\n").await?;
-                stdin.write_all(format!("setoption name Skill Level value {}\n", level.skill_level()).as_bytes()).await?;
+                stdin
+                    .write_all(b"setoption name UCI_AnalyseMode value false\n")
+                    .await?;
+                stdin
+                    .write_all(
+                        format!("setoption name Skill Level value {}\n", level.skill_level())
+                            .as_bytes(),
+                    )
+                    .await?;
 
                 let mut go = vec![
                     "go".to_owned(),
-                    "movetime".to_owned(), level.time().as_millis().to_string(),
-                    "depth".to_owned(), level.depth().to_string(),
+                    "movetime".to_owned(),
+                    level.time().as_millis().to_string(),
+                    "depth".to_owned(),
+                    level.depth().to_string(),
                 ];
 
                 if let Some(clock) = clock {
                     go.extend_from_slice(&[
-                        "wtime".to_owned(), Duration::from(clock.wtime).as_millis().to_string(),
-                        "btime".to_owned(), Duration::from(clock.btime).as_millis().to_string(),
-                        "winc".to_owned(), clock.inc.as_millis().to_string(),
-                        "binc".to_owned(), clock.inc.as_millis().to_string(),
+                        "wtime".to_owned(),
+                        Duration::from(clock.wtime).as_millis().to_string(),
+                        "btime".to_owned(),
+                        Duration::from(clock.btime).as_millis().to_string(),
+                        "winc".to_owned(),
+                        clock.inc.as_millis().to_string(),
+                        "binc".to_owned(),
+                        clock.inc.as_millis().to_string(),
                     ]);
                 }
 
                 go
             }
             Work::Analysis { nodes, depth, .. } => {
-                stdin.write_all(b"setoption name UCI_AnalyseMode value true\n").await?;
-                stdin.write_all(b"setoption name Skill Level value 20\n").await?;
+                stdin
+                    .write_all(b"setoption name UCI_AnalyseMode value true\n")
+                    .await?;
+                stdin
+                    .write_all(b"setoption name Skill Level value 20\n")
+                    .await?;
 
                 let mut go = vec![
                     "go".to_owned(),
-                    "nodes".to_owned(), nodes.get(position.flavor.eval_flavor()).to_string(),
+                    "nodes".to_owned(),
+                    nodes.get(position.flavor.eval_flavor()).to_string(),
                 ];
 
                 if let Some(depth) = depth {
@@ -288,40 +380,69 @@ impl StockfishActor {
                     while let Some(part) = parts.next() {
                         match part {
                             "multipv" => {
-                                multipv = parts.next()
-                                    .and_then(|t| t.parse().ok())
-                                    .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected multipv"))?;
+                                multipv =
+                                    parts.next().and_then(|t| t.parse().ok()).ok_or_else(|| {
+                                        io::Error::new(
+                                            io::ErrorKind::InvalidData,
+                                            "expected multipv",
+                                        )
+                                    })?;
                             }
                             "depth" => {
-                                depth = parts.next()
-                                    .and_then(|t| t.parse().ok())
-                                    .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected depth"))?;
+                                depth =
+                                    parts.next().and_then(|t| t.parse().ok()).ok_or_else(|| {
+                                        io::Error::new(io::ErrorKind::InvalidData, "expected depth")
+                                    })?;
                             }
                             "nodes" => {
-                                nodes = parts.next()
-                                    .and_then(|t| t.parse().ok())
-                                    .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected nodes"))?;
+                                nodes =
+                                    parts.next().and_then(|t| t.parse().ok()).ok_or_else(|| {
+                                        io::Error::new(io::ErrorKind::InvalidData, "expected nodes")
+                                    })?;
                             }
                             "time" => {
-                                time = parts.next()
+                                time = parts
+                                    .next()
                                     .and_then(|t| t.parse().ok())
                                     .map(Duration::from_millis)
-                                    .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected time"))?;
+                                    .ok_or_else(|| {
+                                        io::Error::new(io::ErrorKind::InvalidData, "expected time")
+                                    })?;
                             }
                             "nps" => {
                                 nps = parts.next().and_then(|n| n.parse().ok());
                             }
                             "score" => {
-                                scores.set(multipv, depth, match parts.next() {
-                                    Some("cp") => parts.next().and_then(|cp| cp.parse().ok()).map(Score::Cp),
-                                    Some("mate") => parts.next().and_then(|mate| mate.parse().ok()).map(Score::Mate),
-                                    _ => return Err(io::Error::new(io::ErrorKind::InvalidData, "expected cp or mate")),
-                                }.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "expected score"))?);
+                                scores.set(
+                                    multipv,
+                                    depth,
+                                    match parts.next() {
+                                        Some("cp") => parts
+                                            .next()
+                                            .and_then(|cp| cp.parse().ok())
+                                            .map(Score::Cp),
+                                        Some("mate") => parts
+                                            .next()
+                                            .and_then(|mate| mate.parse().ok())
+                                            .map(Score::Mate),
+                                        _ => {
+                                            return Err(io::Error::new(
+                                                io::ErrorKind::InvalidData,
+                                                "expected cp or mate",
+                                            ))
+                                        }
+                                    }
+                                    .ok_or_else(|| {
+                                        io::Error::new(io::ErrorKind::InvalidData, "expected score")
+                                    })?,
+                                );
                             }
                             "pv" => {
                                 let mut pv = Vec::new();
                                 for part in &mut parts {
-                                    pv.push(part.parse().map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid pv"))?);
+                                    pv.push(part.parse().map_err(|_| {
+                                        io::Error::new(io::ErrorKind::InvalidData, "invalid pv")
+                                    })?);
                                 }
                                 pvs.set(multipv, depth, pv);
                             }
@@ -329,7 +450,9 @@ impl StockfishActor {
                         }
                     }
                 }
-                _ => self.logger.warn(&format!("Unexpected engine output: {}", line)),
+                _ => self
+                    .logger
+                    .warn(&format!("Unexpected engine output: {}", line)),
             }
         }
     }

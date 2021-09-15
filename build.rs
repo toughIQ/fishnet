@@ -1,10 +1,10 @@
+use glob::glob;
 use std::env;
-use std::process::Command;
 use std::fs;
 use std::fs::File;
 use std::io;
 use std::path::Path;
-use glob::glob;
+use std::process::Command;
 
 const EVAL_FILE: &str = "nn-6762d36ad265.nnue";
 
@@ -30,20 +30,47 @@ impl Target {
         let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
         let pgo = release && not_cross_compiled() && (self.pgo || env::var("SDE_PATH").is_ok());
 
-        let exe = format!("{}-{}{}", name, self.arch, if windows { ".exe" } else { "" });
+        let exe = format!(
+            "{}-{}{}",
+            name,
+            self.arch,
+            if windows { ".exe" } else { "" }
+        );
         if release && !pgo {
-            println!("cargo:warning=Building {} without profile-guided optimization", exe);
+            println!(
+                "cargo:warning=Building {} without profile-guided optimization",
+                exe
+            );
         }
 
-        let make = if target_os == "freebsd" { "gmake" } else { "make" };
+        let make = if target_os == "freebsd" {
+            "gmake"
+        } else {
+            "make"
+        };
 
         assert!(Command::new(make)
             .current_dir(src_dir)
             .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
-            .env("CXXFLAGS", format!("{} -DNNUE_EMBEDDING_OFF", env::var("CXXFLAGS").unwrap_or_default()))
+            .env(
+                "CXXFLAGS",
+                format!(
+                    "{} -DNNUE_EMBEDDING_OFF",
+                    env::var("CXXFLAGS").unwrap_or_default()
+                )
+            )
             .arg("-B")
             .args(env::var("CXX").ok().map(|cxx| format!("CXX={}", cxx)))
-            .arg(format!("COMP={}", if windows { "mingw" } else if target_os == "linux" { "gcc" } else { "clang" }))
+            .arg(format!(
+                "COMP={}",
+                if windows {
+                    "mingw"
+                } else if target_os == "linux" {
+                    "gcc"
+                } else {
+                    "clang"
+                }
+            ))
             .arg(format!("ARCH={}", self.arch))
             .arg(format!("EXE={}", exe))
             .arg(if pgo { "profile-build" } else { "build" })
@@ -98,7 +125,8 @@ fn stockfish_build() {
                 pgo: is_x86_feature_detected!("bmi2"),
                 #[cfg(not(target_arch = "x86_64"))]
                 pgo: false,
-            }.build_both();
+            }
+            .build_both();
 
             Target {
                 arch: "x86-64-avx2",
@@ -106,7 +134,8 @@ fn stockfish_build() {
                 pgo: is_x86_feature_detected!("avx2"),
                 #[cfg(not(target_arch = "x86_64"))]
                 pgo: false,
-            }.build_both();
+            }
+            .build_both();
 
             Target {
                 arch: "x86-64-sse41-popcnt",
@@ -114,12 +143,14 @@ fn stockfish_build() {
                 pgo: is_x86_feature_detected!("sse4.1") && is_x86_feature_detected!("popcnt"),
                 #[cfg(not(target_arch = "x86_64"))]
                 pgo: false,
-            }.build_both();
+            }
+            .build_both();
 
             Target {
                 arch: "x86-64",
                 pgo: cfg!(target_arch = "x86_64"),
-            }.build_both();
+            }
+            .build_both();
 
             // TODO: Could support:
             // - x86-64-avx512
@@ -131,12 +162,14 @@ fn stockfish_build() {
                 Target {
                     arch: "apple-silicon",
                     pgo: cfg!(target_arch = "aarch64"),
-                }.build_both();
+                }
+                .build_both();
             } else {
                 Target {
                     arch: "armv8",
                     pgo: cfg!(target_arch = "aarch64"),
-                }.build_both();
+                }
+                .build_both();
             }
         }
         target_arch => {
@@ -146,7 +179,9 @@ fn stockfish_build() {
 }
 
 fn compress(dir: &str, file: &str) {
-    let compressed = File::create(Path::new(&env::var("OUT_DIR").unwrap()).join(&format!("{}.xz", file))).unwrap();
+    let compressed =
+        File::create(Path::new(&env::var("OUT_DIR").unwrap()).join(&format!("{}.xz", file)))
+            .unwrap();
     let mut encoder = xz2::write::XzEncoder::new(compressed, 6);
 
     let uncompressed_path = Path::new(dir).join(file);

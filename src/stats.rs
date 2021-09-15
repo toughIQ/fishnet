@@ -1,18 +1,23 @@
-use std::fmt;
+use serde::{Deserialize, Serialize};
 use std::cmp::{max, min};
+use std::fmt;
 use std::fs::{File, OpenOptions};
 use std::io;
-use std::io::{SeekFrom, Read as _, Write as _, Seek as _};
-use std::time::Duration;
+use std::io::{Read as _, Seek as _, SeekFrom, Write as _};
 use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 const STATS_FILENAME: &str = ".fishnet-stats";
 
 fn stats_path() -> io::Result<PathBuf> {
     home::home_dir()
         .map(|dir| dir.join(STATS_FILENAME))
-        .ok_or_else(|| io::Error::new(io::ErrorKind::Other, format!("Could not resolve ~/.{}", STATS_FILENAME)))
+        .ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::Other,
+                format!("Could not resolve ~/.{}", STATS_FILENAME),
+            )
+        })
 }
 
 pub struct StatsRecorder {
@@ -36,23 +41,36 @@ impl Stats {
         Ok(if buf.is_empty() {
             None
         } else {
-            Some(serde_json::from_slice(&buf).map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err.to_string()))?)
+            Some(
+                serde_json::from_slice(&buf)
+                    .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err.to_string()))?,
+            )
         })
     }
 
     fn save_to(&self, file: &mut File) -> io::Result<()> {
         file.set_len(0)?;
         file.seek(SeekFrom::Start(0))?;
-        file.write_all(serde_json::to_string_pretty(&self).expect("serialize stats").as_bytes())?;
+        file.write_all(
+            serde_json::to_string_pretty(&self)
+                .expect("serialize stats")
+                .as_bytes(),
+        )?;
         Ok(())
     }
 }
 
 impl StatsRecorder {
     pub fn open(cores: usize) -> StatsRecorder {
-        let (stats, stats_file) = match stats_path().and_then(|path| OpenOptions::new().read(true).write(true).create(true).open(path)) {
-            Ok(mut file) => {
-                (match Stats::load_from(&mut file) {
+        let (stats, stats_file) = match stats_path().and_then(|path| {
+            OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(true)
+                .open(path)
+        }) {
+            Ok(mut file) => (
+                match Stats::load_from(&mut file) {
                     Ok(Some(stats)) => {
                         println!("Resuming from ~/{} ...", STATS_FILENAME);
                         stats
@@ -62,11 +80,15 @@ impl StatsRecorder {
                         Stats::default()
                     }
                     Err(err) => {
-                        eprintln!("E: Failed to resume from ~/{}: {}. Resetting ...", STATS_FILENAME, err);
+                        eprintln!(
+                            "E: Failed to resume from ~/{}: {}. Resetting ...",
+                            STATS_FILENAME, err
+                        );
                         Stats::default()
                     }
-                }, Some(file))
-            },
+                },
+                Some(file),
+            ),
             Err(err) => {
                 eprintln!("E: Failed to open ~/{}: {}", STATS_FILENAME, err);
                 (Stats::default(), None)
@@ -103,7 +125,8 @@ impl StatsRecorder {
 
         // Estimate how long this client would take for the next batch,
         // capped at timeout.
-        let estimated_batch_seconds = u64::from(min(6 * 60, 60 * 2_000_000 / max(1, self.nnue_nps.nps)));
+        let estimated_batch_seconds =
+            u64::from(min(6 * 60, 60 * 2_000_000 / max(1, self.nnue_nps.nps)));
 
         // Its worth joining if queue wait time + estimated time < top client
         // time on empty queue.

@@ -1,9 +1,9 @@
-use std::fmt;
-use std::io;
-use std::fs::{File, OpenOptions};
-use std::path::{Path, PathBuf};
-use serde::Serialize;
 use bitflags::bitflags;
+use serde::Serialize;
+use std::fmt;
+use std::fs::{File, OpenOptions};
+use std::io;
+use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 use xz2::read::XzDecoder;
 
@@ -31,10 +31,7 @@ impl Asset {
     }
 
     fn open_file(&self, path: &Path) -> io::Result<File> {
-        OpenOptions::new()
-            .create(true)
-            .write(true)
-            .open(path)
+        OpenOptions::new().create(true).write(true).open(path)
     }
 
     fn create(&self, base: &Path) -> io::Result<PathBuf> {
@@ -87,27 +84,30 @@ impl Cpu {
         cpu.set(Cpu::POPCNT, is_x86_feature_detected!("popcnt"));
         cpu.set(Cpu::SSE41, is_x86_feature_detected!("sse4.1"));
         cpu.set(Cpu::AVX2, is_x86_feature_detected!("avx2"));
-        cpu.set(Cpu::FAST_BMI2, is_x86_feature_detected!("bmi2") && {
-            let cpuid = raw_cpuid::CpuId::new();
-            match cpuid.get_vendor_info() {
-                // Intel was implementing BMI2 in hardware from the beginning.
-                Some(vendor) if vendor.as_str() == "GenuineIntel" => true,
-                // Due to patents, AMD was using slow software emulation
-                // for PEXT for a long time. The Zen 3 family (0x19) is the
-                // first to implement it in hardware.
-                Some(vendor) if vendor.as_str() == "AuthenticAMD" => {
-                    cpuid.get_feature_info().map_or(false, |f| {
-                        let family = if f.family_id() == 15 {
-                            f.extended_family_id() + f.family_id()
-                        } else {
-                            f.family_id()
-                        };
-                        family >= 0x19
-                    })
-                },
-                _ => false,
-            }
-        });
+        cpu.set(
+            Cpu::FAST_BMI2,
+            is_x86_feature_detected!("bmi2") && {
+                let cpuid = raw_cpuid::CpuId::new();
+                match cpuid.get_vendor_info() {
+                    // Intel was implementing BMI2 in hardware from the beginning.
+                    Some(vendor) if vendor.as_str() == "GenuineIntel" => true,
+                    // Due to patents, AMD was using slow software emulation
+                    // for PEXT for a long time. The Zen 3 family (0x19) is the
+                    // first to implement it in hardware.
+                    Some(vendor) if vendor.as_str() == "AuthenticAMD" => {
+                        cpuid.get_feature_info().map_or(false, |f| {
+                            let family = if f.family_id() == 15 {
+                                f.extended_family_id() + f.family_id()
+                            } else {
+                                f.family_id()
+                            };
+                            family >= 0x19
+                        })
+                    }
+                    _ => false,
+                }
+            },
+        );
         cpu
     }
 
@@ -140,7 +140,10 @@ const STOCKFISH: &[Asset] = &[
     },
     Asset {
         name: "stockfish-x86-64-sse41-popcnt",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-sse41-popcnt.xz")),
+        data: include_bytes!(concat!(
+            env!("OUT_DIR"),
+            "/stockfish-x86-64-sse41-popcnt.xz"
+        )),
         needs: Cpu::SF_SSE41_POPCNT,
         executable: true,
     },
@@ -168,7 +171,10 @@ const STOCKFISH_MV: &[Asset] = &[
     },
     Asset {
         name: "fairy-stockfish-x86-64-sse41-popcnt",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64-sse41-popcnt.xz")),
+        data: include_bytes!(concat!(
+            env!("OUT_DIR"),
+            "/fairy-stockfish-x86-64-sse41-popcnt.xz"
+        )),
         needs: Cpu::SF_SSE41_POPCNT,
         executable: true,
     },
@@ -196,7 +202,10 @@ const STOCKFISH: &[Asset] = &[
     },
     Asset {
         name: "stockfish-x86-64-sse41-popcnt.exe",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-sse41-popcnt.exe.xz")),
+        data: include_bytes!(concat!(
+            env!("OUT_DIR"),
+            "/stockfish-x86-64-sse41-popcnt.exe.xz"
+        )),
         needs: Cpu::SF_SSE41_POPCNT,
         executable: true,
     },
@@ -212,19 +221,28 @@ const STOCKFISH: &[Asset] = &[
 const STOCKFISH_MV: &[Asset] = &[
     Asset {
         name: "fairy-stockfish-x86-64-bmi2.exe",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64-bmi2.exe.xz")),
+        data: include_bytes!(concat!(
+            env!("OUT_DIR"),
+            "/fairy-stockfish-x86-64-bmi2.exe.xz"
+        )),
         needs: Cpu::SF_BMI2,
         executable: true,
     },
     Asset {
         name: "fairy-stockfish-x86-64-avx2.exe",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64-avx2.exe.xz")),
+        data: include_bytes!(concat!(
+            env!("OUT_DIR"),
+            "/fairy-stockfish-x86-64-avx2.exe.xz"
+        )),
         needs: Cpu::SF_AVX2,
         executable: true,
     },
     Asset {
         name: "fairy-stockfish-x86-64-sse41-popcnt.exe",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64-sse41-popcnt.exe.xz")),
+        data: include_bytes!(concat!(
+            env!("OUT_DIR"),
+            "/fairy-stockfish-x86-64-sse41-popcnt.exe.xz"
+        )),
         needs: Cpu::SF_SSE41_POPCNT,
         executable: true,
     },
@@ -237,45 +255,39 @@ const STOCKFISH_MV: &[Asset] = &[
 ];
 
 #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
-const STOCKFISH: &[Asset] = &[
-    Asset {
-        name: "stockfish-armv8",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-armv8.xz")),
-        needs: Cpu::empty(),
-        executable: true,
-    },
-];
+const STOCKFISH: &[Asset] = &[Asset {
+    name: "stockfish-armv8",
+    data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-armv8.xz")),
+    needs: Cpu::empty(),
+    executable: true,
+}];
 
 #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
-const STOCKFISH_MV: &[Asset] = &[
-    Asset {
-        name: "fairy-stockfish-armv8",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-armv8.xz")),
-        needs: Cpu::empty(),
-        executable: true,
-    },
-];
-
+const STOCKFISH_MV: &[Asset] = &[Asset {
+    name: "fairy-stockfish-armv8",
+    data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-armv8.xz")),
+    needs: Cpu::empty(),
+    executable: true,
+}];
 
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
-const STOCKFISH: &[Asset] = &[
-    Asset {
-        name: "stockfish-apple-silicon",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-apple-silicon.xz")),
-        needs: Cpu::empty(),
-        executable: true,
-    },
-];
+const STOCKFISH: &[Asset] = &[Asset {
+    name: "stockfish-apple-silicon",
+    data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-apple-silicon.xz")),
+    needs: Cpu::empty(),
+    executable: true,
+}];
 
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
-const STOCKFISH_MV: &[Asset] = &[
-    Asset {
-        name: "fairy-stockfish-apple-silicon",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-apple-silicon.xz")),
-        needs: Cpu::empty(),
-        executable: true,
-    },
-];
+const STOCKFISH_MV: &[Asset] = &[Asset {
+    name: "fairy-stockfish-apple-silicon",
+    data: include_bytes!(concat!(
+        env!("OUT_DIR"),
+        "/fairy-stockfish-apple-silicon.xz"
+    )),
+    needs: Cpu::empty(),
+    executable: true,
+}];
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum EngineFlavor {
@@ -343,13 +355,24 @@ pub struct Assets {
 impl Assets {
     pub fn prepare(cpu: Cpu) -> io::Result<Assets> {
         let dir = tempfile::Builder::new().prefix("fishnet-").tempdir()?;
-        let sf = STOCKFISH.iter().find(|a| cpu.contains(a.needs)).expect("compatible stockfish");
+        let sf = STOCKFISH
+            .iter()
+            .find(|a| cpu.contains(a.needs))
+            .expect("compatible stockfish");
         Ok(Assets {
-            nnue: NNUE.create(dir.path())?.to_str().expect("nnue path printable").to_owned(),
+            nnue: NNUE
+                .create(dir.path())?
+                .to_str()
+                .expect("nnue path printable")
+                .to_owned(),
             sf_name: sf.name,
             stockfish: ByEngineFlavor {
                 official: sf.create(dir.path())?,
-                multi_variant: STOCKFISH_MV.iter().find(|a| cpu.contains(a.needs)).expect("compatible stockfish").create(dir.path())?,
+                multi_variant: STOCKFISH_MV
+                    .iter()
+                    .find(|a| cpu.contains(a.needs))
+                    .expect("compatible stockfish")
+                    .create(dir.path())?,
             },
             dir,
         })

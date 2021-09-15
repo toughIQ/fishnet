@@ -1,35 +1,35 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-mod configure;
-mod assets;
-mod systemd;
 mod api;
+mod assets;
+mod configure;
 mod ipc;
-mod queue;
-mod util;
-mod stockfish;
 mod logger;
+mod queue;
 mod stats;
+mod stockfish;
+mod systemd;
+mod util;
 
-use std::cmp::min;
-use std::sync::Arc;
-use std::time::{Duration, Instant};
-use std::thread;
-use std::path::PathBuf;
-use std::env;
-use std::ptr;
+use crate::api::Work;
+use crate::assets::{Assets, ByEngineFlavor, Cpu, EngineFlavor};
+use crate::configure::{Command, Cores, Opt};
+use crate::ipc::{Position, PositionFailed, Pull};
+use crate::logger::{Logger, ProgressAt};
+use crate::stockfish::StockfishInit;
+use crate::util::RandomizedBackoff;
 use atty::Stream;
+use std::cmp::min;
+use std::env;
+use std::path::PathBuf;
+use std::ptr;
+use std::sync::Arc;
+use std::thread;
+use std::time::{Duration, Instant};
 use thousands::Separable as _;
-use tokio::time;
 use tokio::signal;
 use tokio::sync::{mpsc, oneshot};
-use crate::configure::{Opt, Command, Cores};
-use crate::assets::{Assets, Cpu, ByEngineFlavor, EngineFlavor};
-use crate::api::Work;
-use crate::ipc::{Pull, Position, PositionFailed};
-use crate::stockfish::StockfishInit;
-use crate::logger::{Logger, ProgressAt};
-use crate::util::RandomizedBackoff;
+use tokio::time;
 
 static COMPRESSED_DEPENDENCY_LIST: &[u8] = auditable::inject_dependency_list!();
 
@@ -46,7 +46,12 @@ async fn main() {
 
     if opt.auto_update {
         let current_exe = env::current_exe().expect("current exe");
-        match auto_update(!opt.command.map_or(false, Command::is_systemd), logger.clone()).await {
+        match auto_update(
+            !opt.command.map_or(false, Command::is_systemd),
+            logger.clone(),
+        )
+        .await
+        {
             Err(err) => logger.error(&format!("Failed to update: {}", err)),
             Ok(self_update::Status::UpToDate(version)) => {
                 logger.fishnet_info(&format!("Fishnet {} is up to date", version));
@@ -73,28 +78,36 @@ async fn run(opt: Opt, logger: &Logger) {
     let endpoint = opt.endpoint();
     logger.info(&format!("Endpoint: {}", endpoint));
 
-    logger.info(&format!("Backlog: Join queue if user backlog >= {:?} or system backlog >= {:?}",
-                         Duration::from(opt.backlog.user.unwrap_or_default()),
-                         Duration::from(opt.backlog.system.unwrap_or_default())));
+    logger.info(&format!(
+        "Backlog: Join queue if user backlog >= {:?} or system backlog >= {:?}",
+        Duration::from(opt.backlog.user.unwrap_or_default()),
+        Duration::from(opt.backlog.system.unwrap_or_default())
+    ));
 
     let cpu = Cpu::detect();
     logger.info(&format!("CPU features: {:?}", cpu));
 
     let assets = Assets::prepare(cpu).expect("prepared bundled stockfish");
-    logger.info(&format!("Engine: {} (for GPLv3, run: {} license)", assets.sf_name, env::args().next().unwrap_or_else(|| "./fishnet".to_owned())));
+    logger.info(&format!(
+        "Engine: {} (for GPLv3, run: {} license)",
+        assets.sf_name,
+        env::args().next().unwrap_or_else(|| "./fishnet".to_owned())
+    ));
 
     let cores = usize::from(opt.cores.unwrap_or(Cores::Auto));
     logger.info(&format!("Cores: {}", cores));
 
     // Install handler for SIGTERM.
     #[cfg(unix)]
-    let mut sig_term = signal::unix::signal(signal::unix::SignalKind::terminate()).expect("install handler for sigterm");
+    let mut sig_term = signal::unix::signal(signal::unix::SignalKind::terminate())
+        .expect("install handler for sigterm");
     #[cfg(windows)]
     let mut sig_term = signal::windows::ctrl_break().expect("install handler for ctrl+break");
 
     // Install handler for SIGINT.
     #[cfg(unix)]
-    let mut sig_int = signal::unix::signal(signal::unix::SignalKind::interrupt()).expect("install handler for sigint");
+    let mut sig_int = signal::unix::signal(signal::unix::SignalKind::interrupt())
+        .expect("install handler for sigint");
     #[cfg(windows)]
     let mut sig_int = signal::windows::ctrl_c().expect("install handler for ctrl+c");
 
@@ -110,12 +123,22 @@ async fn run(opt: Opt, logger: &Logger) {
         api
     };
 
-    let to_stop = if atty::is(Stream::Stdout) { "CTRL-C" } else { "SIGINT" };
+    let to_stop = if atty::is(Stream::Stdout) {
+        "CTRL-C"
+    } else {
+        "SIGINT"
+    };
     logger.headline(&format!("Running ({} to stop) ...", to_stop));
 
     // Spawn queue actor.
     let mut queue = {
-        let (queue, queue_actor) = queue::channel(opt.backlog, cores, api, opt.max_backoff.into(), logger.clone());
+        let (queue, queue_actor) = queue::channel(
+            opt.backlog,
+            cores,
+            api,
+            opt.max_backoff.into(),
+            logger.clone(),
+        );
         join_handles.push(tokio::spawn(async move {
             queue_actor.run().await;
         }));
@@ -146,7 +169,10 @@ async fn run(opt: Opt, logger: &Logger) {
     loop {
         // Check for updates from time to time.
         let now = Instant::now();
-        if opt.auto_update && !shutdown_soon && now.duration_since(up_to_date) >= Duration::from_secs(60 * 60 * 5) {
+        if opt.auto_update
+            && !shutdown_soon
+            && now.duration_since(up_to_date) >= Duration::from_secs(60 * 60 * 5)
+        {
             up_to_date = now;
             let current_exe = env::current_exe().expect("current exe");
             match auto_update(false, logger.clone()).await {
@@ -155,7 +181,10 @@ async fn run(opt: Opt, logger: &Logger) {
                     logger.fishnet_info(&format!("Fishnet {} is up to date", version));
                 }
                 Ok(self_update::Status::Updated(version)) => {
-                    logger.fishnet_info(&format!("Fishnet updated to {}. Will restart soon", version));
+                    logger.fishnet_info(&format!(
+                        "Fishnet updated to {}. Will restart soon",
+                        version
+                    ));
                     restart = Some(current_exe);
                     shutdown_soon = true;
                     queue.shutdown_soon().await;
@@ -167,12 +196,14 @@ async fn run(opt: Opt, logger: &Logger) {
         if now.duration_since(summarized) >= Duration::from_secs(120) {
             summarized = now;
             let (stats, nnue_nps) = queue.stats().await;
-            logger.fishnet_info(&format!("fishnet/{}: {} (nnue), {} batches, {} positions, {} total nodes",
-                                         env!("CARGO_PKG_VERSION"),
-                                         nnue_nps,
-                                         stats.total_batches.separate_with_dots(),
-                                         stats.total_positions.separate_with_dots(),
-                                         stats.total_nodes.separate_with_dots()));
+            logger.fishnet_info(&format!(
+                "fishnet/{}: {} (nnue), {} batches, {} positions, {} total nodes",
+                env!("CARGO_PKG_VERSION"),
+                nnue_nps,
+                stats.total_batches.separate_with_dots(),
+                stats.total_positions.separate_with_dots(),
+                stats.total_nodes.separate_with_dots()
+            ));
         }
 
         // Main loop. Handles signals, forwards worker results from rx to the
@@ -240,31 +271,42 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
             // Ensure engine process is ready.
             let flavor = job.flavor;
             let context = ProgressAt::from(&job);
-            let (mut sf, join_handle) = if let Some((sf, join_handle)) = engine.get_mut(flavor).take() {
-                (sf, join_handle)
-            } else {
-                // Backoff before starting engine.
-                let backoff = engine_backoff.next();
-                if backoff >= Duration::from_secs(5) {
-                    logger.info(&format!("Waiting {:?} before attempting to start engine", backoff));
+            let (mut sf, join_handle) =
+                if let Some((sf, join_handle)) = engine.get_mut(flavor).take() {
+                    (sf, join_handle)
                 } else {
-                    logger.debug(&format!("Waiting {:?} before attempting to start engine", backoff));
-                }
-                tokio::select! {
-                    _ = tx.closed() => break,
-                    _ = time::sleep(engine_backoff.next()) => (),
-                }
+                    // Backoff before starting engine.
+                    let backoff = engine_backoff.next();
+                    if backoff >= Duration::from_secs(5) {
+                        logger.info(&format!(
+                            "Waiting {:?} before attempting to start engine",
+                            backoff
+                        ));
+                    } else {
+                        logger.debug(&format!(
+                            "Waiting {:?} before attempting to start engine",
+                            backoff
+                        ));
+                    }
+                    tokio::select! {
+                        _ = tx.closed() => break,
+                        _ = time::sleep(engine_backoff.next()) => (),
+                    }
 
-                // Reset budget, start engine and spawn actor.
-                budget = default_budget;
-                let (sf, sf_actor) = stockfish::channel(assets.stockfish.get(flavor).clone(), StockfishInit {
-                    nnue: assets.nnue.clone(),
-                }, logger.clone());
-                let join_handle = tokio::spawn(async move {
-                    sf_actor.run().await;
-                });
-                (sf, join_handle)
-            };
+                    // Reset budget, start engine and spawn actor.
+                    budget = default_budget;
+                    let (sf, sf_actor) = stockfish::channel(
+                        assets.stockfish.get(flavor).clone(),
+                        StockfishInit {
+                            nnue: assets.nnue.clone(),
+                        },
+                        logger.clone(),
+                    );
+                    let join_handle = tokio::spawn(async move {
+                        sf_actor.run().await;
+                    });
+                    (sf, join_handle)
+                };
 
             // Timeout. Compare to
             // https://github.com/ornicar/lila/blob/master/modules/fishnet/src/main/Cleaner.scala
@@ -324,7 +366,10 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
         let (callback, waiter) = oneshot::channel();
 
         if tx.send(Pull { response, callback }).await.is_err() {
-            logger.debug(&format!("Worker {} was about to send result, but shutting down", i));
+            logger.debug(&format!(
+                "Worker {} was about to send result, but shutting down",
+                i
+            ));
             break;
         }
 
@@ -340,13 +385,19 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
     }
 
     if let Some((sf, join_handle)) = engine.get_mut(EngineFlavor::Official).take() {
-        logger.debug(&format!("Worker {} waiting for standard engine to shut down", i));
+        logger.debug(&format!(
+            "Worker {} waiting for standard engine to shut down",
+            i
+        ));
         drop(sf);
         join_handle.await.expect("join");
     }
 
     if let Some((sf, join_handle)) = engine.get_mut(EngineFlavor::MultiVariant).take() {
-        logger.debug(&format!("Worker {} waiting for multi-variant engine to shut down", i));
+        logger.debug(&format!(
+            "Worker {} waiting for multi-variant engine to shut down",
+            i
+        ));
         drop(sf);
         join_handle.await.expect("join");
     }
@@ -365,7 +416,10 @@ fn license(logger: &Logger) {
 #[cfg(unix)]
 fn restart_process(current_exe: PathBuf, logger: &Logger) {
     use std::os::unix::process::CommandExt as _;
-    logger.headline(&format!("Waiting 5s before restarting {:?} ...", current_exe));
+    logger.headline(&format!(
+        "Waiting 5s before restarting {:?} ...",
+        current_exe
+    ));
     thread::sleep(Duration::from_secs(5));
     let err = std::process::Command::new(current_exe)
         .args(std::env::args().into_iter().skip(1))
@@ -375,14 +429,21 @@ fn restart_process(current_exe: PathBuf, logger: &Logger) {
 
 #[cfg(windows)]
 fn restart_process(current_exe: PathBuf, logger: &Logger) {
-    logger.headline(&format!("Waiting 5s before restarting {:?} ...", current_exe));
+    logger.headline(&format!(
+        "Waiting 5s before restarting {:?} ...",
+        current_exe
+    ));
     thread::sleep(Duration::from_secs(5));
     std::process::Command::new(current_exe)
         .args(std::env::args().into_iter().skip(1))
-        .spawn().expect("restarted");
+        .spawn()
+        .expect("restarted");
 }
 
-async fn auto_update(verbose: bool, logger: Logger) -> Result<self_update::Status, self_update::errors::Error> {
+async fn auto_update(
+    verbose: bool,
+    logger: Logger,
+) -> Result<self_update::Status, self_update::errors::Error> {
     tokio::task::spawn_blocking(move || {
         if verbose {
             logger.headline("Updating ...");
@@ -396,7 +457,10 @@ async fn auto_update(verbose: bool, logger: Logger) -> Result<self_update::Statu
             .show_download_progress(atty::is(Stream::Stdout) && verbose)
             .current_version(env!("CARGO_PKG_VERSION"))
             .no_confirm(true)
-            .build().expect("self_update config")
+            .build()
+            .expect("self_update config")
             .update()
-    }).await.expect("spawn blocking update")
+    })
+    .await
+    .expect("spawn blocking update")
 }

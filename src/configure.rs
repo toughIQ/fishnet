@@ -1,19 +1,19 @@
+use crate::api;
+use crate::logger::Logger;
+use clap::crate_version;
+use clap::Clap;
+use configparser::ini::Ini;
+use std::cmp::max;
+use std::error::Error;
+use std::fmt;
 use std::fs;
 use std::io;
-use std::cmp::max;
-use std::fmt;
-use std::error::Error;
 use std::io::Write;
+use std::num::{NonZeroUsize, ParseIntError};
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::num::{ParseIntError, NonZeroUsize};
 use std::time::Duration;
-use clap::Clap;
-use clap::crate_version;
 use url::Url;
-use configparser::ini::Ini;
-use crate::logger::Logger;
-use crate::api;
 
 const DEFAULT_ENDPOINT: &str = "https://lichess.org/fishnet";
 
@@ -275,7 +275,9 @@ impl FromStr for ParsedDuration {
         } else {
             (s.strip_suffix('s').unwrap_or(s), 1000)
         };
-        Ok(ParsedDuration(Duration::from_millis(u64::from(s.trim().parse::<u32>()?) * factor)))
+        Ok(ParsedDuration(Duration::from_millis(
+            u64::from(s.trim().parse::<u32>()?) * factor,
+        )))
     }
 }
 
@@ -332,6 +334,7 @@ impl FromStr for Toggle {
     }
 }
 
+#[rustfmt::skip]
 fn intro() {
     println!(r#"#   _________         .    ."#);
     println!(r#"#  (..       \_    ,  |\  /|"#);
@@ -363,12 +366,15 @@ pub async fn parse_and_configure() -> Opt {
                     .expect("read key file")
                     .trim()
                     .parse()
-                    .expect("valid key from key file"));
+                    .expect("valid key from key file"),
+            );
         }
     }
 
     // Handle config file.
-    if opt.command == Some(Command::Configure) || (opt.command != Some(Command::License) && !opt.no_conf) {
+    if opt.command == Some(Command::Configure)
+        || (opt.command != Some(Command::License) && !opt.no_conf)
+    {
         let mut ini = Ini::new();
         ini.set_default_section("Fishnet");
 
@@ -383,7 +389,9 @@ pub async fn parse_and_configure() -> Opt {
         };
 
         // Configuration dialog.
-        if (!file_found && opt.command != Some(Command::Run)) || opt.command == Some(Command::Configure) {
+        if (!file_found && opt.command != Some(Command::Run))
+            || opt.command == Some(Command::Configure)
+        {
             logger.headline("Configuration");
 
             // Step 1: Endpoint (configured with --endpoint only).
@@ -398,7 +406,10 @@ pub async fn parse_and_configure() -> Opt {
             loop {
                 let mut key = String::new();
                 let required = if let Some(current) = ini.get("Fishnet", "Key") {
-                    eprint!("Personal fishnet key (append ! to force, default: keep {}): ", "*".repeat(current.chars().count()));
+                    eprint!(
+                        "Personal fishnet key (append ! to force, default: keep {}): ",
+                        "*".repeat(current.chars().count())
+                    );
                     false
                 } else if endpoint.is_development() {
                     eprint!("Personal fishnet key (append ! to force, probably not required): ");
@@ -409,7 +420,9 @@ pub async fn parse_and_configure() -> Opt {
                 };
 
                 io::stderr().flush().expect("flush stderr");
-                io::stdin().read_line(&mut key).expect("read key from stdin");
+                io::stdin()
+                    .read_line(&mut key)
+                    .expect("read key from stdin");
 
                 let key = key.trim();
                 let (key, network) = if key.is_empty() {
@@ -428,7 +441,8 @@ pub async fn parse_and_configure() -> Opt {
                 let key = match Key::from_str(key) {
                     Ok(key) if !network => Ok(key),
                     Ok(key) => {
-                        let mut api = api::spawn(endpoint.clone(), Some(key.clone()), logger.clone());
+                        let mut api =
+                            api::spawn(endpoint.clone(), Some(key.clone()), logger.clone());
                         match api.check_key().await {
                             Some(Ok(())) => Ok(key),
                             Some(Err(err)) => Err(err),
@@ -438,7 +452,7 @@ pub async fn parse_and_configure() -> Opt {
                     Err(err) => Err(err),
                 };
 
-                match key  {
+                match key {
                     Ok(Key(key)) => {
                         ini.set("Fishnet", "Key", Some(key));
                         break;
@@ -453,11 +467,20 @@ pub async fn parse_and_configure() -> Opt {
                 let mut cores = String::new();
                 let all = num_cpus::get();
                 let auto = max(all - 1, 1);
-                eprint!("Number of logical cores to use for engine threads (default {}, max {}): ", auto, all);
+                eprint!(
+                    "Number of logical cores to use for engine threads (default {}, max {}): ",
+                    auto, all
+                );
                 io::stderr().flush().expect("flush stderr");
-                io::stdin().read_line(&mut cores).expect("read cores from stdin");
+                io::stdin()
+                    .read_line(&mut cores)
+                    .expect("read cores from stdin");
 
-                match Some(cores.trim()).filter(|c| !c.is_empty()).map(Cores::from_str).unwrap_or(Ok(Cores::Auto)) {
+                match Some(cores.trim())
+                    .filter(|c| !c.is_empty())
+                    .map(Cores::from_str)
+                    .unwrap_or(Ok(Cores::Auto))
+                {
                     Ok(Cores::Number(n)) if usize::from(n) > all => {
                         eprintln!("At most {} logical cores available on your machine.", all);
                     }
@@ -478,7 +501,9 @@ pub async fn parse_and_configure() -> Opt {
                 let mut backlog = String::new();
                 eprint!("Would you prefer to keep your client idle? (default: no) ");
                 io::stderr().flush().expect("flush stderr");
-                io::stdin().read_line(&mut backlog).expect("read backlog from stdin");
+                io::stdin()
+                    .read_line(&mut backlog)
+                    .expect("read backlog from stdin");
 
                 match Toggle::from_str(&backlog) {
                     Ok(Toggle::Yes) => {
@@ -499,9 +524,14 @@ pub async fn parse_and_configure() -> Opt {
             eprintln!();
             loop {
                 let mut write = String::new();
-                eprint!("Done. Write configuration to {:?} now? (default: yes) ", opt.conf);
+                eprint!(
+                    "Done. Write configuration to {:?} now? (default: yes) ",
+                    opt.conf
+                );
                 io::stderr().flush().expect("flush stderr");
-                io::stdin().read_line(&mut write).expect("read confirmation from stdin");
+                io::stdin()
+                    .read_line(&mut write)
+                    .expect("read confirmation from stdin");
 
                 match Toggle::from_str(&write) {
                     Ok(Toggle::Yes) | Ok(Toggle::Default) => {
@@ -511,7 +541,6 @@ pub async fn parse_and_configure() -> Opt {
                     }
                     _ => (),
                 }
-
             }
 
             eprintln!();
@@ -520,22 +549,27 @@ pub async fn parse_and_configure() -> Opt {
         // Merge config file into command line arguments.
         if !is_systemd {
             opt.endpoint = opt.endpoint.or_else(|| {
-                ini.get("Fishnet", "Endpoint").map(|e| e.parse().expect("valid endpoint"))
+                ini.get("Fishnet", "Endpoint")
+                    .map(|e| e.parse().expect("valid endpoint"))
             });
 
             opt.key = opt.key.or_else(|| {
-                ini.get("Fishnet", "Key").map(|k| k.parse().expect("valid key"))
+                ini.get("Fishnet", "Key")
+                    .map(|k| k.parse().expect("valid key"))
             });
 
             opt.cores = opt.cores.or_else(|| {
-                ini.get("Fishnet", "Cores").map(|c| c.parse().expect("valid cores"))
+                ini.get("Fishnet", "Cores")
+                    .map(|c| c.parse().expect("valid cores"))
             });
 
             opt.backlog.user = opt.backlog.user.or_else(|| {
-                ini.get("Fishnet", "UserBacklog").map(|b| b.parse().expect("valid user backlog"))
+                ini.get("Fishnet", "UserBacklog")
+                    .map(|b| b.parse().expect("valid user backlog"))
             });
             opt.backlog.system = opt.backlog.system.or_else(|| {
-                ini.get("Fishnet", "SystemBacklog").map(|b| b.parse().expect("valid system backlog"))
+                ini.get("Fishnet", "SystemBacklog")
+                    .map(|b| b.parse().expect("valid system backlog"))
             });
         }
     }
@@ -544,7 +578,10 @@ pub async fn parse_and_configure() -> Opt {
     let all = num_cpus::get();
     match opt.cores {
         Some(Cores::Number(n)) if usize::from(n) > all => {
-            logger.warn(&format!("Requested logical {} cores, but only {} available. Capped.", n, all));
+            logger.warn(&format!(
+                "Requested logical {} cores, but only {} available. Capped.",
+                n, all
+            ));
             opt.cores = Some(Cores::All);
         }
         _ => (),

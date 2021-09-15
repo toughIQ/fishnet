@@ -1,8 +1,8 @@
-use std::env;
-use std::fs;
+use crate::configure::{Key, Opt};
 use atty::Stream;
 use shell_escape::escape;
-use crate::configure::{Opt, Key};
+use std::env;
+use std::fs;
 
 pub fn systemd_system(opt: Opt) {
     let exe = exec_start(&opt);
@@ -15,7 +15,10 @@ pub fn systemd_system(opt: Opt) {
     println!("ExecStart={}", exe);
     println!("KillMode=mixed");
     println!("WorkingDirectory=/tmp");
-    println!("User={}", env::var("USER").unwrap_or_else(|_| "XXX".to_owned()));
+    println!(
+        "User={}",
+        env::var("USER").unwrap_or_else(|_| "XXX".to_owned())
+    );
     println!("Nice=5");
     println!("CapabilityBoundingSet=");
     println!("PrivateTmp=true");
@@ -36,7 +39,10 @@ pub fn systemd_system(opt: Opt) {
         let command = env::args().next().unwrap_or_else(|| "./fishnet".to_owned());
         eprintln!();
         eprintln!("# Example usage:");
-        eprintln!("# {} systemd | sudo tee /etc/systemd/system/fishnet.service", command);
+        eprintln!(
+            "# {} systemd | sudo tee /etc/systemd/system/fishnet.service",
+            command
+        );
         eprintln!("# systemctl enable fishnet.service");
         eprintln!("# systemctl start fishnet.service");
         eprintln!("# Live view of log: journalctl --unit fishnet --follow");
@@ -72,7 +78,10 @@ pub fn systemd_user(opt: Opt) {
         let command = env::args().next().unwrap_or_else(|| "./fishnet".to_owned());
         eprintln!();
         eprintln!("# Example usage:");
-        eprintln!("# {} systemd-user | tee ~/.config/systemd/user/fishnet.service", command);
+        eprintln!(
+            "# {} systemd-user | tee ~/.config/systemd/user/fishnet.service",
+            command
+        );
         eprintln!("# systemctl enable --user fishnet.service");
         eprintln!("# systemctl start --user fishnet.service");
         eprintln!("# Live view of log: journalctl --user --user-unit fishnet --follow");
@@ -80,7 +89,11 @@ pub fn systemd_user(opt: Opt) {
 }
 
 fn exec_start(opt: &Opt) -> String {
-    let exe = env::current_exe().expect("current exe").to_str().expect("printable exec path").to_owned();
+    let exe = env::current_exe()
+        .expect("current exe")
+        .to_str()
+        .expect("printable exec path")
+        .to_owned();
     let mut builder = vec![escape(exe.into()).into_owned()];
 
     if opt.verbose.level > 0 {
@@ -97,7 +110,8 @@ fn exec_start(opt: &Opt) -> String {
         let canonical = fs::canonicalize(&opt.conf)
             .expect("canonicalize config path")
             .to_str()
-            .expect("printable config path").to_owned();
+            .expect("printable config path")
+            .to_owned();
         builder.push(escape(canonical.into()).into_owned());
     }
 
@@ -106,7 +120,8 @@ fn exec_start(opt: &Opt) -> String {
         let canonical = fs::canonicalize(key_file)
             .expect("canonicalize key file path")
             .to_str()
-            .expect("printable key file path").to_owned();
+            .expect("printable key file path")
+            .to_owned();
         builder.push(escape(canonical.into()).into_owned());
     } else if let Some(Key(ref key)) = opt.key {
         builder.push("--key".to_owned());

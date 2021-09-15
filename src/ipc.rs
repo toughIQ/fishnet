@@ -1,11 +1,11 @@
-use url::Url;
-use std::time::Duration;
-use std::num::NonZeroU8;
+use crate::api::{AnalysisPart, BatchId, LichessVariant, Score, Work};
+use crate::assets::EngineFlavor;
 use shakmaty::fen::Fen;
 use shakmaty::uci::Uci;
+use std::num::NonZeroU8;
+use std::time::Duration;
 use tokio::sync::oneshot;
-use crate::api::{Score, LichessVariant, Work, BatchId, AnalysisPart};
-use crate::assets::EngineFlavor;
+use url::Url;
 
 /// Uniquely identifies a position within a batch.
 #[derive(Debug, Copy, Clone)]
@@ -64,7 +64,7 @@ impl PositionResponse {
 
 #[derive(Debug, Clone)]
 pub struct Matrix<T> {
-    matrix: Vec<Vec<Option<T>>>
+    matrix: Vec<Vec<Option<T>>>,
 }
 
 impl<T> Matrix<T> {
@@ -84,7 +84,9 @@ impl<T> Matrix<T> {
     }
 
     pub fn best(&self) -> Option<&T> {
-        self.matrix.get(0).and_then(|row| row.last().and_then(|v| v.as_ref()))
+        self.matrix
+            .get(0)
+            .and_then(|row| row.last().and_then(|v| v.as_ref()))
     }
 }
 
@@ -100,7 +102,12 @@ pub struct Pull {
 }
 
 impl Pull {
-    pub fn split(self) -> (Option<Result<PositionResponse, PositionFailed>>, oneshot::Sender<Position>) {
+    pub fn split(
+        self,
+    ) -> (
+        Option<Result<PositionResponse, PositionFailed>>,
+        oneshot::Sender<Position>,
+    ) {
         (self.response, self.callback)
     }
 }
