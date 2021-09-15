@@ -506,22 +506,21 @@ impl ApiActor {
         tls.root_store.add_server_trust_anchors(&webpki_roots::TLS_SERVER_ROOTS);
         tls.key_log = Arc::new(rustls::KeyLogFile::new());
 
-        let mut headers = header::HeaderMap::new();
-        if let Some(Key(ref key)) = key {
-            headers.insert(header::AUTHORIZATION, format!("Bearer {}", key).parse().expect("header value"));
-        }
-
         ApiActor {
             rx,
             endpoint,
-            key,
             client: reqwest::Client::builder()
-                .default_headers(headers)
+                .default_headers(
+                    key.iter()
+                        .map(|Key(k)| (header::AUTHORIZATION, format!("Bearer {}", k).parse().expect("header value")))
+                        .collect()
+                )
                 .user_agent(format!("{}-{}-{}/{}", env!("CARGO_PKG_NAME"), env::consts::OS, env::consts::ARCH, env!("CARGO_PKG_VERSION")))
                 .timeout(Duration::from_secs(30))
                 .pool_idle_timeout(Duration::from_secs(25))
                 .use_preconfigured_tls(tls)
                 .build().expect("client"),
+            key,
             error_backoff: RandomizedBackoff::default(),
             logger,
         }
