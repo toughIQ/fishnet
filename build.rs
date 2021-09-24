@@ -49,6 +49,11 @@ impl Target {
             "make"
         };
 
+        Command::new(make).arg("--version").spawn().expect(&format!("`{}` is needed for compilation, is it installed?\n\
+        If you're on debian derivatives (such as ubuntu) run this: sudo apt install build-essential\n\
+        If you're on an Arch-based distro run this: sudo pacman -S base-devel\n\
+        For other distributions please refer to your documentation\n", make));
+
         assert!(Command::new(make)
             .current_dir(src_dir)
             .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
