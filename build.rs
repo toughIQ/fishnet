@@ -49,58 +49,76 @@ impl Target {
             "make"
         };
 
-        Command::new(make).arg("--version").spawn().expect(&format!("`{}` is needed for compilation, is it installed?\n\
-        If you're on debian derivatives (such as ubuntu) run this: sudo apt install build-essential\n\
-        If you're on an Arch-based distro run this: sudo pacman -S base-devel\n\
-        For other distributions please refer to your documentation\n", make));
+        assert!(
+            Command::new(make)
+                .arg("--version")
+                .status()
+                .expect(&format!(
+                    "`{}` required. Is it installed?\n\
+                              * Debian: sudo apt install build-essential\n\
+                              * Arch: sudo pacman -S base-devel\n",
+                    make
+                ))
+                .success(),
+            "make --version"
+        );
 
-        assert!(Command::new(make)
-            .current_dir(src_dir)
-            .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
-            .env(
-                "CXXFLAGS",
-                format!(
-                    "{} -DNNUE_EMBEDDING_OFF",
-                    env::var("CXXFLAGS").unwrap_or_default()
+        assert!(
+            Command::new(make)
+                .current_dir(src_dir)
+                .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
+                .env(
+                    "CXXFLAGS",
+                    format!(
+                        "{} -DNNUE_EMBEDDING_OFF",
+                        env::var("CXXFLAGS").unwrap_or_default()
+                    )
                 )
-            )
-            .arg("-B")
-            .args(env::var("CXX").ok().map(|cxx| format!("CXX={}", cxx)))
-            .arg(format!(
-                "COMP={}",
-                if windows {
-                    "mingw"
-                } else if target_os == "linux" {
-                    "gcc"
-                } else {
-                    "clang"
-                }
-            ))
-            .arg(format!("ARCH={}", self.arch))
-            .arg(format!("EXE={}", exe))
-            .arg(if pgo { "profile-build" } else { "build" })
-            .status()
-            .unwrap()
-            .success());
+                .arg("-B")
+                .args(env::var("CXX").ok().map(|cxx| format!("CXX={}", cxx)))
+                .arg(format!(
+                    "COMP={}",
+                    if windows {
+                        "mingw"
+                    } else if target_os == "linux" {
+                        "gcc"
+                    } else {
+                        "clang"
+                    }
+                ))
+                .arg(format!("ARCH={}", self.arch))
+                .arg(format!("EXE={}", exe))
+                .arg(if pgo { "profile-build" } else { "build" })
+                .status()
+                .unwrap()
+                .success(),
+            "make build"
+        );
 
-        assert!(Command::new(make)
-            .current_dir(src_dir)
-            .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
-            .arg(format!("EXE={}", exe))
-            .arg("strip")
-            .status()
-            .unwrap()
-            .success());
+        assert!(
+            Command::new(make)
+                .current_dir(src_dir)
+                .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
+                .arg(format!("EXE={}", exe))
+                .arg("strip")
+                .status()
+                .unwrap()
+                .success(),
+            "make strip"
+        );
 
         compress(src_dir, &exe);
 
-        assert!(Command::new(make)
-            .current_dir(src_dir)
-            .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
-            .arg("clean")
-            .status()
-            .unwrap()
-            .success());
+        assert!(
+            Command::new(make)
+                .current_dir(src_dir)
+                .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
+                .arg("clean")
+                .status()
+                .unwrap()
+                .success(),
+            "make clean"
+        );
     }
 
     fn build_official(&self) {
