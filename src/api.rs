@@ -240,17 +240,17 @@ impl SkillLevel {
         })
     }
 
-    pub fn skill_level(self) -> i32 {
+    pub fn elo(self) -> i32 {
         use SkillLevel::*;
         match self {
-            One => -9,
-            Two => -5,
-            Three => -1,
-            Four => 3,
-            Five => 7,
-            Six => 11,
-            Seven => 16,
-            Eight => 20,
+            One => 800,
+            Two => 1100,
+            Three => 1400,
+            Four => 1700,
+            Five => 2000,
+            Six => 2300,
+            Seven => 2700,
+            Eight => 3000,
         }
     }
 

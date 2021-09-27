@@ -291,10 +291,10 @@ impl StockfishActor {
                     .write_all(b"setoption name UCI_AnalyseMode value false\n")
                     .await?;
                 stdin
-                    .write_all(
-                        format!("setoption name Skill Level value {}\n", level.skill_level())
-                            .as_bytes(),
-                    )
+                    .write_all(b"setoption name UCI_LimitStrength value true\n")
+                    .await?;
+                stdin
+                    .write_all(format!("setoption name UCI_Elo value {}\n", level.elo()).as_bytes())
                     .await?;
 
                 let mut go = vec![
@@ -325,7 +325,7 @@ impl StockfishActor {
                     .write_all(b"setoption name UCI_AnalyseMode value true\n")
                     .await?;
                 stdin
-                    .write_all(b"setoption name Skill Level value 20\n")
+                    .write_all(b"setoption name UCI_LimitStrength value false\n")
                     .await?;
 
                 let mut go = vec![
