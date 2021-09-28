@@ -311,26 +311,17 @@ impl AcquireResponseBody {
 }
 
 #[derive(Debug, Deserialize, Copy, Clone, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub enum LichessVariant {
-    #[serde(rename = "antichess")]
     Antichess,
-    #[serde(rename = "atomic")]
     Atomic,
-    #[serde(rename = "chess960")]
     Chess960,
-    #[serde(rename = "crazyhouse")]
     Crazyhouse,
-    #[serde(rename = "fromPosition")]
     FromPosition,
-    #[serde(rename = "horde")]
     Horde,
-    #[serde(rename = "kingOfTheHill")]
     KingOfTheHill,
-    #[serde(rename = "racingKings")]
     RacingKings,
-    #[serde(rename = "standard")]
     Standard,
-    #[serde(rename = "threeCheck")]
     ThreeCheck,
 }
 
