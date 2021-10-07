@@ -3,7 +3,7 @@ use crate::assets::EngineFlavor;
 use crate::ipc::{Matrix, Position, PositionFailed, PositionResponse};
 use crate::logger::Logger;
 use crate::util::NevermindExt as _;
-use shakmaty::fen::FenOpts;
+use shakmaty::fen::fen;
 use shakmaty::variant::Variant;
 use std::io;
 use std::num::NonZeroU8;
@@ -277,11 +277,10 @@ impl StockfishActor {
             .map(|m| m.to_string())
             .collect::<Vec<_>>()
             .join(" ");
-        let fen = FenOpts::new()
-            .promoted(variant.distinguishes_promoted())
-            .fen(&position.fen);
         stdin
-            .write_all(format!("position fen {} moves {}\n", fen, moves).as_bytes())
+            .write_all(
+                format!("position fen {} moves {}\n", fen(&position.root_fen), moves).as_bytes(),
+            )
             .await?;
 
         // Go.

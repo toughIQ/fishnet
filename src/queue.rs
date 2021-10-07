@@ -8,6 +8,7 @@ use crate::ipc::{Position, PositionFailed, PositionId, PositionResponse, Pull};
 use crate::logger::{Logger, ProgressAt, QueueStatusBar};
 use crate::stats::{NpsRecorder, Stats, StatsRecorder};
 use crate::util::{NevermindExt as _, RandomizedBackoff};
+use shakmaty::fen::Fen;
 use shakmaty::uci::{IllegalUciError, Uci};
 use shakmaty::variant::VariantPosition;
 use shakmaty::{CastlingMode, Position as _, PositionError};
@@ -506,13 +507,13 @@ impl IncomingBatch {
     ) -> Result<IncomingBatch, IncomingError> {
         let url = body.batch_url(endpoint);
 
-        let maybe_pos = VariantPosition::from_setup(
+        let maybe_root_pos = VariantPosition::from_setup(
             body.variant.into(),
             &body.position,
             CastlingMode::Chess960,
         );
 
-        let (flavor, mut pos) = match maybe_pos {
+        let (flavor, root_pos) = match maybe_root_pos {
             Ok(pos @ VariantPosition::Chess(_)) if body.work.is_analysis() => {
                 (EngineFlavor::Official, pos)
             }
@@ -523,12 +524,18 @@ impl IncomingBatch {
             ),
         };
 
-        let mut body_moves = Vec::new();
-        for uci in body.moves {
-            let m = uci.to_move(&pos)?;
-            body_moves.push(m.to_uci(CastlingMode::Chess960));
-            pos.play_unchecked(&m);
-        }
+        let root_fen = Fen::from_setup(&root_pos);
+
+        let body_moves = {
+            let mut moves = Vec::with_capacity(body.moves.len());
+            let mut pos = root_pos;
+            for uci in body.moves {
+                let m = uci.to_move(&pos)?;
+                moves.push(m.to_uci(CastlingMode::Chess960));
+                pos.play_unchecked(&m);
+            }
+            moves
+        };
 
         Ok(IncomingBatch {
             work: body.work.clone(),
@@ -543,7 +550,7 @@ impl IncomingBatch {
                         flavor,
                         position_id: PositionId(0),
                         variant: body.variant,
-                        fen: body.position,
+                        root_fen,
                         moves: body_moves,
                     })]
                 }
@@ -558,7 +565,7 @@ impl IncomingBatch {
                         flavor,
                         position_id: PositionId(0),
                         variant: body.variant,
-                        fen: body.position.clone(),
+                        root_fen: root_fen.clone(),
                         moves: moves.clone(),
                     })];
 
@@ -573,7 +580,7 @@ impl IncomingBatch {
                             flavor,
                             position_id: PositionId(1 + i),
                             variant: body.variant,
-                            fen: body.position.clone(),
+                            root_fen: root_fen.clone(),
                             moves: moves.clone(),
                         }));
                     }

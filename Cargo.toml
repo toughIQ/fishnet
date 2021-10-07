@@ -37,7 +37,7 @@ serde = "1"
 serde_json = "1"
 serde_with = "1"
 home = "0.5"
-shakmaty = { version = "0.19", features = ["variant"] }
+shakmaty = { version = "0.20", features = ["variant"] }
 shell-escape = "0.1"
 tempfile = "3"
 tokio = { version = "1", features = ["rt", "macros", "sync", "time", "signal", "process", "io-util"], default-features = false }

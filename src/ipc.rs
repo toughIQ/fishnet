@@ -19,7 +19,7 @@ pub struct Position {
     pub url: Option<Url>,
 
     pub variant: LichessVariant,
-    pub fen: Fen,
+    pub root_fen: Fen,
     pub moves: Vec<Uci>,
 }
 
