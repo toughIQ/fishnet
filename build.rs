@@ -53,11 +53,11 @@ impl Target {
             Command::new(make)
                 .arg("--version")
                 .status()
-                .expect(&format!(
-                    "`{}` required. Is it installed?\n\
-                              * Debian: sudo apt install build-essential\n\
-                              * Arch: sudo pacman -S base-devel\n",
-                    make
+                .unwrap_or_else(|err| panic!(
+                    "{}. Is `{}` installed?\n\
+                    * Debian: sudo apt install build-essential\n\
+                    * Arch: sudo pacman -S base-devel\n",
+                    err, make
                 ))
                 .success(),
             "make --version"
