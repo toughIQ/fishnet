@@ -4,11 +4,10 @@ on: [push, pull_request]
 
 jobs:
   linux-x86-64:
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-18.04
     env:
-      CXX: g++-7
+      CXX: g++
     steps:
-      - run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test && sudo apt-get update && sudo apt-get install -y g++-7
       - uses: actions/checkout@v2
         with:
           submodules: true

@@ -69,7 +69,7 @@ for chess variants.
 | **macOS**     | `x86_64-apple-darwin`       | `aarch64-apple-darwin`      |
 | **FreeBSD**   | build from source           |                             |
 
-- Needs an operating system from around 2016 or later
+- Needs an operating system from around 2018 or later
 - Will max out the configured number of CPU cores
 - Uses about 64 MiB RAM per CPU core
 - A small amount of disk space
