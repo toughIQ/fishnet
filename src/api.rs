@@ -135,9 +135,8 @@ pub enum Work {
         depth: Option<u8>,
         #[serde(default)]
         multipv: Option<NonZeroU8>,
-        #[serde_as(as = "Option<DurationMilliSeconds<u64>>")]
-        #[serde(default)]
-        timeout: Option<Duration>,
+        #[serde_as(as = "DurationMilliSeconds<u64>")]
+        timeout: Duration,
     },
     #[serde(rename = "move")]
     Move {
@@ -153,6 +152,13 @@ impl Work {
     pub fn id(&self) -> BatchId {
         match *self {
             Work::Analysis { id, .. } | Work::Move { id, .. } => id,
+        }
+    }
+
+    pub fn timeout(&self) -> Duration {
+        match *self {
+            Work::Analysis { timeout, .. } => timeout,
+            Work::Move { .. } => Duration::from_secs(2),
         }
     }
 
@@ -199,15 +205,14 @@ impl fmt::Display for BatchId {
 #[derive(Debug, Copy, Clone, Deserialize)]
 pub struct NodeLimit {
     classical: u64,
-    #[serde(default)]
-    sf15: Option<u64>,
+    sf15: u64,
 }
 
 impl NodeLimit {
     pub fn get(&self, flavor: EvalFlavor) -> u64 {
         match flavor {
             EvalFlavor::Hce => self.classical,
-            EvalFlavor::Nnue => self.sf15.unwrap_or(1_500_000),
+            EvalFlavor::Nnue => self.sf15,
         }
     }
 }

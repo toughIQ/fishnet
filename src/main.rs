@@ -11,7 +11,6 @@ mod stockfish;
 mod systemd;
 mod util;
 
-use crate::api::Work;
 use crate::assets::{Assets, ByEngineFlavor, Cpu, EngineFlavor};
 use crate::configure::{Command, Cores, Opt};
 use crate::ipc::{Position, PositionFailed, Pull};
@@ -308,13 +307,8 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                     (sf, join_handle)
                 };
 
-            // Timeout. Compare to
-            // https://github.com/ornicar/lila/blob/master/modules/fishnet/src/main/Cleaner.scala
-            let timeout = match job.work {
-                Work::Analysis { timeout, .. } => timeout.unwrap_or_else(|| Duration::from_secs(7)),
-                Work::Move { .. } => Duration::from_secs(2),
-            };
-            budget = min(default_budget, budget) + timeout;
+            // Provide time budget.
+            budget = min(default_budget, budget) + job.work.timeout();
 
             // Analyse or play.
             let timer = Instant::now();
@@ -352,7 +346,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                 }
             };
 
-            // Update budget.
+            // Update time budget.
             budget = budget.checked_sub(timer.elapsed()).unwrap_or_default();
             if budget < default_budget {
                 logger.debug(&format!("Low engine timeout budget: {:?}", budget));
