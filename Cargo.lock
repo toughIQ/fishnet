@@ -751,9 +751,9 @@ checksum = "bc881b2c22681370c6a780e47af9840ef841837bc98118431d4e1868bd0c1086"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.29"
+version = "1.0.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9f5105d4fdaab20335ca9565e106a5d9b82b6219b5ba735731124ac6711d23d"
+checksum = "edc3358ebc67bc8b7fa0c007f945b0b18226f78437d61bec735a9eb96b61ee70"
 dependencies = [
  "unicode-xid",
 ]
@@ -862,9 +862,9 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.11.4"
+version = "0.11.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "246e9f61b9bb77df069a947682be06e31ac43ea37862e244a69f177694ea6d22"
+checksum = "51c732d463dd300362ffb44b7b125f299c23d2990411a4253824630ebc7467fb"
 dependencies = [
  "base64",
  "bytes",
@@ -1076,9 +1076,9 @@ dependencies = [
 
 [[package]]
 name = "shakmaty"
-version = "0.20.0"
+version = "0.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "898dda9eaca57a4356b6db6055fda42a5951f5aa968714877d523050b432b477"
+checksum = "4686eb3a4abc9e72cbd9a71cb385097e2d44800138dd3c099084bb5013922b5f"
 dependencies = [
  "arrayvec",
  "bitflags",
@@ -1102,9 +1102,9 @@ dependencies = [
 
 [[package]]
 name = "slab"
-version = "0.4.4"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c307a32c1c5c437f38c7fd45d753050587732ba8628319fbdf12a7e289ccc590"
+checksum = "9def91fd1e018fe007022791f865d0ccc9b3a0d5001e01aabb8b40e46000afb5"
 
 [[package]]
 name = "socket2"
@@ -1223,9 +1223,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-macros"
-version = "1.4.1"
+version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "154794c8f499c2619acd19e839294703e9e32e7630ef5f46ea80d4ef0fbee5eb"
+checksum = "b2dd85aeaba7b68df939bd357c6afb36c87951be9e80bf9c859f2fc3e9fca0fd"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1306,9 +1306,9 @@ checksum = "56dee185309b50d1f11bfedef0fe6d036842e3fb77413abef29f8f8d1c5d4c1c"
 
 [[package]]
 name = "unicode-bidi"
-version = "0.3.6"
+version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "246f4c42e67e7a4e3c6106ff716a5d067d4132a642840b242e357e468a2a0085"
+checksum = "1a01404663e3db436ed2746d9fefef640d868edae3cceb81c3b8d5732fda678f"
 
 [[package]]
 name = "unicode-normalization"
@@ -1390,8 +1390,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "632f73e236b219150ea279196e54e610f5dbafa5d61786303d4da54f84e47fce"
 dependencies = [
  "cfg-if",
- "serde",
- "serde_json",
  "wasm-bindgen-macro",
 ]
 
