@@ -1,11 +1,13 @@
 use serde::{Deserialize, Serialize};
-use std::cmp::{max, min};
-use std::fmt;
-use std::fs::{File, OpenOptions};
-use std::io;
-use std::io::{Read as _, Seek as _, SeekFrom, Write as _};
-use std::path::PathBuf;
-use std::time::Duration;
+use std::{
+    cmp::{max, min},
+    fmt,
+    fs::{File, OpenOptions},
+    io,
+    io::{Read as _, Seek as _, SeekFrom, Write as _},
+    path::PathBuf,
+    time::Duration,
+};
 
 const STATS_FILENAME: &str = ".fishnet-stats";
 

@@ -1,7 +1,9 @@
-use crate::assets::EvalFlavor;
-use crate::configure::{Endpoint, Key, KeyError};
-use crate::logger::Logger;
-use crate::util::{NevermindExt as _, RandomizedBackoff};
+use crate::{
+    assets::EvalFlavor,
+    configure::{Endpoint, Key, KeyError},
+    logger::Logger,
+    util::{NevermindExt as _, RandomizedBackoff},
+};
 use arrayvec::ArrayString;
 use reqwest::{header, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -10,17 +12,12 @@ use serde_with::{
     serde_as, DisplayFromStr, DurationMilliSeconds, DurationSeconds, NoneAsEmptyString,
     SpaceSeparator, StringWithSeparator,
 };
-use shakmaty::fen::Fen;
-use shakmaty::uci::Uci;
-use shakmaty::variant::Variant;
-use std::env;
-use std::fmt;
-use std::num::NonZeroU8;
-use std::str::FromStr;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::sync::{mpsc, oneshot};
-use tokio::time;
+use shakmaty::{fen::Fen, uci::Uci, variant::Variant};
+use std::{env, fmt, num::NonZeroU8, str::FromStr, sync::Arc, time::Duration};
+use tokio::{
+    sync::{mpsc, oneshot},
+    time,
+};
 use url::Url;
 
 pub fn channel(endpoint: Endpoint, key: Option<Key>, logger: Logger) -> (ApiStub, ApiActor) {

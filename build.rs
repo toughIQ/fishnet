@@ -1,10 +1,5 @@
 use glob::glob;
-use std::env;
-use std::fs;
-use std::fs::File;
-use std::io;
-use std::path::Path;
-use std::process::Command;
+use std::{env, fs, fs::File, io, path::Path, process::Command};
 
 const EVAL_FILE: &str = "nn-6762d36ad265.nnue";
 

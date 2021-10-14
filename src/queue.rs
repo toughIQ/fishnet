@@ -1,25 +1,32 @@
-use crate::api::{
-    AcquireQuery, AcquireResponseBody, Acquired, AnalysisPart, ApiStub, BatchId, LichessVariant,
-    Work,
+use crate::{
+    api::{
+        AcquireQuery, AcquireResponseBody, Acquired, AnalysisPart, ApiStub, BatchId,
+        LichessVariant, Work,
+    },
+    assets::{EngineFlavor, EvalFlavor},
+    configure::{BacklogOpt, Endpoint},
+    ipc::{Position, PositionFailed, PositionId, PositionResponse, Pull},
+    logger::{Logger, ProgressAt, QueueStatusBar},
+    stats::{NpsRecorder, Stats, StatsRecorder},
+    util::{NevermindExt as _, RandomizedBackoff},
 };
-use crate::assets::{EngineFlavor, EvalFlavor};
-use crate::configure::{BacklogOpt, Endpoint};
-use crate::ipc::{Position, PositionFailed, PositionId, PositionResponse, Pull};
-use crate::logger::{Logger, ProgressAt, QueueStatusBar};
-use crate::stats::{NpsRecorder, Stats, StatsRecorder};
-use crate::util::{NevermindExt as _, RandomizedBackoff};
-use shakmaty::fen::Fen;
-use shakmaty::uci::{IllegalUciError, Uci};
-use shakmaty::variant::VariantPosition;
-use shakmaty::{CastlingMode, Position as _, PositionError};
-use std::cmp::{max, min};
-use std::collections::hash_map::Entry;
-use std::collections::{HashMap, VecDeque};
-use std::convert::TryInto;
-use std::sync::Arc;
-use std::time::{Duration, Instant};
-use tokio::sync::{mpsc, oneshot, Mutex, Notify};
-use tokio::time;
+use shakmaty::{
+    fen::Fen,
+    uci::{IllegalUciError, Uci},
+    variant::VariantPosition,
+    CastlingMode, Position as _, PositionError,
+};
+use std::{
+    cmp::{max, min},
+    collections::{hash_map::Entry, HashMap, VecDeque},
+    convert::TryInto,
+    sync::Arc,
+    time::{Duration, Instant},
+};
+use tokio::{
+    sync::{mpsc, oneshot, Mutex, Notify},
+    time,
+};
 use url::Url;
 
 pub fn channel(

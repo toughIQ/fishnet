@@ -1,13 +1,16 @@
-use crate::api::BatchId;
-use crate::configure::Verbose;
-use crate::ipc::{Position, PositionId, PositionResponse};
-use crate::util::NevermindExt as _;
+use crate::{
+    api::BatchId,
+    configure::Verbose,
+    ipc::{Position, PositionId, PositionResponse},
+    util::NevermindExt as _,
+};
 use atty::Stream;
-use std::cmp::{max, min};
-use std::fmt;
-use std::io;
-use std::io::Write as _;
-use std::sync::{Arc, Mutex};
+use std::{
+    cmp::{max, min},
+    fmt, io,
+    io::Write as _,
+    sync::{Arc, Mutex},
+};
 use url::Url;
 
 #[derive(Clone)]

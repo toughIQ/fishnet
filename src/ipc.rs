@@ -1,9 +1,9 @@
-use crate::api::{AnalysisPart, BatchId, LichessVariant, Score, Work};
-use crate::assets::EngineFlavor;
-use shakmaty::fen::Fen;
-use shakmaty::uci::Uci;
-use std::num::NonZeroU8;
-use std::time::Duration;
+use crate::{
+    api::{AnalysisPart, BatchId, LichessVariant, Score, Work},
+    assets::EngineFlavor,
+};
+use shakmaty::{fen::Fen, uci::Uci};
+use std::{num::NonZeroU8, time::Duration};
 use tokio::sync::oneshot;
 use url::Url;
 

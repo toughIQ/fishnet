@@ -11,24 +11,30 @@ mod stockfish;
 mod systemd;
 mod util;
 
-use crate::assets::{Assets, ByEngineFlavor, Cpu, EngineFlavor};
-use crate::configure::{Command, Cores, Opt};
-use crate::ipc::{Position, PositionFailed, Pull};
-use crate::logger::{Logger, ProgressAt};
-use crate::stockfish::StockfishInit;
-use crate::util::RandomizedBackoff;
+use crate::{
+    assets::{Assets, ByEngineFlavor, Cpu, EngineFlavor},
+    configure::{Command, Cores, Opt},
+    ipc::{Position, PositionFailed, Pull},
+    logger::{Logger, ProgressAt},
+    stockfish::StockfishInit,
+    util::RandomizedBackoff,
+};
 use atty::Stream;
-use std::cmp::min;
-use std::env;
-use std::path::PathBuf;
-use std::ptr;
-use std::sync::Arc;
-use std::thread;
-use std::time::{Duration, Instant};
+use std::{
+    cmp::min,
+    env,
+    path::PathBuf,
+    ptr,
+    sync::Arc,
+    thread,
+    time::{Duration, Instant},
+};
 use thousands::Separable as _;
-use tokio::signal;
-use tokio::sync::{mpsc, oneshot};
-use tokio::time;
+use tokio::{
+    signal,
+    sync::{mpsc, oneshot},
+    time,
+};
 
 static COMPRESSED_DEPENDENCY_LIST: &[u8] = auditable::inject_dependency_list!();
 

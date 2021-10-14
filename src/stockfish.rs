@@ -1,18 +1,17 @@
-use crate::api::{Score, Work};
-use crate::assets::EngineFlavor;
-use crate::ipc::{Matrix, Position, PositionFailed, PositionResponse};
-use crate::logger::Logger;
-use crate::util::NevermindExt as _;
-use shakmaty::fen::fen;
-use shakmaty::variant::Variant;
-use std::io;
-use std::num::NonZeroU8;
-use std::path::PathBuf;
-use std::process::Stdio;
-use std::time::Duration;
-use tokio::io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader, BufWriter, Lines};
-use tokio::process::{ChildStdin, ChildStdout, Command};
-use tokio::sync::{mpsc, oneshot};
+use crate::{
+    api::{Score, Work},
+    assets::EngineFlavor,
+    ipc::{Matrix, Position, PositionFailed, PositionResponse},
+    logger::Logger,
+    util::NevermindExt as _,
+};
+use shakmaty::{fen::fen, variant::Variant};
+use std::{io, num::NonZeroU8, path::PathBuf, process::Stdio, time::Duration};
+use tokio::{
+    io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader, BufWriter, Lines},
+    process::{ChildStdin, ChildStdout, Command},
+    sync::{mpsc, oneshot},
+};
 
 pub fn channel(
     exe: PathBuf,
