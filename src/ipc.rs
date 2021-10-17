@@ -1,11 +1,13 @@
+use std::{num::NonZeroU8, time::Duration};
+
+use shakmaty::{fen::Fen, uci::Uci};
+use tokio::sync::oneshot;
+use url::Url;
+
 use crate::{
     api::{AnalysisPart, BatchId, LichessVariant, Score, Work},
     assets::EngineFlavor,
 };
-use shakmaty::{fen::Fen, uci::Uci};
-use std::{num::NonZeroU8, time::Duration};
-use tokio::sync::oneshot;
-use url::Url;
 
 /// Uniquely identifies a position within a batch.
 #[derive(Debug, Copy, Clone)]

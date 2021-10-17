@@ -1,17 +1,19 @@
-use crate::{
-    api::BatchId,
-    configure::Verbose,
-    ipc::{Position, PositionId, PositionResponse},
-    util::NevermindExt as _,
-};
-use atty::Stream;
 use std::{
     cmp::{max, min},
     fmt, io,
     io::Write as _,
     sync::{Arc, Mutex},
 };
+
+use atty::Stream;
 use url::Url;
+
+use crate::{
+    api::BatchId,
+    configure::Verbose,
+    ipc::{Position, PositionId, PositionResponse},
+    util::NevermindExt as _,
+};
 
 #[derive(Clone)]
 pub struct Logger {

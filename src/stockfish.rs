@@ -1,16 +1,18 @@
+use std::{io, num::NonZeroU8, path::PathBuf, process::Stdio, time::Duration};
+
+use shakmaty::{fen::fen, variant::Variant};
+use tokio::{
+    io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader, BufWriter, Lines},
+    process::{ChildStdin, ChildStdout, Command},
+    sync::{mpsc, oneshot},
+};
+
 use crate::{
     api::{Score, Work},
     assets::EngineFlavor,
     ipc::{Matrix, Position, PositionFailed, PositionResponse},
     logger::Logger,
     util::NevermindExt as _,
-};
-use shakmaty::{fen::fen, variant::Variant};
-use std::{io, num::NonZeroU8, path::PathBuf, process::Stdio, time::Duration};
-use tokio::{
-    io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader, BufWriter, Lines},
-    process::{ChildStdin, ChildStdout, Command},
-    sync::{mpsc, oneshot},
 };
 
 pub fn channel(

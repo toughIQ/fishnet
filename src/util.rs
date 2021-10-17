@@ -1,8 +1,9 @@
-use rand::Rng;
 use std::{
     cmp::{max, min},
     time::Duration,
 };
+
+use rand::Rng;
 
 #[derive(Debug)]
 pub struct RandomizedBackoff {

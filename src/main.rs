@@ -11,15 +11,6 @@ mod stockfish;
 mod systemd;
 mod util;
 
-use crate::{
-    assets::{Assets, ByEngineFlavor, Cpu, EngineFlavor},
-    configure::{Command, Cores, Opt},
-    ipc::{Position, PositionFailed, Pull},
-    logger::{Logger, ProgressAt},
-    stockfish::StockfishInit,
-    util::RandomizedBackoff,
-};
-use atty::Stream;
 use std::{
     cmp::min,
     env,
@@ -29,11 +20,22 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
+
+use atty::Stream;
 use thousands::Separable as _;
 use tokio::{
     signal,
     sync::{mpsc, oneshot},
     time,
+};
+
+use crate::{
+    assets::{Assets, ByEngineFlavor, Cpu, EngineFlavor},
+    configure::{Command, Cores, Opt},
+    ipc::{Position, PositionFailed, Pull},
+    logger::{Logger, ProgressAt},
+    stockfish::StockfishInit,
+    util::RandomizedBackoff,
 };
 
 static COMPRESSED_DEPENDENCY_LIST: &[u8] = auditable::inject_dependency_list!();

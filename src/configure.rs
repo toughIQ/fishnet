@@ -1,6 +1,3 @@
-use crate::{api, logger::Logger};
-use clap::{crate_version, Clap};
-use configparser::ini::Ini;
 use std::{
     cmp::max,
     error::Error,
@@ -11,7 +8,12 @@ use std::{
     str::FromStr,
     time::Duration,
 };
+
+use clap::{crate_version, Clap};
+use configparser::ini::Ini;
 use url::Url;
+
+use crate::{api, logger::Logger};
 
 const DEFAULT_ENDPOINT: &str = "https://lichess.org/fishnet";
 

@@ -1,4 +1,3 @@
-use serde::{Deserialize, Serialize};
 use std::{
     cmp::{max, min},
     fmt,
@@ -8,6 +7,8 @@ use std::{
     path::PathBuf,
     time::Duration,
 };
+
+use serde::{Deserialize, Serialize};
 
 const STATS_FILENAME: &str = ".fishnet-stats";
 

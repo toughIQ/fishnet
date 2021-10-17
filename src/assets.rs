@@ -1,11 +1,12 @@
-use bitflags::bitflags;
-use serde::Serialize;
 use std::{
     fmt,
     fs::{File, OpenOptions},
     io,
     path::{Path, PathBuf},
 };
+
+use bitflags::bitflags;
+use serde::Serialize;
 use tempfile::TempDir;
 use xz2::read::XzDecoder;
 

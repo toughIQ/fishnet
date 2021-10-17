@@ -1,7 +1,9 @@
-use crate::configure::{Key, Opt};
+use std::{env, fs};
+
 use atty::Stream;
 use shell_escape::escape;
-use std::{env, fs};
+
+use crate::configure::{Key, Opt};
 
 pub fn systemd_system(opt: Opt) {
     let exe = exec_start(&opt);

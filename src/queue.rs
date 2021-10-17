@@ -1,3 +1,23 @@
+use std::{
+    cmp::{max, min},
+    collections::{hash_map::Entry, HashMap, VecDeque},
+    convert::TryInto,
+    sync::Arc,
+    time::{Duration, Instant},
+};
+
+use shakmaty::{
+    fen::Fen,
+    uci::{IllegalUciError, Uci},
+    variant::VariantPosition,
+    CastlingMode, Position as _, PositionError,
+};
+use tokio::{
+    sync::{mpsc, oneshot, Mutex, Notify},
+    time,
+};
+use url::Url;
+
 use crate::{
     api::{
         AcquireQuery, AcquireResponseBody, Acquired, AnalysisPart, ApiStub, BatchId,
@@ -10,24 +30,6 @@ use crate::{
     stats::{NpsRecorder, Stats, StatsRecorder},
     util::{NevermindExt as _, RandomizedBackoff},
 };
-use shakmaty::{
-    fen::Fen,
-    uci::{IllegalUciError, Uci},
-    variant::VariantPosition,
-    CastlingMode, Position as _, PositionError,
-};
-use std::{
-    cmp::{max, min},
-    collections::{hash_map::Entry, HashMap, VecDeque},
-    convert::TryInto,
-    sync::Arc,
-    time::{Duration, Instant},
-};
-use tokio::{
-    sync::{mpsc, oneshot, Mutex, Notify},
-    time,
-};
-use url::Url;
 
 pub fn channel(
     opt: BacklogOpt,

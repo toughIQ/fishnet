@@ -1,9 +1,5 @@
-use crate::{
-    assets::EvalFlavor,
-    configure::{Endpoint, Key, KeyError},
-    logger::Logger,
-    util::{NevermindExt as _, RandomizedBackoff},
-};
+use std::{env, fmt, num::NonZeroU8, str::FromStr, sync::Arc, time::Duration};
+
 use arrayvec::ArrayString;
 use reqwest::{header, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -13,12 +9,18 @@ use serde_with::{
     SpaceSeparator, StringWithSeparator,
 };
 use shakmaty::{fen::Fen, uci::Uci, variant::Variant};
-use std::{env, fmt, num::NonZeroU8, str::FromStr, sync::Arc, time::Duration};
 use tokio::{
     sync::{mpsc, oneshot},
     time,
 };
 use url::Url;
+
+use crate::{
+    assets::EvalFlavor,
+    configure::{Endpoint, Key, KeyError},
+    logger::Logger,
+    util::{NevermindExt as _, RandomizedBackoff},
+};
 
 pub fn channel(endpoint: Endpoint, key: Option<Key>, logger: Logger) -> (ApiStub, ApiActor) {
     let (tx, rx) = mpsc::unbounded_channel();
