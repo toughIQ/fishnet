@@ -142,10 +142,10 @@ impl FromStr for Key {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.is_empty() {
             Err(KeyError::EmptyKey)
-        } else if !s.chars().all(|c| char::is_ascii_alphanumeric(&c)) {
-            Err(KeyError::InvalidKey)
-        } else {
+        } else if s.chars().all(|c| char::is_ascii_alphanumeric(&c)) {
             Ok(Key(s.to_owned()))
+        } else {
+            Err(KeyError::InvalidKey)
         }
     }
 }
@@ -429,9 +429,8 @@ pub async fn parse_and_configure() -> Opt {
                     if required {
                         eprintln!("Key required.");
                         continue;
-                    } else {
-                        break;
                     }
+                    break;
                 } else if let Some(key) = key.strip_suffix('!') {
                     (key, false)
                 } else {
@@ -478,8 +477,7 @@ pub async fn parse_and_configure() -> Opt {
 
                 match Some(cores.trim())
                     .filter(|c| !c.is_empty())
-                    .map(Cores::from_str)
-                    .unwrap_or(Ok(Cores::Auto))
+                    .map_or(Ok(Cores::Auto), Cores::from_str)
                 {
                     Ok(Cores::Number(n)) if usize::from(n) > all => {
                         eprintln!("At most {} logical cores available on your machine.", all);
@@ -511,7 +509,7 @@ pub async fn parse_and_configure() -> Opt {
                         ini.setstr("Fishnet", "SystemBacklog", Some("long"));
                         break;
                     }
-                    Ok(Toggle::No) | Ok(Toggle::Default) => {
+                    Ok(Toggle::No | Toggle::Default) => {
                         ini.setstr("Fishnet", "UserBacklog", Some("0"));
                         ini.setstr("Fishnet", "SystemBacklog", Some("0"));
                         break;
@@ -533,13 +531,10 @@ pub async fn parse_and_configure() -> Opt {
                     .read_line(&mut write)
                     .expect("read confirmation from stdin");
 
-                match Toggle::from_str(&write) {
-                    Ok(Toggle::Yes) | Ok(Toggle::Default) => {
-                        let contents = ini.writes();
-                        fs::write(&opt.conf, contents).expect("write config");
-                        break;
-                    }
-                    _ => (),
+                if let Ok(Toggle::Yes | Toggle::Default) = Toggle::from_str(&write) {
+                    let contents = ini.writes();
+                    fs::write(&opt.conf, contents).expect("write config");
+                    break;
                 }
             }
 

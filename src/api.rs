@@ -370,6 +370,7 @@ impl Default for LichessVariant {
 }
 
 #[must_use = "Acquired work should be processed or cancelled"]
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum Acquired {
     Accepted(AcquireResponseBody),

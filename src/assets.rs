@@ -19,7 +19,7 @@ struct Asset {
 
 impl Asset {
     #[cfg(unix)]
-    fn open_executable_file(&self, path: &Path) -> io::Result<File> {
+    fn open_executable_file(path: &Path) -> io::Result<File> {
         use std::os::unix::fs::OpenOptionsExt as _;
         OpenOptions::new()
             .create(true)
@@ -29,20 +29,20 @@ impl Asset {
     }
 
     #[cfg(not(unix))]
-    fn open_executable_file(&self, path: &Path) -> io::Result<File> {
+    fn open_executable_file(path: &Path) -> io::Result<File> {
         self.open_file(path)
     }
 
-    fn open_file(&self, path: &Path) -> io::Result<File> {
+    fn open_file(path: &Path) -> io::Result<File> {
         OpenOptions::new().create(true).write(true).open(path)
     }
 
     fn create(&self, base: &Path) -> io::Result<PathBuf> {
         let path = base.join(self.name);
         let mut file = if self.executable {
-            self.open_executable_file(&path)
+            Asset::open_executable_file(&path)
         } else {
-            self.open_file(&path)
+            Asset::open_file(&path)
         }?;
 
         let mut decoder = XzDecoder::new(self.data);
@@ -349,10 +349,10 @@ impl EvalFlavor {
 
 #[derive(Debug)]
 pub struct Assets {
-    dir: TempDir,
     pub sf_name: &'static str,
     pub nnue: String,
     pub stockfish: ByEngineFlavor<PathBuf>,
+    _dir: TempDir, // Will be deleted when dropped
 }
 
 impl Assets {
@@ -377,7 +377,7 @@ impl Assets {
                     .expect("compatible stockfish")
                     .create(dir.path())?,
             },
-            dir,
+            _dir: dir,
         })
     }
 }

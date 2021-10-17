@@ -44,7 +44,7 @@ impl PositionResponse {
     pub fn to_best(&self) -> AnalysisPart {
         AnalysisPart::Best {
             pv: self.pvs.best().cloned().unwrap_or_default(),
-            score: self.scores.best().cloned().expect("got score"),
+            score: self.scores.best().copied().expect("got score"),
             depth: self.depth,
             nodes: self.nodes,
             time: self.time.as_millis() as u64,
