@@ -30,7 +30,7 @@ impl Asset {
 
     #[cfg(not(unix))]
     fn open_executable_file(path: &Path) -> io::Result<File> {
-        self.open_file(path)
+        Asset::open_file(path)
     }
 
     fn open_file(path: &Path) -> io::Result<File> {
