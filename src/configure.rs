@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-use clap::{crate_version, Clap};
+use clap::{crate_version, Parser};
 use configparser::ini::Ini;
 use url::Url;
 
@@ -18,7 +18,7 @@ use crate::{api, logger::Logger};
 const DEFAULT_ENDPOINT: &str = "https://lichess.org/fishnet";
 
 /// Distributed Stockfish analysis for lichess.org.
-#[derive(Debug, Clap)]
+#[derive(Debug, Parser)]
 #[clap(setting = clap::AppSettings::DisableHelpSubcommand, version = crate_version!())]
 pub struct Opt {
     #[clap(flatten)]
@@ -107,7 +107,7 @@ impl Endpoint {
     }
 }
 
-#[derive(Debug, Default, Copy, Clone, Clap)]
+#[derive(Debug, Default, Copy, Clone, Parser)]
 pub struct Verbose {
     /// Increase verbosity.
     #[clap(long = "verbose", short = 'v', parse(from_occurrences), global = true)]
@@ -197,7 +197,7 @@ impl From<Cores> for usize {
     }
 }
 
-#[derive(Debug, Clone, Clap)]
+#[derive(Debug, Clone, Parser)]
 pub struct BacklogOpt {
     /// Prefer to run high-priority jobs only if older than this duration
     /// (for example 120s).
@@ -287,7 +287,7 @@ impl From<ParsedDuration> for Duration {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Clap)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Parser)]
 pub enum Command {
     /// Donate CPU time by running analysis (default).
     Run,
