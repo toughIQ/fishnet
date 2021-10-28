@@ -2,7 +2,7 @@ use std::{env, fs, fs::File, io, path::Path, process::Command};
 
 use glob::glob;
 
-const EVAL_FILE: &str = "nn-6762d36ad265.nnue";
+const EVAL_FILE: &str = "nn-13406b1dcbe0.nnue";
 
 #[cfg(target_arch = "x86_64")]
 fn not_cross_compiled() -> bool {
