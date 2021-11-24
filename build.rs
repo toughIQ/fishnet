@@ -139,6 +139,27 @@ fn stockfish_build() {
     match env::var("CARGO_CFG_TARGET_ARCH").unwrap().as_str() {
         "x86_64" => {
             Target {
+                arch: "x86-64-vnni512",
+                #[cfg(target_arch = "x86_64")]
+                pgo:
+                    is_x86_feature_detected!("avx512dq") &&
+                    is_x86_feature_detected!("avx512vl") &&
+                    is_x86_feature_detected!("avx512vnni"),
+                #[cfg(not(target_arch = "x86_64"))]
+                pgo: false,
+            }
+            .build_both();
+
+            Target {
+                arch: "x86-64-avx512",
+                #[cfg(target_arch = "x86_64")]
+                pgo: is_x86_feature_detected!("avx512f") && is_x86_feature_detected!("avx512bw"),
+                #[cfg(not(target_arch = "x86_64"))]
+                pgo: false,
+            }
+            .build_both();
+
+            Target {
                 arch: "x86-64-bmi2",
                 #[cfg(target_arch = "x86_64")]
                 pgo: is_x86_feature_detected!("bmi2"),
@@ -172,9 +193,7 @@ fn stockfish_build() {
             .build_both();
 
             // TODO: Could support:
-            // - x86-64-avx512
-            // - x86-64-vnni256
-            // - x86-64-vnni512
+            // - x86-64-vnni256 - same as vnni512 but with register width 256
         }
         "aarch64" => {
             if env::var("CARGO_CFG_TARGET_OS").unwrap() == "macos" {
