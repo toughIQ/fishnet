@@ -229,6 +229,18 @@ const STOCKFISH_MV: &[Asset] = &[
 #[cfg(all(windows, target_arch = "x86_64"))]
 const STOCKFISH: &[Asset] = &[
     Asset {
+        name: "stockfish-x86-64-vnni512.exe",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-vnni512.exe.xz")),
+        needs: Cpu::SF_VNNI512,
+        executable: true,
+    },
+    Asset {
+        name: "stockfish-x86-64-avx512.exe",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-avx512.exe.xz")),
+        needs: Cpu::SF_AVX512,
+        executable: true,
+    },
+    Asset {
         name: "stockfish-x86-64-bmi2.exe",
         data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-bmi2.exe.xz")),
         needs: Cpu::SF_BMI2,
