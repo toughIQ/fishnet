@@ -186,6 +186,18 @@ const STOCKFISH: &[Asset] = &[
 #[cfg(all(unix, target_arch = "x86_64"))]
 const STOCKFISH_MV: &[Asset] = &[
     Asset {
+        name: "fairy-stockfish-x86-64-vnni512",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64-vnni512.xz")),
+        needs: Cpu::SF_VNNI512,
+        executable: true,
+    },
+    Asset {
+        name: "fairy-stockfish-x86-64-avx512",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64-avx512.xz")),
+        needs: Cpu::SF_AVX512,
+        executable: true,
+    },
+    Asset {
         name: "fairy-stockfish-x86-64-bmi2",
         data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64-bmi2.xz")),
         needs: Cpu::SF_BMI2,
@@ -247,6 +259,24 @@ const STOCKFISH: &[Asset] = &[
 
 #[cfg(all(windows, target_arch = "x86_64"))]
 const STOCKFISH_MV: &[Asset] = &[
+    Asset {
+        name: "fairy-stockfish-x86-64-vnni512.exe",
+        data: include_bytes!(concat!(
+            env!("OUT_DIR"),
+            "/fairy-stockfish-x86-64-vnni512.exe.xz"
+        )),
+        needs: Cpu::SF_VNNI512,
+        executable: true,
+    },
+    Asset {
+        name: "fairy-stockfish-x86-64-avx512.exe",
+        data: include_bytes!(concat!(
+            env!("OUT_DIR"),
+            "/fairy-stockfish-x86-64-avx512.exe.xz"
+        )),
+        needs: Cpu::SF_AVX512,
+        executable: true,
+    },
     Asset {
         name: "fairy-stockfish-x86-64-bmi2.exe",
         data: include_bytes!(concat!(
