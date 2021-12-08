@@ -71,11 +71,15 @@ bitflags! {
         const SSE41     = 1 << 2;
         const AVX2      = 1 << 3;
         const FAST_BMI2 = 1 << 4;
+        const AVX512    = 1 << 5;
+        const VNNI512   = 1 << 6;
 
         const SF_SSE2         = Cpu::SSE2.bits;
         const SF_SSE41_POPCNT = Cpu::SSE41.bits | Cpu::POPCNT.bits;
         const SF_AVX2         = Cpu::SF_SSE41_POPCNT.bits | Cpu::AVX2.bits;
         const SF_BMI2         = Cpu::SF_AVX2.bits | Cpu::FAST_BMI2.bits;
+        const SF_AVX512       = Cpu::SF_BMI2.bits | Cpu::AVX512.bits;
+        const SF_VNNI512      = Cpu::SF_AVX512.bits | Cpu::VNNI512.bits;
     }
 }
 
@@ -111,6 +115,15 @@ impl Cpu {
                 }
             },
         );
+        cpu.set(Cpu::AVX512,
+            is_x86_feature_detected!("avx512f") &&
+            is_x86_feature_detected!("avx512bw")
+        );
+        cpu.set(Cpu::VNNI512,
+            is_x86_feature_detected!("avx512dq") &&
+            is_x86_feature_detected!("avx512vl") &&
+            is_x86_feature_detected!("avx512vnni")
+        );
         cpu
     }
 
@@ -129,6 +142,18 @@ const NNUE: Asset = Asset {
 
 #[cfg(all(unix, target_arch = "x86_64"))]
 const STOCKFISH: &[Asset] = &[
+    Asset {
+        name: "stockfish-x86-64-vnni512",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-vnni512.xz")),
+        needs: Cpu::SF_VNNI512,
+        executable: true,
+    },
+    Asset {
+        name: "stockfish-x86-64-avx512",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-avx512.xz")),
+        needs: Cpu::SF_AVX512,
+        executable: true,
+    },
     Asset {
         name: "stockfish-x86-64-bmi2",
         data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-bmi2.xz")),
@@ -161,6 +186,18 @@ const STOCKFISH: &[Asset] = &[
 #[cfg(all(unix, target_arch = "x86_64"))]
 const STOCKFISH_MV: &[Asset] = &[
     Asset {
+        name: "fairy-stockfish-x86-64-vnni512",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64-vnni512.xz")),
+        needs: Cpu::SF_VNNI512,
+        executable: true,
+    },
+    Asset {
+        name: "fairy-stockfish-x86-64-avx512",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64-avx512.xz")),
+        needs: Cpu::SF_AVX512,
+        executable: true,
+    },
+    Asset {
         name: "fairy-stockfish-x86-64-bmi2",
         data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64-bmi2.xz")),
         needs: Cpu::SF_BMI2,
@@ -192,6 +229,18 @@ const STOCKFISH_MV: &[Asset] = &[
 #[cfg(all(windows, target_arch = "x86_64"))]
 const STOCKFISH: &[Asset] = &[
     Asset {
+        name: "stockfish-x86-64-vnni512.exe",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-vnni512.exe.xz")),
+        needs: Cpu::SF_VNNI512,
+        executable: true,
+    },
+    Asset {
+        name: "stockfish-x86-64-avx512.exe",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-avx512.exe.xz")),
+        needs: Cpu::SF_AVX512,
+        executable: true,
+    },
+    Asset {
         name: "stockfish-x86-64-bmi2.exe",
         data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-bmi2.exe.xz")),
         needs: Cpu::SF_BMI2,
@@ -222,6 +271,24 @@ const STOCKFISH: &[Asset] = &[
 
 #[cfg(all(windows, target_arch = "x86_64"))]
 const STOCKFISH_MV: &[Asset] = &[
+    Asset {
+        name: "fairy-stockfish-x86-64-vnni512.exe",
+        data: include_bytes!(concat!(
+            env!("OUT_DIR"),
+            "/fairy-stockfish-x86-64-vnni512.exe.xz"
+        )),
+        needs: Cpu::SF_VNNI512,
+        executable: true,
+    },
+    Asset {
+        name: "fairy-stockfish-x86-64-avx512.exe",
+        data: include_bytes!(concat!(
+            env!("OUT_DIR"),
+            "/fairy-stockfish-x86-64-avx512.exe.xz"
+        )),
+        needs: Cpu::SF_AVX512,
+        executable: true,
+    },
     Asset {
         name: "fairy-stockfish-x86-64-bmi2.exe",
         data: include_bytes!(concat!(
