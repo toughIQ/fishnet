@@ -25,7 +25,7 @@ arrayvec = "0.7"
 atty = "0.2"
 auditable = "0.1"
 bitflags = "1"
-clap = "3.0.0-beta.5"
+clap = { version = "3.0.0-rc.0", features = ["derive"] }
 configparser = "3"
 xz2 = "0.1"
 num_cpus = "1"

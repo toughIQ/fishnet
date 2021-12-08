@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-use clap::{crate_version, Parser};
+use clap::Parser;
 use configparser::ini::Ini;
 use url::Url;
 
@@ -19,7 +19,7 @@ const DEFAULT_ENDPOINT: &str = "https://lichess.org/fishnet";
 
 /// Distributed Stockfish analysis for lichess.org.
 #[derive(Debug, Parser)]
-#[clap(setting = clap::AppSettings::DisableHelpSubcommand, version = crate_version!())]
+#[clap(setting = clap::AppSettings::DisableHelpSubcommand, version)]
 pub struct Opt {
     #[clap(flatten)]
     pub verbose: Verbose,
