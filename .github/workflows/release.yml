@@ -60,6 +60,8 @@ jobs:
   windows-x86-64:
     runs-on: windows-2019
     needs: release
+    env:
+      CXXFLAGS: -fno-asynchronous-unwind-tables
     steps:
       - uses: actions/checkout@v2
         with:
