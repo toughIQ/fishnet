@@ -108,7 +108,7 @@ trustworthiness of dependencies.
 
 ### Is there a leaderboard of contributors?
 
-No, sorry, not publically. It would incentivize gaming the metrics.
+No, sorry, not publicly. It would incentivize gaming the metrics.
 
 ### Can I autoscale fishnet in the cloud?
 
