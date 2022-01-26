@@ -6,7 +6,7 @@ You can find the source code at:
 
 * https://github.com/official-stockfish/Stockfish
 * https://github.com/ianfab/Fairy-Stockfish
-* https://github.com/niklasf/fishnet
+* https://github.com/lichess-org/fishnet
 
 These programs are distributed in the hope that they will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY

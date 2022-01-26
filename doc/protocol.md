@@ -1,6 +1,6 @@
 # Protocol
 
-![Fishnet sequence diagram](https://raw.githubusercontent.com/niklasf/fishnet/master/doc/sequence-diagram.png)
+![Fishnet sequence diagram](https://raw.githubusercontent.com/lichess-org/fishnet/master/doc/sequence-diagram.png)
 
 Client asks server:
 

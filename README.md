@@ -2,7 +2,7 @@
 
 [![crates.io](https://img.shields.io/crates/v/fishnet.svg)](https://crates.io/crates/fishnet)
 [![Docker](https://img.shields.io/docker/v/niklasf/fishnet?label=docker&sort=semver)](https://hub.docker.com/r/niklasf/fishnet)
-[![Build](https://github.com/niklasf/fishnet/workflows/Build/badge.svg)](https://github.com/niklasf/fishnet/actions?query=workflow%3ABuild)
+[![Build](https://github.com/lichess-org/fishnet/workflows/Build/badge.svg)](https://github.com/lichess-org/fishnet/actions?query=workflow%3ABuild)
 
 ## Installation
 
@@ -13,7 +13,7 @@
    **Download standalone binary**
 
    Select the binary for your platform
-   [from the latest release](https://github.com/niklasf/fishnet/releases)
+   [from the latest release](https://github.com/lichess-org/fishnet/releases)
    and run it.
 
    ```sh
@@ -39,7 +39,7 @@
 
    Run with `--auto-update` as recommended above (will currently still require
    manual restarts on Windows
-   due to [#151](https://github.com/niklasf/fishnet/issues/151)).
+   due to [#151](https://github.com/lichess-org/fishnet/issues/151)).
 
    **Subscribe to release announcements**
 

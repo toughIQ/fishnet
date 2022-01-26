@@ -452,7 +452,7 @@ async fn auto_update(
         }
         logger.fishnet_info("Checking for updates (--auto-update) ...");
         self_update::backends::github::Update::configure()
-            .repo_owner("niklasf")
+            .repo_owner("lichess-org")
             .repo_name("fishnet")
             .bin_name("fishnet")
             .show_output(verbose)

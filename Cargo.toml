@@ -2,7 +2,7 @@
 name = "fishnet"
 version = "2.5.2-dev"
 description = "Distributed Stockfish analysis for lichess.org"
-repository = "https://github.com/niklasf/fishnet"
+repository = "https://github.com/lichess-org/fishnet"
 readme = "README.md"
 license = "GPL-3.0+"
 authors = ["Niklas Fiekas <niklas.fiekas@backscattering.de>"]

@@ -9,7 +9,7 @@ See [README.md](/README.md).
 Assuming you have [a recent Rust toolchain](https://rustup.rs/), a C++ compiler, strip, and make installed:
 
 ```sh
-git clone --recursive https://github.com/niklasf/fishnet.git
+git clone --recursive https://github.com/lichess-org/fishnet.git
 cd fishnet
 cargo run --release -vv --
 ```
