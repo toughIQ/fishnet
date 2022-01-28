@@ -84,6 +84,14 @@ Almost all processors will be able to meet the requirement of ~2 meganodes in
 analysis jobs that have humans waiting for the result (the user queue, as
 opposed to the system queue for slower clients).
 
+### Why does my client remain idle?
+
+Your client may remain idle if fishnet estimates that another client would
+be able to complete the next batch more quickly, or if the client has been
+configured to join the queue only if a backlog is building up. By standing
+by, you're still contributing to the *potential* maximum throughput of the
+fishnet network.
+
 ### What happens if I stop my client?
 
 Feel free to turn your client on and off at any time. By default, the client
