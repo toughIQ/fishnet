@@ -11,7 +11,7 @@ Assuming you have [a recent Rust toolchain](https://rustup.rs/), a C++ compiler,
 ```sh
 git clone --recursive https://github.com/lichess-org/fishnet.git
 cd fishnet
-cargo run --release -vv --
+RUSTFLAGS="-C target-cpu=native" cargo run --release -vv --
 ```
 
 To update, do not forget `git submodule update` before building again:
@@ -19,7 +19,7 @@ To update, do not forget `git submodule update` before building again:
 ```sh
 git pull
 git submodule update
-cargo run --release -vv --
+RUSTFLAGS="-C target-cpu=native" cargo run --release -vv --
 ```
 
 ## AUR

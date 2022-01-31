@@ -4,14 +4,34 @@ use glob::glob;
 
 const EVAL_FILE: &str = "nn-13406b1dcbe0.nnue";
 
+fn has_target_feature(feature: &str) -> bool {
+    env::var("CARGO_CFG_TARGET_FEATURE")
+        .unwrap()
+        .split(',')
+        .any(|f| f == feature)
+}
+
+macro_rules! has_builder_feature {
+    ($feature:tt) => {{
+        #[cfg(target_arch = "x86_64")]
+        {
+            is_x86_feature_detected!($feature)
+        }
+        #[cfg(not(target_arch = "x86_64"))]
+        {
+            false
+        }
+    }};
+}
+
 #[cfg(target_arch = "x86_64")]
-fn not_cross_compiled() -> bool {
-    env::var("CARGO_CFG_TARGET_ARCH").unwrap() == "x86_64"
+fn cross_compiling() -> bool {
+    env::var("CARGO_CFG_TARGET_ARCH").unwrap() != "x86_64"
 }
 
 #[cfg(target_arch = "aarch64")]
-fn not_cross_compiled() -> bool {
-    env::var("CARGO_CFG_TARGET_ARCH").unwrap() == "aarch64"
+fn cross_compiling() -> bool {
+    env::var("CARGO_CFG_TARGET_ARCH").unwrap() != "aarch64"
 }
 
 struct Target {
@@ -24,7 +44,7 @@ impl Target {
         let release = env::var("PROFILE").unwrap() == "release";
         let windows = env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "windows";
         let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-        let pgo = release && not_cross_compiled() && (self.pgo || env::var("SDE_PATH").is_ok());
+        let pgo = release && !cross_compiling() && (self.pgo || env::var("SDE_PATH").is_ok());
 
         let exe = format!(
             "{}-{}{}",
@@ -115,6 +135,11 @@ impl Target {
                 .success(),
             "make clean"
         );
+
+        println!(
+            "cargo:rustc-cfg={}",
+            exe.replace(|ch| ch == '.' || ch == '-', "_")
+        );
     }
 
     fn build_official(&self) {
@@ -135,65 +160,72 @@ fn stockfish_build() {
     // Note: The target arch of the build script is the architecture of the
     // builder and decides if pgo is possible. It is not necessarily the same
     // as CARGO_CFG_TARGET_ARCH, the target arch of the fishnet binary.
+    //
+    // Can skip building more broadly compatible Stockfish binaries and return
+    // early when building with something like -C target-cpu=native.
 
     match env::var("CARGO_CFG_TARGET_ARCH").unwrap().as_str() {
         "x86_64" => {
             Target {
                 arch: "x86-64-vnni512",
-                #[cfg(target_arch = "x86_64")]
-                pgo:
-                    is_x86_feature_detected!("avx512dq") &&
-                    is_x86_feature_detected!("avx512vl") &&
-                    is_x86_feature_detected!("avx512vnni"),
-                #[cfg(not(target_arch = "x86_64"))]
-                pgo: false,
+                pgo: has_builder_feature!("avx512dq")
+                    && has_builder_feature!("avx512vl")
+                    && has_builder_feature!("avx512vnni"),
             }
             .build_both();
+
+            if has_target_feature("avx512dq")
+                && has_target_feature("avx512vl")
+                && has_target_feature("avx512vnni")
+            {
+                return;
+            }
 
             Target {
                 arch: "x86-64-avx512",
-                #[cfg(target_arch = "x86_64")]
-                pgo: is_x86_feature_detected!("avx512f") && is_x86_feature_detected!("avx512bw"),
-                #[cfg(not(target_arch = "x86_64"))]
-                pgo: false,
+                pgo: has_builder_feature!("avx512f") && has_builder_feature!("avx512bw"),
             }
             .build_both();
+
+            if has_target_feature("avx512f") && has_target_feature("avx512bw") {
+                return;
+            }
 
             Target {
                 arch: "x86-64-bmi2",
-                #[cfg(target_arch = "x86_64")]
-                pgo: is_x86_feature_detected!("bmi2"),
-                #[cfg(not(target_arch = "x86_64"))]
-                pgo: false,
+                pgo: has_builder_feature!("bmi2"),
             }
             .build_both();
+
+            if has_target_feature("bmi2") {
+                // Fast bmi2 can not be detected at compile time.
+            }
 
             Target {
                 arch: "x86-64-avx2",
-                #[cfg(target_arch = "x86_64")]
-                pgo: is_x86_feature_detected!("avx2"),
-                #[cfg(not(target_arch = "x86_64"))]
-                pgo: false,
+                pgo: has_builder_feature!("avx2"),
             }
             .build_both();
 
+            if has_target_feature("avx2") {
+                return;
+            }
+
             Target {
                 arch: "x86-64-sse41-popcnt",
-                #[cfg(target_arch = "x86_64")]
-                pgo: is_x86_feature_detected!("sse4.1") && is_x86_feature_detected!("popcnt"),
-                #[cfg(not(target_arch = "x86_64"))]
-                pgo: false,
+                pgo: has_builder_feature!("sse4.1") && has_builder_feature!("popcnt"),
             }
             .build_both();
+
+            if has_target_feature("sse4.1") && has_target_feature("popcnt") {
+                return;
+            }
 
             Target {
                 arch: "x86-64",
                 pgo: cfg!(target_arch = "x86_64"),
             }
             .build_both();
-
-            // TODO: Could support:
-            // - x86-64-vnni256 - same as vnni512 but with register width 256
         }
         "aarch64" => {
             if env::var("CARGO_CFG_TARGET_OS").unwrap() == "macos" {
