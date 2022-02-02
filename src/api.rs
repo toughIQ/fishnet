@@ -2,7 +2,7 @@ use std::{env, fmt, num::NonZeroU8, str::FromStr, sync::Arc, time::Duration};
 
 use arrayvec::ArrayString;
 use reqwest::{
-    header::{HeaderName, HeaderValue, AUTHORIZATION},
+    header::{HeaderValue, AUTHORIZATION},
     StatusCode,
 };
 use serde::{Deserialize, Serialize};
