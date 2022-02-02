@@ -1,7 +1,10 @@
 use std::{env, fmt, num::NonZeroU8, str::FromStr, sync::Arc, time::Duration};
 
 use arrayvec::ArrayString;
-use reqwest::{header, StatusCode};
+use reqwest::{
+    header::{HeaderName, HeaderValue, AUTHORIZATION},
+    StatusCode,
+};
 use serde::{Deserialize, Serialize};
 use serde_repr::Deserialize_repr as DeserializeRepr;
 use serde_with::{
@@ -559,10 +562,12 @@ impl ApiActor {
                 .default_headers(
                     key.iter()
                         .map(|Key(k)| {
-                            (
-                                header::AUTHORIZATION,
-                                format!("Bearer {}", k).parse().expect("header value"),
-                            )
+                            (AUTHORIZATION, {
+                                let mut value = HeaderValue::from_str(&format!("Bearer {}", k))
+                                    .expect("bearer authorization");
+                                value.set_sensitive(true);
+                                value
+                            })
                         })
                         .collect(),
                 )
