@@ -295,6 +295,7 @@ fn main() {
 
     // Resource compilation may fail when toolchain does not match target,
     // e.g. windows-msvc toolchain with windows-gnu target.
+    println!("cargo:rerun-if-changed=favicon.ico");
     #[cfg(target_family = "windows")]
     winres::WindowsResource::new()
         .set_icon("favicon.ico")
