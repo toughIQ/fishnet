@@ -106,10 +106,11 @@ of Stockfish NNUE works efficiently on CPUs.
 
 ### Is fishnet secure?
 
-To the best of our knowledge. However you implicitly trust the authors and the
-GitHub infrastructure when running with `--auto-update`.
+To the best of our knowledge. All engine input is carefully validated.
 
-You can mitigate this by running fishnet as an unprivileged user.
+Note that you implicitly trust the authors and the GitHub infrastructure when
+running with `--auto-update`. You can mitigate this by running fishnet as an
+unprivileged user.
 
 [`cargo-crev`](https://github.com/crev-dev/cargo-crev) is used to review the
 trustworthiness of dependencies.
