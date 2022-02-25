@@ -20,6 +20,9 @@ exclude = [
     "Fairy-Stockfish/**/*.nnue",
 ]
 
+[profile.release]
+strip = false
+
 [dependencies]
 arrayvec = "0.7"
 atty = "0.2"
