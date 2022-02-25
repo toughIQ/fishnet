@@ -101,7 +101,7 @@ async fn run(opt: Opt, logger: &Logger) {
         env::args().next().unwrap_or_else(|| "./fishnet".to_owned())
     ));
 
-    let cores = usize::from(opt.cores.unwrap_or(Cores::Auto));
+    let cores = opt.cores.unwrap_or(Cores::Auto).number();
     logger.info(&format!("Cores: {}", cores));
 
     // Install handler for SIGTERM.
@@ -156,8 +156,8 @@ async fn run(opt: Opt, logger: &Logger) {
     // to tx, thereby requesting more work.
     let mut rx = {
         let assets = Arc::new(assets);
-        let (tx, rx) = mpsc::channel::<Pull>(cores);
-        for i in 0..cores {
+        let (tx, rx) = mpsc::channel::<Pull>(cores.get());
+        for i in 0..cores.get() {
             let assets = assets.clone();
             let tx = tx.clone();
             let logger = logger.clone();

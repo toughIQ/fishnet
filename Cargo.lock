@@ -248,7 +248,6 @@ dependencies = [
  "glob",
  "home",
  "libc",
- "num_cpus",
  "rand",
  "raw-cpuid",
  "reqwest",
