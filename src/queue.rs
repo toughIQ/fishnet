@@ -10,7 +10,7 @@ use shakmaty::{
     fen::Fen,
     uci::{IllegalUciError, Uci},
     variant::VariantPosition,
-    CastlingMode, Position as _, PositionError,
+    CastlingMode, EnPassantMode, Position as _, PositionError,
 };
 use tokio::{
     sync::{mpsc, oneshot, Mutex, Notify},
@@ -518,7 +518,7 @@ impl IncomingBatch {
 
         let maybe_root_pos = VariantPosition::from_setup(
             body.variant.into(),
-            &body.position,
+            body.position.into_setup(),
             CastlingMode::Chess960,
         );
 
@@ -533,7 +533,7 @@ impl IncomingBatch {
             ),
         };
 
-        let root_fen = Fen::from_setup(&root_pos);
+        let root_fen = Fen(root_pos.clone().into_setup(EnPassantMode::Legal));
 
         let body_moves = {
             let mut moves = Vec::with_capacity(body.moves.len());
