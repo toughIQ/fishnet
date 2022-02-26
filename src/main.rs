@@ -15,7 +15,6 @@ use std::{
     cmp::min,
     env,
     path::PathBuf,
-    ptr,
     sync::Arc,
     thread,
     time::{Duration, Instant},
@@ -38,16 +37,8 @@ use crate::{
     util::RandomizedBackoff,
 };
 
-static COMPRESSED_DEPENDENCY_LIST: &[u8] = auditable::inject_dependency_list!();
-
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    unsafe {
-        // Work around https://github.com/Shnatsel/rust-audit/issues/9.
-        // Safety: u8 is Copy.
-        ptr::read_volatile(&COMPRESSED_DEPENDENCY_LIST[0]);
-    }
-
     let opt = configure::parse_and_configure().await;
     let logger = Logger::new(opt.verbose, opt.command.map_or(false, Command::is_systemd));
 

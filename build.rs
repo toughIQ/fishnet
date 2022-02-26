@@ -263,8 +263,6 @@ fn compress(dir: &str, file: &str) {
 }
 
 fn hooks() {
-    println!("cargo:rerun-if-changed=Cargo.lock");
-
     println!("cargo:rerun-if-env-changed=CXX");
     println!("cargo:rerun-if-env-changed=CXXFLAGS");
     println!("cargo:rerun-if-env-changed=SDE_PATH");
@@ -291,7 +289,6 @@ fn main() {
     hooks();
     stockfish_build();
     compress("Stockfish/src", EVAL_FILE);
-    auditable_build::collect_dependency_list();
 
     // Resource compilation may fail when toolchain does not match target,
     // e.g. windows-msvc toolchain with windows-gnu target.
