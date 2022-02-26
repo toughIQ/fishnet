@@ -27,7 +27,7 @@ strip = false
 arrayvec = "0.7"
 atty = "0.2"
 bitflags = "1"
-clap = { version = "3.0.0-rc.0", features = ["derive"] }
+clap = { version = "3", features = ["derive"] }
 configparser = "3"
 xz2 = "0.1"
 rand = "0.8"

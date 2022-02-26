@@ -19,7 +19,7 @@ const DEFAULT_ENDPOINT: &str = "https://lichess.org/fishnet";
 
 /// Distributed Stockfish analysis for lichess.org.
 #[derive(Debug, Parser)]
-#[clap(setting = clap::AppSettings::DisableHelpSubcommand, version)]
+#[clap(version, disable_help_subcommand = true)]
 pub struct Opt {
     #[clap(flatten)]
     pub verbose: Verbose,
