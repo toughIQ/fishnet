@@ -39,8 +39,14 @@ struct Target {
     pgo: bool,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum Flavor {
+    Official,
+    MultiVariant,
+}
+
 impl Target {
-    fn build(&self, src_dir: &'static str, name: &'static str) {
+    fn build(&self, flavor: Flavor, src_dir: &'static str, name: &'static str) {
         let release = env::var("PROFILE").unwrap() == "release";
         let windows = env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "windows";
         let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
@@ -58,20 +64,6 @@ impl Target {
                 exe
             );
         }
-
-        assert!(
-            Command::new("sha256sum")
-                .arg("--version")
-                .status()
-                .unwrap_or_else(|err| panic!(
-                    "{}. Is sha256sum installed?\n\
-                * Debian: sudo apt install coreutils\n\
-                * Arch: sudo pacman -S coreutils\n",
-                    err
-                ))
-                .success(),
-            "sha256sum --version"
-        );
 
         let make = if target_os == "freebsd" {
             "gmake"
@@ -92,6 +84,35 @@ impl Target {
                 .success(),
             "make --version"
         );
+
+        if flavor == Flavor::Official {
+            assert!(
+                Command::new("sha256sum")
+                    .arg("--version")
+                    .status()
+                    .unwrap_or_else(|err| panic!(
+                        "{}. Is sha256sum installed?\n\
+                        * Debian: sudo apt install coreutils\n\
+                        * Arch: sudo pacman -S coreutils\n",
+                        err
+                    ))
+                    .success(),
+                "sha256sum --version"
+            );
+
+            if !Command::new(make)
+                .current_dir(src_dir)
+                .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
+                .arg("-B")
+                .arg("net")
+                .status()
+                .unwrap()
+                .success()
+            {
+                fs::remove_file(Path::new(src_dir).join(EVAL_FILE)).unwrap();
+                println!("cargo:warning=Deleted corrupted network file");
+            }
+        }
 
         assert!(
             Command::new(make)
@@ -156,17 +177,14 @@ impl Target {
         );
     }
 
-    fn build_official(&self) {
-        self.build("Stockfish/src", "stockfish");
-    }
-
-    fn build_fairy(&self) {
-        self.build("Fairy-Stockfish/src", "fairy-stockfish");
-    }
-
     fn build_both(&self) {
-        self.build_official();
-        self.build_fairy();
+        self.build(Flavor::Official, "Stockfish/src", "stockfish");
+
+        self.build(
+            Flavor::MultiVariant,
+            "Fairy-Stockfish/src",
+            "fairy-stockfish",
+        );
     }
 }
 
