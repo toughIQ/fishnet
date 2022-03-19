@@ -85,22 +85,8 @@ impl Target {
             "make --version"
         );
 
-        if flavor == Flavor::Official {
-            assert!(
-                Command::new("sha256sum")
-                    .arg("--version")
-                    .status()
-                    .unwrap_or_else(|err| panic!(
-                        "{}. Is sha256sum installed?\n\
-                        * Debian: sudo apt install coreutils\n\
-                        * Arch: sudo pacman -S coreutils\n",
-                        err
-                    ))
-                    .success(),
-                "sha256sum --version"
-            );
-
-            if !Command::new(make)
+        if flavor == Flavor::Official
+            && !Command::new(make)
                 .current_dir(src_dir)
                 .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
                 .arg("-B")
@@ -108,10 +94,9 @@ impl Target {
                 .status()
                 .unwrap()
                 .success()
-            {
-                fs::remove_file(Path::new(src_dir).join(EVAL_FILE)).unwrap();
-                println!("cargo:warning=Deleted corrupted network file");
-            }
+        {
+            fs::remove_file(Path::new(src_dir).join(EVAL_FILE)).unwrap();
+            println!("cargo:warning=Deleted corrupted network file");
         }
 
         assert!(
