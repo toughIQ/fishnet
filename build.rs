@@ -85,8 +85,8 @@ impl Target {
             "make --version"
         );
 
-        if flavor == Flavor::Official
-            && !Command::new(make)
+        if flavor == Flavor::Official {
+            if !Command::new(make)
                 .current_dir(src_dir)
                 .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
                 .arg("-B")
@@ -94,9 +94,10 @@ impl Target {
                 .status()
                 .unwrap()
                 .success()
-        {
-            fs::remove_file(Path::new(src_dir).join(EVAL_FILE)).unwrap();
-            println!("cargo:warning=Deleted corrupted network file");
+            {
+                fs::remove_file(Path::new(src_dir).join(EVAL_FILE)).unwrap();
+                println!("cargo:warning=Deleted corrupted network file {}", EVAL_FILE);
+            }
         }
 
         assert!(
