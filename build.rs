@@ -59,6 +59,20 @@ impl Target {
             );
         }
 
+        assert!(
+            Command::new("sha256sum")
+                .arg("--version")
+                .status()
+                .unwrap_or_else(|err| panic!(
+                    "{}. Is sha256sum installed?\n\
+                * Debian: sudo apt install coreutils\n\
+                * Arch: sudo pacman -S coreutils\n",
+                    err
+                ))
+                .success(),
+            "sha256sum --version"
+        );
+
         let make = if target_os == "freebsd" {
             "gmake"
         } else {
