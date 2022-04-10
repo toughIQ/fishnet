@@ -27,9 +27,19 @@ jobs:
       CXX: g++-11
     steps:
       - run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test && sudo apt-get update && sudo apt-get install -y g++-11
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: true
+      - uses: actions/checkout@v3
+        with:
+          repository: lichess-org/intel-sde
+          ssh-key: ${{ secrets.ID_RSA_INTEL_SDE }}
+          ref: main
+          path: intel-sde
+        id: sde
+        continue-on-error: true
+      - run: tar xvf intel-sde/sde-external-9.0.0-2021-11-07-lin.tar.xz && echo SDE_PATH=$PWD/sde-external-9.0.0-2021-11-07-lin/sde64 >> $GITHUB_ENV
+        if: steps.sde.outcome == 'success'
       - uses: actions/cache@v2
         with:
           path: |
@@ -62,9 +72,19 @@ jobs:
     env:
       CXXFLAGS: -fno-asynchronous-unwind-tables
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: true
+      - uses: actions/checkout@v3
+        with:
+          repository: lichess-org/intel-sde
+          ssh-key: ${{ secrets.ID_RSA_INTEL_SDE }}
+          ref: main
+          path: intel-sde
+        id: sde
+        continue-on-error: true
+      - run: 7z e intel-sde/sde-external-9.0.0-2021-11-07-win.tar.xz && 7z x sde-external-9.0.0-2021-11-07-win.tar && echo SDE_PATH=$(cygpath -u $env:GITHUB_WORKSPACE\sde-external-9.0.0-2021-11-07-win\sde.exe) >> $env:GITHUB_ENV
+        if: steps.sde.outcome == 'success'
       - uses: actions/cache@v2
         with:
           path: |
@@ -96,9 +116,19 @@ jobs:
     runs-on: macos-10.15
     needs: release
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: true
+      - uses: actions/checkout@v3
+        with:
+          repository: lichess-org/intel-sde
+          ssh-key: ${{ secrets.ID_RSA_INTEL_SDE }}
+          ref: main
+          path: intel-sde
+        id: sde
+        continue-on-error: true
+      - run: tar xvf intel-sde/sde-external-9.0.0-2021-11-07-mac.tar.xz && echo SDE_PATH=$PWD/sde-external-9.0.0-2021-11-07-mac/sde64 >> $GITHUB_ENV
+        if: steps.sde.outcome == 'success'
       - uses: actions/cache@v2
         with:
           path: |
@@ -130,7 +160,7 @@ jobs:
     env:
       CXXFLAGS: -target arm64-apple-macos11
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: true
       - uses: actions/cache@v2
