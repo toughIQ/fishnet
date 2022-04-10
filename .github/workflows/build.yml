@@ -9,9 +9,18 @@ jobs:
       CXX: g++-11
     steps:
       - run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test && sudo apt-get update && sudo apt-get install -y g++-11
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: true
+      - uses: actions/checkout@v3
+        with:
+          repository: lichess-org/intel-sde
+          ssh-key: ${{ secrets.ID_RSA_INTEL_SDE }}
+          ref: main
+          path: intel-sde
+          id: sde
+      - run: tar xf intel-sde/sde-external-9.0.0-2021-11-07-lin.tar.xz && echo SDE_PATH=intel-sde/sde-external-9.0.0-2021-11-07-lin/sde64 >> $GITHUB_ENV
+        if: steps.sde.outcome == 'success'
       - uses: actions/cache@v2
         with:
           path: |
