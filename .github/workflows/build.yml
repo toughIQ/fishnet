@@ -19,7 +19,8 @@ jobs:
           ref: main
           path: intel-sde
         id: sde
-      - run: tar xvf intel-sde/sde-external-9.0.0-2021-11-07-lin.tar.xz && echo SDE_PATH=sde-external-9.0.0-2021-11-07-lin/sde64 >> $GITHUB_ENV
+        continue-on-error: true
+      - run: tar xvf intel-sde/sde-external-9.0.0-2021-11-07-lin.tar.xz && echo SDE_PATH=$PWD/sde-external-9.0.0-2021-11-07-lin/sde64 >> $GITHUB_ENV
         if: steps.sde.outcome == 'success'
       - uses: actions/cache@v2
         with:
@@ -58,7 +59,8 @@ jobs:
           ref: main
           path: intel-sde
         id: sde
-      - run: tar xvf intel-sde/sde-external-9.0.0-2021-11-07-win.tar.xz && echo SDE_PATH=sde-external-9.0.0-2021-11-07-win/sde64 >> $GITHUB_ENV
+        continue-on-error: true
+      - run: tar xvf intel-sde/sde-external-9.0.0-2021-11-07-win.tar.xz && echo SDE_PATH=$PWD/sde-external-9.0.0-2021-11-07-win/sde64 >> $GITHUB_ENV
         if: steps.sde.outcome == 'success'
       - uses: actions/cache@v2
         with:
@@ -97,7 +99,8 @@ jobs:
           ref: main
           path: intel-sde
         id: sde
-      - run: tar xvf sde-external-9.0.0-2021-11-07-mac.tar.xz && echo SDE_PATH=sde-external-9.0.0-2021-11-07-mac/sde64 >> $GITHUB_ENV
+        continue-on-error: true
+      - run: tar xvf intel-sde/sde-external-9.0.0-2021-11-07-mac.tar.xz && echo SDE_PATH=$PWD/sde-external-9.0.0-2021-11-07-mac/sde64 >> $GITHUB_ENV
         if: steps.sde.outcome == 'success'
       - uses: actions/cache@v2
         with:
