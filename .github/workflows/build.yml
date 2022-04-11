@@ -22,7 +22,7 @@ jobs:
         continue-on-error: true
       - run: tar xvf intel-sde/sde-external-9.0.0-2021-11-07-lin.tar.xz && echo SDE_PATH=$PWD/sde-external-9.0.0-2021-11-07-lin/sde64 >> $GITHUB_ENV
         if: steps.sde.outcome == 'success'
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/bin/
@@ -40,7 +40,7 @@ jobs:
           command: build
           args: --release -vv
       - run: mv target/release/fishnet fishnet-x86_64-unknown-linux-gnu
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: fishnet-x86_64-unknown-linux-gnu
           path: fishnet-x86_64-unknown-linux-gnu
@@ -62,7 +62,7 @@ jobs:
         continue-on-error: true
       - run: 7z e intel-sde/sde-external-9.0.0-2021-11-07-win.tar.xz && 7z x sde-external-9.0.0-2021-11-07-win.tar && echo SDE_PATH=$(cygpath -u $env:GITHUB_WORKSPACE\sde-external-9.0.0-2021-11-07-win\sde.exe) >> $env:GITHUB_ENV
         if: steps.sde.outcome == 'success'
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/bin/
@@ -82,7 +82,7 @@ jobs:
           command: build
           args: --release --target x86_64-pc-windows-gnu -vv
       - run: mv target/x86_64-pc-windows-gnu/release/fishnet.exe fishnet-x86_64-pc-windows-gnu.exe
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: fishnet-x86_64-pc-windows-gnu
           path: fishnet-x86_64-pc-windows-gnu.exe
@@ -92,7 +92,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: true
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/bin/
@@ -110,7 +110,7 @@ jobs:
           command: build
           args: --release -vv
       - run: mv target/release/fishnet fishnet-x86_64-apple-darwin
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: fishnet-x86_64-apple-darwin
           path: fishnet-x86_64-apple-darwin
@@ -122,7 +122,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: true
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/bin/
@@ -141,7 +141,7 @@ jobs:
           command: build
           args: --release --target aarch64-apple-darwin -vv
       - run: mv target/aarch64-apple-darwin/release/fishnet fishnet-aarch64-apple-darwin
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: fishnet-aarch64-apple-darwin
           path: fishnet-aarch64-apple-darwin
