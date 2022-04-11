@@ -24,19 +24,10 @@ macro_rules! has_builder_feature {
     }};
 }
 
-#[cfg(target_arch = "x86_64")]
-fn cross_compiling() -> bool {
-    env::var("CARGO_CFG_TARGET_ARCH").unwrap() != "x86_64"
-}
-
-#[cfg(target_arch = "aarch64")]
-fn cross_compiling() -> bool {
-    env::var("CARGO_CFG_TARGET_ARCH").unwrap() != "aarch64"
-}
-
 struct Target {
     arch: &'static str,
-    pgo: bool,
+    native: bool,
+    sde: bool,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -50,7 +41,7 @@ impl Target {
         let release = env::var("PROFILE").unwrap() == "release";
         let windows = env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "windows";
         let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-        let pgo = release && !cross_compiling() && (self.pgo || env::var("SDE_PATH").is_ok());
+        let pgo = release && (self.native || (self.sde && env::var("SDE_PATH").is_ok()));
 
         let exe = format!(
             "{}-{}{}",
@@ -100,37 +91,37 @@ impl Target {
             }
         }
 
-        assert!(
-            Command::new(make)
-                .current_dir(src_dir)
-                .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
-                .env(
-                    "CXXFLAGS",
-                    format!(
-                        "{} -DNNUE_EMBEDDING_OFF",
-                        env::var("CXXFLAGS").unwrap_or_default()
-                    )
-                )
-                .arg("-B")
-                .args(env::var("CXX").ok().map(|cxx| format!("CXX={}", cxx)))
-                .arg(format!(
-                    "COMP={}",
-                    if windows {
-                        "mingw"
-                    } else if target_os == "linux" {
-                        "gcc"
-                    } else {
-                        "clang"
-                    }
-                ))
-                .arg(format!("ARCH={}", self.arch))
-                .arg(format!("EXE={}", exe))
-                .arg(if pgo { "profile-build" } else { "build" })
-                .status()
-                .unwrap()
-                .success(),
-            "make build"
-        );
+        let mut build_command = Command::new(make);
+        build_command
+            .current_dir(src_dir)
+            .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
+            .env(
+                "CXXFLAGS",
+                format!(
+                    "{} -DNNUE_EMBEDDING_OFF",
+                    env::var("CXXFLAGS").unwrap_or_default()
+                ),
+            )
+            .arg("-B")
+            .args(env::var("CXX").ok().map(|cxx| format!("CXX={}", cxx)))
+            .arg(format!(
+                "COMP={}",
+                if windows {
+                    "mingw"
+                } else if target_os == "linux" {
+                    "gcc"
+                } else {
+                    "clang"
+                }
+            ))
+            .arg(format!("ARCH={}", self.arch))
+            .arg(format!("EXE={}", exe))
+            .arg(if pgo { "profile-build" } else { "build" });
+        if !pgo || self.native {
+            // Avoid SDE overhead if not required.
+            build_command.env_remove("SDE_PATH");
+        }
+        assert!(build_command.status().unwrap().success(), "make build");
 
         assert!(
             Command::new(make)
@@ -184,11 +175,14 @@ fn stockfish_build() {
 
     match env::var("CARGO_CFG_TARGET_ARCH").unwrap().as_str() {
         "x86_64" => {
+            let sde = cfg!(target_arch = "x86_64");
+
             Target {
                 arch: "x86-64-vnni512",
-                pgo: has_builder_feature!("avx512dq")
+                native: has_builder_feature!("avx512dq")
                     && has_builder_feature!("avx512vl")
                     && has_builder_feature!("avx512vnni"),
+                sde,
             }
             .build_both();
 
@@ -201,7 +195,8 @@ fn stockfish_build() {
 
             Target {
                 arch: "x86-64-avx512",
-                pgo: has_builder_feature!("avx512f") && has_builder_feature!("avx512bw"),
+                native: has_builder_feature!("avx512f") && has_builder_feature!("avx512bw"),
+                sde,
             }
             .build_both();
 
@@ -211,7 +206,8 @@ fn stockfish_build() {
 
             Target {
                 arch: "x86-64-bmi2",
-                pgo: has_builder_feature!("bmi2"),
+                native: has_builder_feature!("bmi2"),
+                sde,
             }
             .build_both();
 
@@ -221,7 +217,8 @@ fn stockfish_build() {
 
             Target {
                 arch: "x86-64-avx2",
-                pgo: has_builder_feature!("avx2"),
+                native: has_builder_feature!("avx2"),
+                sde,
             }
             .build_both();
 
@@ -231,7 +228,8 @@ fn stockfish_build() {
 
             Target {
                 arch: "x86-64-sse41-popcnt",
-                pgo: has_builder_feature!("sse4.1") && has_builder_feature!("popcnt"),
+                native: has_builder_feature!("sse4.1") && has_builder_feature!("popcnt"),
+                sde,
             }
             .build_both();
 
@@ -241,21 +239,26 @@ fn stockfish_build() {
 
             Target {
                 arch: "x86-64",
-                pgo: cfg!(target_arch = "x86_64"),
+                native: cfg!(target_arch = "x86_64"),
+                sde,
             }
             .build_both();
         }
         "aarch64" => {
+            let native = cfg!(target_arch = "aarch64");
+
             if env::var("CARGO_CFG_TARGET_OS").unwrap() == "macos" {
                 Target {
                     arch: "apple-silicon",
-                    pgo: cfg!(target_arch = "aarch64"),
+                    native,
+                    sde: false,
                 }
                 .build_both();
             } else {
                 Target {
                     arch: "armv8",
-                    pgo: cfg!(target_arch = "aarch64"),
+                    native,
+                    sde: false,
                 }
                 .build_both();
             }
