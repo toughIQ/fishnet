@@ -152,7 +152,7 @@ jobs:
       - windows-x86-64
       - macos-x86-64
       - macos-aarch64
-    if: startsWith(github.ref, 'refs/tags')
+    if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - uses: actions/download-artifact@v3
       - run: ls -R
