@@ -6,8 +6,9 @@ jobs:
   linux-x86-64:
     runs-on: ubuntu-18.04
     env:
-      CXX: g++
+      CXX: g++-8
     steps:
+      - run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test && sudo apt-get update && sudo apt-get install -y g++-8
       - uses: actions/checkout@v3
         with:
           submodules: true
