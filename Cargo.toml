@@ -1,6 +1,6 @@
 [package]
 name = "fishnet"
-version = "2.6.1"
+version = "2.6.2-dev"
 description = "Distributed Stockfish analysis for lichess.org"
 repository = "https://github.com/lichess-org/fishnet"
 readme = "README.md"
