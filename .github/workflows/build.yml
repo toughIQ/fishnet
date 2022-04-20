@@ -20,7 +20,7 @@ jobs:
           path: intel-sde
         id: sde
         continue-on-error: true
-      - run: tar xvf intel-sde/sde-external-9.0.0-2021-11-07-lin.tar.xz && echo SDE_PATH=$PWD/sde-external-9.0.0-2021-11-07-lin/sde64 >> $GITHUB_ENV
+      - run: tar xf intel-sde/sde-external-9.0.0-2021-11-07-lin.tar.xz && echo SDE_PATH=$PWD/sde-external-9.0.0-2021-11-07-lin/sde64 >> $GITHUB_ENV
         if: steps.sde.outcome == 'success'
       - uses: actions/cache@v3
         with:
@@ -46,7 +46,14 @@ jobs:
           path: fishnet-x86_64-unknown-linux-gnu
   windows-x86-64:
     runs-on: windows-2019
+    defaults:
+      run:
+        shell: msys2 {0}
     steps:
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: mingw64
+          install: mingw-w64-x86_64-gcc make tar
       - uses: actions/checkout@v3
         with:
           submodules: true
@@ -58,7 +65,7 @@ jobs:
           path: intel-sde
         id: sde
         continue-on-error: true
-      - run: 7z e intel-sde/sde-external-9.0.0-2021-11-07-win.tar.xz && 7z x sde-external-9.0.0-2021-11-07-win.tar && echo SDE_PATH=$(cygpath -u $env:GITHUB_WORKSPACE\sde-external-9.0.0-2021-11-07-win\sde.exe) >> $env:GITHUB_ENV
+      - run: tar xf intel-sde/sde-external-9.0.0-2021-11-07-win.tar.xz && echo SDE_PATH=$(cygpath -u $GITHUB_WORKSPACE)/sde-external-9.0.0-2021-11-07-win/sde.exe) >> $GITHUB_ENV
         if: steps.sde.outcome == 'success'
       - uses: actions/cache@v3
         with:
