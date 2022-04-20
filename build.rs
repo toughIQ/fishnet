@@ -186,7 +186,7 @@ fn stockfish_build() {
         "x86_64" => {
             let sde = cfg!(target_arch = "x86_64");
 
-            /* Target {
+            Target {
                 arch: "x86-64-vnni512",
                 native: has_builder_feature!("avx512dq")
                     && has_builder_feature!("avx512vl")
@@ -244,7 +244,7 @@ fn stockfish_build() {
 
             if has_target_feature("sse4.1") && has_target_feature("popcnt") {
                 return;
-            } */
+            }
 
             Target {
                 arch: "x86-64",
