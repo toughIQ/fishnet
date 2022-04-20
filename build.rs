@@ -56,6 +56,25 @@ impl Target {
             );
         }
 
+        let (comp, default_cxx) = if windows {
+            ("mingw", "g++")
+        } else if target_os == "linux" {
+            ("gcc", "g++")
+        } else {
+            ("clang", "clang++")
+        };
+
+        let cxx = env::var("CXX").unwrap_or_else(|_| default_cxx.to_owned());
+
+        assert!(
+            Command::new(&cxx)
+                .arg("--version")
+                .status()
+                .unwrap_or_else(|err| panic!("{}. Is `{}` installed?", err, cxx))
+                .success(),
+            "$(CXX) --version"
+        );
+
         let make = if target_os == "freebsd" {
             "gmake"
         } else {
@@ -103,17 +122,8 @@ impl Target {
                 ),
             )
             .arg("-B")
-            .args(env::var("CXX").ok().map(|cxx| format!("CXX={}", cxx)))
-            .arg(format!(
-                "COMP={}",
-                if windows {
-                    "mingw"
-                } else if target_os == "linux" {
-                    "gcc"
-                } else {
-                    "clang"
-                }
-            ))
+            .arg(format!("COMP={}", comp))
+            .arg(format!("CXX={}", cxx))
             .arg(format!("ARCH={}", self.arch))
             .arg(format!("EXE={}", exe))
             .arg(if pgo { "profile-build" } else { "build" });
