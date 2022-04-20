@@ -56,13 +56,32 @@ impl Target {
             );
         }
 
-        let (comp, default_cxx) = if windows {
-            ("mingw", "g++")
+        let (comp, default_cxx, default_make) = if windows {
+            ("mingw", "g++", "mingw32-make")
         } else if target_os == "linux" {
-            ("gcc", "g++")
+            ("gcc", "g++", "make")
+        } else if target_os == "freebsd" {
+            ("clang", "clang++", "gmake")
         } else {
-            ("clang", "clang++")
+            ("clang", "clang++", "make")
         };
+
+        let make = env::var("MAKE").unwrap_or_else(|_| default_make.to_owned());
+
+        assert!(
+            Command::new(&make)
+                .arg("--version")
+                .status()
+                .unwrap_or_else(|err| panic!(
+                    "{}. Is `{}` installed?\n\
+                    * Debian: sudo apt install build-essential\n\
+                    * Arch: sudo pacman -S base-devel\n\
+                    * MSYS2: pacman -S mingw32-make\n",
+                    err, make
+                ))
+                .success(),
+            "$(MAKE) --version"
+        );
 
         let cxx = env::var("CXX").unwrap_or_else(|_| default_cxx.to_owned());
 
@@ -73,29 +92,6 @@ impl Target {
                 .unwrap_or_else(|err| panic!("{}. Is `{}` installed?", err, cxx))
                 .success(),
             "$(CXX) --version"
-        );
-
-        let make = env::var("MAKE").unwrap_or_else(|_| {
-            if target_os == "freebsd" {
-                "gmake"
-            } else {
-                "make"
-            }
-            .to_owned()
-        });
-
-        assert!(
-            Command::new(&make)
-                .arg("--version")
-                .status()
-                .unwrap_or_else(|err| panic!(
-                    "{}. Is `{}` installed?\n\
-                    * Debian: sudo apt install build-essential\n\
-                    * Arch: sudo pacman -S base-devel\n",
-                    err, make
-                ))
-                .success(),
-            "make --version"
         );
 
         if flavor == Flavor::Official {
@@ -134,7 +130,7 @@ impl Target {
             // Avoid SDE overhead if not required.
             build_command.env_remove("SDE_PATH");
         }
-        assert!(build_command.status().unwrap().success(), "make build");
+        assert!(build_command.status().unwrap().success(), "$(MAKE) build");
 
         assert!(
             Command::new(&make)
@@ -145,7 +141,7 @@ impl Target {
                 .status()
                 .unwrap()
                 .success(),
-            "make strip"
+            "$(MAKE) strip"
         );
 
         compress(src_dir, &exe);
@@ -158,7 +154,7 @@ impl Target {
                 .status()
                 .unwrap()
                 .success(),
-            "make clean"
+            "$(MAKE) clean"
         );
 
         println!(
