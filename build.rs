@@ -75,14 +75,17 @@ impl Target {
             "$(CXX) --version"
         );
 
-        let make = if target_os == "freebsd" {
-            "gmake"
-        } else {
-            "make"
-        };
+        let make = env::var("MAKE").unwrap_or_else(|_| {
+            if target_os == "freebsd" {
+                "gmake"
+            } else {
+                "make"
+            }
+            .to_owned()
+        });
 
         assert!(
-            Command::new(make)
+            Command::new(&make)
                 .arg("--version")
                 .status()
                 .unwrap_or_else(|err| panic!(
@@ -96,7 +99,7 @@ impl Target {
         );
 
         if flavor == Flavor::Official {
-            if !Command::new(make)
+            if !Command::new(&make)
                 .current_dir(src_dir)
                 .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
                 .arg("-B")
@@ -110,7 +113,7 @@ impl Target {
             }
         }
 
-        let mut build_command = Command::new(make);
+        let mut build_command = Command::new(&make);
         build_command
             .current_dir(src_dir)
             .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
@@ -134,7 +137,7 @@ impl Target {
         assert!(build_command.status().unwrap().success(), "make build");
 
         assert!(
-            Command::new(make)
+            Command::new(&make)
                 .current_dir(src_dir)
                 .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
                 .arg(format!("EXE={}", exe))
@@ -296,6 +299,7 @@ fn compress(dir: &str, file: &str) {
 fn hooks() {
     println!("cargo:rerun-if-env-changed=CXX");
     println!("cargo:rerun-if-env-changed=CXXFLAGS");
+    println!("cargo:rerun-if-env-changed=MAKE");
     println!("cargo:rerun-if-env-changed=SDE_PATH");
 
     println!("cargo:rustc-env=EVAL_FILE={}", EVAL_FILE);
