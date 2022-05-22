@@ -103,7 +103,7 @@ impl Cpu {
                     // first to implement it in hardware.
                     Some(vendor) if vendor.as_str() == "AuthenticAMD" => {
                         cpuid.get_feature_info().map_or(false, |f| {
-                            let family = if f.family_id() == 15 {
+                            let family = if f.family_id() >= 0xf {
                                 f.extended_family_id() + f.family_id()
                             } else {
                                 f.family_id()
