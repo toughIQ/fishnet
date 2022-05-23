@@ -98,19 +98,12 @@ impl Cpu {
                 match cpuid.get_vendor_info() {
                     // Intel was implementing BMI2 in hardware from the beginning.
                     Some(vendor) if vendor.as_str() == "GenuineIntel" => true,
-                    // Due to patents, AMD was using slow software emulation
-                    // for PEXT for a long time. The Zen 3 family (0x19) is the
-                    // first to implement it in hardware.
-                    Some(vendor) if vendor.as_str() == "AuthenticAMD" => {
-                        cpuid.get_feature_info().map_or(false, |f| {
-                            let family = if f.family_id() >= 0xf {
-                                f.extended_family_id() + f.family_id()
-                            } else {
-                                f.family_id()
-                            };
-                            family >= 0x19
-                        })
-                    }
+                    // AMD was using slow software emulation for PEXT for a
+                    // long time. The Zen 3 family (0x19) is the first to
+                    // implement it in hardware.
+                    Some(vendor) if vendor.as_str() == "AuthenticAMD" => cpuid
+                        .get_feature_info()
+                        .map_or(false, |f| f.family_id() >= 0x19),
                     _ => false,
                 }
             },
