@@ -94,8 +94,8 @@ impl Target {
             "$(CXX) --version"
         );
 
-        if flavor == Flavor::Official {
-            if !Command::new(&make)
+        if flavor == Flavor::Official
+            && !Command::new(&make)
                 .current_dir(src_dir)
                 .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
                 .arg("-B")
@@ -103,10 +103,9 @@ impl Target {
                 .status()
                 .unwrap()
                 .success()
-            {
-                fs::remove_file(Path::new(src_dir).join(EVAL_FILE)).unwrap();
-                println!("cargo:warning=Deleted corrupted network file {}", EVAL_FILE);
-            }
+        {
+            fs::remove_file(Path::new(src_dir).join(EVAL_FILE)).unwrap();
+            println!("cargo:warning=Deleted corrupted network file {}", EVAL_FILE);
         }
 
         let mut build_command = Command::new(&make);
@@ -314,6 +313,8 @@ fn hooks() {
     for entry in glob("Fairy-Stockfish/src/**/*.h").unwrap() {
         println!("cargo:rerun-if-changed={}", entry.unwrap().display());
     }
+
+    println!("cargo:rerun-if-changed=favicon.ico");
 }
 
 fn main() {
@@ -323,7 +324,6 @@ fn main() {
 
     // Resource compilation may fail when toolchain does not match target,
     // e.g. windows-msvc toolchain with windows-gnu target.
-    println!("cargo:rerun-if-changed=favicon.ico");
     #[cfg(target_family = "windows")]
     winres::WindowsResource::new()
         .set_icon("favicon.ico")
