@@ -98,7 +98,7 @@ fn exec_start(opt: &Opt) -> String {
     let mut builder = vec![escape(exe.into()).into_owned()];
 
     if opt.verbose.level > 0 {
-        builder.push(format!("-{}", "v".repeat(opt.verbose.level)));
+        builder.push(format!("-{}", "v".repeat(usize::from(opt.verbose.level))));
     }
     if opt.auto_update {
         builder.push("--auto-update".to_owned());

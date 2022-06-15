@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-use clap::Parser;
+use clap::{ArgAction, Parser, builder::PathBufValueParser};
 use configparser::ini::Ini;
 use url::Url;
 
@@ -30,7 +30,7 @@ pub struct Opt {
     pub auto_update: bool,
 
     /// Configuration file.
-    #[clap(long, parse(from_os_str), default_value = "fishnet.ini", global = true)]
+    #[clap(long, value_parser = PathBufValueParser::new(), default_value = "fishnet.ini", global = true)]
     pub conf: PathBuf,
 
     /// Do not use a configuration file.
@@ -42,7 +42,7 @@ pub struct Opt {
     pub key: Option<Key>,
 
     /// Fishnet key file.
-    #[clap(long, parse(from_os_str), conflicts_with = "key", global = true)]
+    #[clap(long, value_parser = PathBufValueParser::new(), conflicts_with = "key", global = true)]
     pub key_file: Option<PathBuf>,
 
     /// Lichess HTTP endpoint.
@@ -110,8 +110,8 @@ impl Endpoint {
 #[derive(Debug, Default, Copy, Clone, Parser)]
 pub struct Verbose {
     /// Increase verbosity.
-    #[clap(long = "verbose", short = 'v', parse(from_occurrences), global = true)]
-    pub level: usize,
+    #[clap(long = "verbose", short = 'v', action = ArgAction::Count, global = true)]
+    pub level: u8,
 }
 
 #[derive(Debug, Clone)]
