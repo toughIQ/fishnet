@@ -134,7 +134,7 @@ async fn run(opt: Opt, logger: &Logger) {
             opt.backlog,
             cores,
             api,
-            opt.max_backoff.into(),
+            opt.max_backoff.unwrap_or_default(),
             logger.clone(),
         );
         join_handles.push(tokio::spawn(async move {

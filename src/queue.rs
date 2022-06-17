@@ -25,7 +25,7 @@ use crate::{
         LichessVariant, Work,
     },
     assets::{EngineFlavor, EvalFlavor},
-    configure::{BacklogOpt, Endpoint},
+    configure::{BacklogOpt, Endpoint, MaxBackoff},
     ipc::{Position, PositionFailed, PositionId, PositionResponse, Pull},
     logger::{Logger, ProgressAt, QueueStatusBar},
     stats::{NpsRecorder, Stats, StatsRecorder},
@@ -36,7 +36,7 @@ pub fn channel(
     opt: BacklogOpt,
     cores: NonZeroUsize,
     api: ApiStub,
-    max_backoff: Duration,
+    max_backoff: MaxBackoff,
     logger: Logger,
 ) -> (QueueStub, QueueActor) {
     let (tx, rx) = mpsc::unbounded_channel();

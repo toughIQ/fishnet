@@ -5,6 +5,8 @@ use std::{
 
 use rand::Rng;
 
+use crate::configure::MaxBackoff;
+
 #[derive(Debug)]
 pub struct RandomizedBackoff {
     duration: Duration,
@@ -12,10 +14,10 @@ pub struct RandomizedBackoff {
 }
 
 impl RandomizedBackoff {
-    pub fn new(max_backoff: Duration) -> RandomizedBackoff {
+    pub fn new(max_backoff: MaxBackoff) -> RandomizedBackoff {
         RandomizedBackoff {
             duration: Duration::default(),
-            max_backoff,
+            max_backoff: max_backoff.into(),
         }
     }
 
@@ -36,7 +38,7 @@ impl RandomizedBackoff {
 
 impl Default for RandomizedBackoff {
     fn default() -> RandomizedBackoff {
-        RandomizedBackoff::new(Duration::from_secs(30))
+        RandomizedBackoff::new(MaxBackoff::default())
     }
 }
 

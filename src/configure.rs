@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-use clap::{ArgAction, Parser, builder::PathBufValueParser};
+use clap::{builder::PathBufValueParser, ArgAction, Parser};
 use configparser::ini::Ini;
 use url::Url;
 
@@ -56,8 +56,8 @@ pub struct Opt {
 
     /// Maximum backoff time. The client will use randomized expontential
     /// backoff when repeatedly receiving no job.
-    #[clap(long, default_value = "30s", global = true)]
-    pub max_backoff: ParsedDuration,
+    #[clap(long, global = true)]
+    pub max_backoff: Option<MaxBackoff>,
 
     #[clap(flatten)]
     pub backlog: BacklogOpt,
@@ -244,7 +244,7 @@ impl FromStr for Backlog {
         } else if s == "long" {
             Backlog::Long
         } else {
-            Backlog::Duration(s.parse::<ParsedDuration>()?.into())
+            Backlog::Duration(parse_duration(s)?)
         })
     }
 }
@@ -260,31 +260,24 @@ impl fmt::Display for Backlog {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct ParsedDuration(Duration);
+pub struct MaxBackoff(Duration);
 
-impl FromStr for ParsedDuration {
-    type Err = ParseIntError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (s, factor) = if let Some(s) = s.strip_suffix('d') {
-            (s, 1000 * 60 * 60 * 24)
-        } else if let Some(s) = s.strip_suffix('h') {
-            (s, 1000 * 60 * 60)
-        } else if let Some(s) = s.strip_suffix('m') {
-            (s, 1000 * 60)
-        } else if let Some(s) = s.strip_suffix("ms") {
-            (s, 1)
-        } else {
-            (s.strip_suffix('s').unwrap_or(s), 1000)
-        };
-        Ok(ParsedDuration(Duration::from_millis(
-            u64::from(s.trim().parse::<u32>()?) * factor,
-        )))
+impl Default for MaxBackoff {
+    fn default() -> MaxBackoff {
+        MaxBackoff(Duration::from_secs(30))
     }
 }
 
-impl From<ParsedDuration> for Duration {
-    fn from(ParsedDuration(duration): ParsedDuration) -> Duration {
+impl FromStr for MaxBackoff {
+    type Err = ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        parse_duration(s).map(MaxBackoff)
+    }
+}
+
+impl From<MaxBackoff> for Duration {
+    fn from(MaxBackoff(duration): MaxBackoff) -> Duration {
         duration
     }
 }
@@ -307,6 +300,23 @@ impl Command {
     pub fn is_systemd(self) -> bool {
         matches!(self, Command::Systemd | Command::SystemdUser)
     }
+}
+
+fn parse_duration(s: &str) -> Result<Duration, ParseIntError> {
+    let (s, factor) = if let Some(s) = s.strip_suffix('d') {
+        (s, 1000 * 60 * 60 * 24)
+    } else if let Some(s) = s.strip_suffix('h') {
+        (s, 1000 * 60 * 60)
+    } else if let Some(s) = s.strip_suffix('m') {
+        (s, 1000 * 60)
+    } else if let Some(s) = s.strip_suffix("ms") {
+        (s, 1)
+    } else {
+        (s.strip_suffix('s').unwrap_or(s), 1000)
+    };
+    Ok(Duration::from_millis(
+        u64::from(s.trim().parse::<u32>()?) * factor,
+    ))
 }
 
 #[derive(Debug, Copy, Clone)]
