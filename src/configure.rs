@@ -3,7 +3,7 @@ use std::{
     fmt, fs, io,
     io::Write,
     num::{NonZeroUsize, ParseIntError},
-    path::PathBuf,
+    path::{Path, PathBuf},
     str::FromStr,
     thread::available_parallelism,
     time::Duration,
@@ -28,8 +28,8 @@ pub struct Opt {
     pub auto_update: bool,
 
     /// Configuration file.
-    #[clap(long, value_parser = PathBufValueParser::new(), default_value = "fishnet.ini", global = true)]
-    pub conf: PathBuf,
+    #[clap(long, value_parser = PathBufValueParser::new(), global = true)]
+    pub conf: Option<PathBuf>,
 
     /// Do not use a configuration file.
     #[clap(long, conflicts_with = "conf", global = true)]
@@ -67,6 +67,13 @@ pub struct Opt {
 impl Opt {
     pub fn endpoint(&self) -> Endpoint {
         self.endpoint.clone().unwrap_or_default()
+    }
+
+    pub fn conf(&self) -> &Path {
+        match self.conf {
+            Some(ref p) => p.as_path(),
+            None => Path::new("fishnet.ini"),
+        }
     }
 }
 
@@ -391,7 +398,7 @@ pub async fn parse_and_configure() -> Opt {
         ini.set_default_section("Fishnet");
 
         // Load ini.
-        let file_found = match fs::read_to_string(&opt.conf) {
+        let file_found = match fs::read_to_string(opt.conf()) {
             Ok(contents) => {
                 ini.read(contents).expect("parse config file");
                 true
@@ -538,7 +545,7 @@ pub async fn parse_and_configure() -> Opt {
                 let mut write = String::new();
                 eprint!(
                     "Done. Write configuration to {:?} now? (default: yes) ",
-                    opt.conf
+                    opt.conf()
                 );
                 io::stderr().flush().expect("flush stderr");
                 io::stdin()
@@ -547,7 +554,7 @@ pub async fn parse_and_configure() -> Opt {
 
                 if let Ok(Toggle::Yes | Toggle::Default) = Toggle::from_str(&write) {
                     let contents = ini.writes();
-                    fs::write(&opt.conf, contents).expect("write config");
+                    fs::write(opt.conf(), contents).expect("write config");
                     break;
                 }
             }

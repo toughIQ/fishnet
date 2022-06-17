@@ -108,7 +108,7 @@ fn exec_start(opt: &Opt) -> String {
         builder.push("--no-conf".to_owned());
     } else {
         builder.push("--conf".to_owned());
-        let canonical = fs::canonicalize(&opt.conf)
+        let canonical = fs::canonicalize(opt.conf())
             .expect("canonicalize config path")
             .to_str()
             .expect("printable config path")
