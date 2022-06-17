@@ -15,8 +15,6 @@ use url::Url;
 
 use crate::{api, logger::Logger};
 
-const DEFAULT_ENDPOINT: &str = "https://lichess.org/fishnet";
-
 /// Distributed Stockfish analysis for lichess.org.
 #[derive(Debug, Parser)]
 #[clap(version, disable_help_subcommand = true)]
@@ -79,7 +77,9 @@ pub struct Endpoint {
 
 impl Default for Endpoint {
     fn default() -> Endpoint {
-        DEFAULT_ENDPOINT.parse().expect("default endpoint is valid")
+        "https://lichess.org/fishnet"
+            .parse()
+            .expect("default endpoint is valid")
     }
 }
 
@@ -406,13 +406,15 @@ pub async fn parse_and_configure() -> Opt {
         {
             logger.headline("Configuration");
 
-            // Step 1: Endpoint (configured with --endpoint only).
-            let endpoint = opt.endpoint.clone().unwrap_or_else(|| {
-                ini.get("Fishnet", "Endpoint")
-                    .unwrap_or_else(|| DEFAULT_ENDPOINT.to_owned())
-                    .parse()
-                    .expect("valid endpoint from fishnet.ini")
-            });
+            // Step 1: Endpoint.
+            let endpoint: Endpoint = opt
+                .endpoint
+                .clone()
+                .or_else(|| {
+                    ini.get("Fishnet", "Endpoint")
+                        .map(|e| e.parse().expect("valid endpoint from fishnet.ini"))
+                })
+                .unwrap_or_default();
 
             // Step 2: Key.
             loop {
