@@ -27,7 +27,8 @@ pub struct Opt {
     #[clap(long, global = true)]
     pub auto_update: bool,
 
-    /// Configuration file.
+    /// Configuration file. Defaults to fishnet.ini in the current working
+    /// directory.
     #[clap(long, value_parser = PathBufValueParser::new(), global = true)]
     pub conf: Option<PathBuf>,
 
@@ -43,7 +44,7 @@ pub struct Opt {
     #[clap(long, value_parser = PathBufValueParser::new(), conflicts_with = "key", global = true)]
     pub key_file: Option<PathBuf>,
 
-    /// Lichess HTTP endpoint.
+    /// Lichess HTTP endpoint. Defaults to https://lichess.org/fishnet.
     #[clap(long, global = true)]
     pub endpoint: Option<Endpoint>,
 
@@ -53,7 +54,7 @@ pub struct Opt {
     pub cores: Option<Cores>,
 
     /// Maximum backoff time. The client will use randomized expontential
-    /// backoff when repeatedly receiving no job.
+    /// backoff when repeatedly receiving no job. Defaults to 30s.
     #[clap(long, global = true)]
     pub max_backoff: Option<MaxBackoff>,
 
