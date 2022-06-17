@@ -140,7 +140,7 @@ fn exec_start(opt: &Opt) -> String {
         builder.push(escape(user_backlog.to_string().into()).into_owned());
     }
     if let Some(ref system_backlog) = opt.backlog.system {
-        builder.push("--system_backlog".to_owned());
+        builder.push("--system-backlog".to_owned());
         builder.push(escape(system_backlog.to_string().into()).into_owned());
     }
 
@@ -188,7 +188,7 @@ fn shell_start(opt: &Opt) -> String {
         builder.push(escape(user_backlog.to_string().into()).into_owned());
     }
     if let Some(ref system_backlog) = opt.backlog.system {
-        builder.push("--system_backlog".to_owned());
+        builder.push("--system-backlog".to_owned());
         builder.push(escape(system_backlog.to_string().into()).into_owned());
     }
 
