@@ -135,6 +135,10 @@ fn exec_start(opt: &Opt) -> String {
         builder.push("--cores".to_owned());
         builder.push(escape(cores.to_string().into()).into_owned());
     }
+    if let Some(ref max_backoff) = opt.max_backoff {
+        builder.push("--max-backoff".to_owned());
+        builder.push(max_backoff.to_string());
+    }
     if let Some(ref user_backlog) = opt.backlog.user {
         builder.push("--user-backlog".to_owned());
         builder.push(escape(user_backlog.to_string().into()).into_owned());
@@ -159,21 +163,21 @@ fn shell_start(opt: &Opt) -> String {
     if opt.auto_update {
         builder.push("--auto-update".to_owned());
     }
-    if opt.no_conf {
-        builder.push("--no-conf".to_owned());
-    }
     if let Some(ref conf) = opt.conf {
         builder.push("--conf".to_owned());
         builder.push(escape(conf.to_str().expect("printable config path").into()).into_owned());
+    }
+    if opt.no_conf {
+        builder.push("--no-conf".to_owned());
+    }
+    if let Some(Key(ref key)) = opt.key {
+        builder.push("--key".to_owned());
+        builder.push(escape(key.into()).into_owned());
     }
     if let Some(ref key_file) = opt.key_file {
         builder.push("--key-file".to_owned());
         builder
             .push(escape(key_file.to_str().expect("printable key file path").into()).into_owned());
-    }
-    if let Some(Key(ref key)) = opt.key {
-        builder.push("--key".to_owned());
-        builder.push(escape(key.into()).into_owned());
     }
     if let Some(ref endpoint) = opt.endpoint {
         builder.push("--endpoint".to_owned());
@@ -182,6 +186,10 @@ fn shell_start(opt: &Opt) -> String {
     if let Some(ref cores) = opt.cores {
         builder.push("--cores".to_owned());
         builder.push(escape(cores.to_string().into()).into_owned());
+    }
+    if let Some(ref max_backoff) = opt.max_backoff {
+        builder.push("--max-backoff".to_owned());
+        builder.push(max_backoff.to_string());
     }
     if let Some(ref user_backlog) = opt.backlog.user {
         builder.push("--user-backlog".to_owned());

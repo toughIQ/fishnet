@@ -284,6 +284,12 @@ impl FromStr for MaxBackoff {
     }
 }
 
+impl fmt::Display for MaxBackoff {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}s", self.0.as_secs())
+    }
+}
+
 impl From<MaxBackoff> for Duration {
     fn from(MaxBackoff(duration): MaxBackoff) -> Duration {
         duration
