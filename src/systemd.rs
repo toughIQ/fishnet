@@ -13,7 +13,7 @@ pub fn systemd_system(opt: Opt) {
     println!("Wants=network-online.target");
     println!();
     println!("[Service]");
-    println!("ExecStart={}", exe);
+    println!("ExecStart={} run", exe);
     println!("KillMode=mixed");
     println!("WorkingDirectory=/tmp");
     println!(
@@ -37,17 +37,16 @@ pub fn systemd_system(opt: Opt) {
     println!("WantedBy=multi-user.target");
 
     if atty::is(Stream::Stdout) {
-        let command = env::args().next().unwrap_or_else(|| "./fishnet".to_owned());
         eprintln!();
         eprintln!("# Example usage:");
         eprintln!(
             "# {} systemd | sudo tee /etc/systemd/system/fishnet.service",
-            command
+            shell_start(&opt)
         );
         eprintln!("# systemctl enable fishnet.service");
         eprintln!("# systemctl start fishnet.service");
         eprintln!("# Live view of log: journalctl --unit fishnet --follow");
-        eprintln!("# Need a user unit? {} systemd-user", command);
+        eprintln!("# Prefer a user unit? {} systemd-user", shell_start(&opt));
     }
 }
 
@@ -59,7 +58,7 @@ pub fn systemd_user(opt: Opt) {
     println!("Wants=network-online.target");
     println!();
     println!("[Service]");
-    println!("ExecStart={}", exe);
+    println!("ExecStart={} run", exe);
     println!("KillMode=mixed");
     println!("WorkingDirectory=/tmp");
     println!("Nice=5");
@@ -76,12 +75,11 @@ pub fn systemd_user(opt: Opt) {
     println!("WantedBy=default.target");
 
     if atty::is(Stream::Stdout) {
-        let command = env::args().next().unwrap_or_else(|| "./fishnet".to_owned());
         eprintln!();
         eprintln!("# Example usage:");
         eprintln!(
             "# {} systemd-user | tee ~/.config/systemd/user/fishnet.service",
-            command
+            shell_start(&opt)
         );
         eprintln!("# systemctl enable --user fishnet.service");
         eprintln!("# systemctl start --user fishnet.service");
@@ -146,6 +144,53 @@ fn exec_start(opt: &Opt) -> String {
         builder.push(escape(system_backlog.to_string().into()).into_owned());
     }
 
-    builder.push("run".to_owned());
+    builder.join(" ")
+}
+
+fn shell_start(opt: &Opt) -> String {
+    let exe = env::args()
+        .next()
+        .unwrap_or_else(|| "./fishnet".to_string());
+    let mut builder = vec![escape(exe.into()).into_owned()];
+
+    if opt.verbose.level > 0 {
+        builder.push(format!("-{}", "v".repeat(usize::from(opt.verbose.level))));
+    }
+    if opt.auto_update {
+        builder.push("--auto-update".to_owned());
+    }
+    if opt.no_conf {
+        builder.push("--no-conf".to_owned());
+    }
+    if let Some(ref conf) = opt.conf {
+        builder.push("--conf".to_owned());
+        builder.push(escape(conf.to_str().expect("printable config path").into()).into_owned());
+    }
+    if let Some(ref key_file) = opt.key_file {
+        builder.push("--key-file".to_owned());
+        builder
+            .push(escape(key_file.to_str().expect("printable key file path").into()).into_owned());
+    }
+    if let Some(Key(ref key)) = opt.key {
+        builder.push("--key".to_owned());
+        builder.push(escape(key.into()).into_owned());
+    }
+    if let Some(ref endpoint) = opt.endpoint {
+        builder.push("--endpoint".to_owned());
+        builder.push(escape(endpoint.to_string().into()).into_owned());
+    }
+    if let Some(ref cores) = opt.cores {
+        builder.push("--cores".to_owned());
+        builder.push(escape(cores.to_string().into()).into_owned());
+    }
+    if let Some(ref user_backlog) = opt.backlog.user {
+        builder.push("--user-backlog".to_owned());
+        builder.push(escape(user_backlog.to_string().into()).into_owned());
+    }
+    if let Some(ref system_backlog) = opt.backlog.system {
+        builder.push("--system_backlog".to_owned());
+        builder.push(escape(system_backlog.to_string().into()).into_owned());
+    }
+
     builder.join(" ")
 }
