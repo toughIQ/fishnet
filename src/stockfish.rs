@@ -121,7 +121,7 @@ fn new_process_group(command: &mut Command) -> &mut Command {
 fn new_process_group(command: &mut Command) -> &mut Command {
     // Stop CTRL+C from propagating to child process:
     // https://docs.microsoft.com/en-us/windows/win32/procthread/process-creation-flags
-    let create_new_process_group = 0x00000200;
+    let create_new_process_group = 0x0000_0200;
     command.creation_flags(create_new_process_group)
 }
 

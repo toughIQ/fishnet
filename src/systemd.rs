@@ -1,5 +1,7 @@
-use std::{env, fs};
-use std::path::{Path, PathBuf};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+};
 
 use atty::Stream;
 use shell_escape::escape;
@@ -25,7 +27,11 @@ pub fn systemd_system(opt: Opt) {
     println!("PrivateTmp=true");
     println!("PrivateDevices=true");
     println!("DevicePolicy=closed");
-    if opt.auto_update && env::current_exe().expect("current exe").starts_with("/usr/") {
+    if opt.auto_update
+        && env::current_exe()
+            .expect("current exe")
+            .starts_with("/usr/")
+    {
         println!("ProtectSystem=false");
     } else {
         println!("ProtectSystem=full");
@@ -41,7 +47,8 @@ pub fn systemd_system(opt: Opt) {
         eprintln!();
         eprintln!("# Example usage:");
         eprintln!(
-            "# {} systemd | sudo tee /etc/systemd/system/fishnet.service", command
+            "# {} systemd | sudo tee /etc/systemd/system/fishnet.service",
+            command
         );
         eprintln!("# systemctl enable fishnet.service");
         eprintln!("# systemctl start fishnet.service");
@@ -63,7 +70,11 @@ pub fn systemd_user(opt: Opt) {
     println!("Nice=5");
     println!("PrivateTmp=true");
     println!("DevicePolicy=closed");
-    if opt.auto_update && env::current_exe().expect("current exe").starts_with("/usr/") {
+    if opt.auto_update
+        && env::current_exe()
+            .expect("current exe")
+            .starts_with("/usr/")
+    {
         println!("ProtectSystem=false");
     } else {
         println!("ProtectSystem=full");
@@ -109,7 +120,14 @@ impl Invocation {
 }
 
 fn exec_start(invocation: Invocation, opt: &Opt) -> String {
-    let mut builder = vec![escape(invocation.exe().to_str().expect("printable exe path").into()).into_owned()];
+    let mut builder = vec![escape(
+        invocation
+            .exe()
+            .to_str()
+            .expect("printable exe path")
+            .into(),
+    )
+    .into_owned()];
 
     if opt.verbose.level > 0 {
         builder.push(format!("-{}", "v".repeat(usize::from(opt.verbose.level))));
@@ -122,12 +140,30 @@ fn exec_start(invocation: Invocation, opt: &Opt) -> String {
         builder.push("--no-conf".to_owned());
     } else if opt.conf.is_some() || invocation == Invocation::Absolute {
         builder.push("--conf".to_owned());
-        builder.push(escape(invocation.path(opt.conf()).to_str().expect("printable --conf path").into()).into_owned());
+        builder.push(
+            escape(
+                invocation
+                    .path(opt.conf())
+                    .to_str()
+                    .expect("printable --conf path")
+                    .into(),
+            )
+            .into_owned(),
+        );
     }
 
     if let Some(ref key_file) = opt.key_file {
         builder.push("--key-file".to_owned());
-        builder.push(escape(invocation.path(key_file).to_str().expect("printable --key-file path").into()).into_owned());
+        builder.push(
+            escape(
+                invocation
+                    .path(key_file)
+                    .to_str()
+                    .expect("printable --key-file path")
+                    .into(),
+            )
+            .into_owned(),
+        );
     } else if let Some(Key(ref key)) = opt.key {
         builder.push("--key".to_owned());
         builder.push(escape(key.into()).into_owned());
