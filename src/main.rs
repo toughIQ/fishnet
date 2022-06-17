@@ -433,7 +433,7 @@ fn exec(command: &mut process::Command) -> io::Error {
     // https://docs.microsoft.com/en-us/windows/win32/procthread/process-creation-flags
     let create_new_console = 0x0000_0010;
     match command.creation_flags(create_new_console).spawn() {
-        Ok(()) => process::exit(0),
+        Ok(_) => process::exit(0),
         Err(err) => return err,
     }
 }
