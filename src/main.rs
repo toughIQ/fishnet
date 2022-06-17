@@ -13,8 +13,9 @@ mod util;
 
 use std::{
     cmp::min,
-    env,
+    env, io,
     path::PathBuf,
+    process,
     sync::Arc,
     thread,
     time::{Duration, Instant},
@@ -406,31 +407,35 @@ fn license(logger: &Logger) {
     print!("{}", include_str!("../COPYING.txt"));
 }
 
-#[cfg(unix)]
 fn restart_process(current_exe: PathBuf, logger: &Logger) {
-    use std::os::unix::process::CommandExt as _;
     logger.headline(&format!(
         "Waiting 5s before restarting {:?} ...",
         current_exe
     ));
     thread::sleep(Duration::from_secs(5));
-    let err = std::process::Command::new(current_exe)
-        .args(std::env::args().into_iter().skip(1))
-        .exec();
+    let err = exec(process::Command::new(current_exe).args(std::env::args().into_iter().skip(1)));
     panic!("Failed to restart: {}", err);
 }
 
+#[cfg(unix)]
+fn exec(command: &mut process::Command) -> io::Error {
+    use std::os::unix::process::CommandExt as _;
+    // Completely replace the current process image. If successful, execution
+    // of the current process stops here.
+    command.exec()
+}
+
 #[cfg(windows)]
-fn restart_process(current_exe: PathBuf, logger: &Logger) {
-    logger.headline(&format!(
-        "Waiting 5s before restarting {:?} ...",
-        current_exe
-    ));
-    thread::sleep(Duration::from_secs(5));
-    std::process::Command::new(current_exe)
-        .args(std::env::args().into_iter().skip(1))
-        .spawn()
-        .expect("restarted");
+fn exec(command: &mut process::Command) -> io::Error {
+    use std::os::windows::process::CommandExt as _;
+    // No equivalent for Unix exec() exists. So create a new independent
+    // console instead and terminate the current one:
+    // https://docs.microsoft.com/en-us/windows/win32/procthread/process-creation-flags
+    let create_new_console = 0x0000_0010;
+    match command.creation_flags(create_new_console).spawn() {
+        Ok(()) => process::exit(0),
+        Err(err) => return err,
+    }
 }
 
 async fn auto_update(
