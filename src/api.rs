@@ -8,8 +8,8 @@ use reqwest::{
 use serde::{Deserialize, Serialize};
 use serde_repr::Deserialize_repr as DeserializeRepr;
 use serde_with::{
-    serde_as, DisplayFromStr, DurationMilliSeconds, DurationSeconds, NoneAsEmptyString,
-    SpaceSeparator, StringWithSeparator,
+    formats::SpaceSeparator, serde_as, DisplayFromStr, DurationMilliSeconds, DurationSeconds,
+    NoneAsEmptyString, StringWithSeparator,
 };
 use shakmaty::{fen::Fen, uci::Uci, variant::Variant};
 use tokio::{
