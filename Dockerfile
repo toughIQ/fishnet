@@ -1,4 +1,4 @@
-FROM rust:1.59.0 AS builder
+FROM rust:1.62 AS builder
 WORKDIR /fishnet
 COPY . .
 RUN (git submodule update --init --recursive || true) \
