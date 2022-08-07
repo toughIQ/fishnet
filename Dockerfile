@@ -1,16 +1,16 @@
 FROM rust:1.62 AS builder
 WORKDIR /fishnet
+RUN cargo install cargo-auditable
 COPY . .
 RUN (git submodule update --init --recursive || true) \
     && ( \
         if [ -e sde-external-9.0.0-2021-11-07-lin/sde64 ]; then \
-            env SDE_PATH="$PWD/sde-external-9.0.0-2021-11-07-lin/sde64" cargo build --release -vv; \
+            env SDE_PATH="$PWD/sde-external-9.0.0-2021-11-07-lin/sde64" cargo auditable build --release -vv; \
         else \
-            cargo build --release -vv; \
+            cargo auditable build --release -vv; \
         fi \
     )
 
-# Not using alpine due to https://andygrove.io/2020/05/why-musl-extremely-slow/
 FROM debian:11-slim
 COPY --from=builder /fishnet/target/release/fishnet /fishnet
 COPY docker-entrypoint.sh /docker-entrypoint.sh
