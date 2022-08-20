@@ -96,7 +96,7 @@ impl Target {
 
         assert!(
             Path::new(src_dir).is_dir(),
-            "Directory {} does not exist. Did you clone with `--recursive` to load submodules?",
+            "Directory {:?} does not exist. Try: git submodule update --init",
             src_dir
         );
 
