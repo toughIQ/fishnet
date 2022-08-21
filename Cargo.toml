@@ -8,6 +8,7 @@ license = "GPL-3.0+"
 authors = ["Niklas Fiekas <niklas.fiekas@backscattering.de>"]
 categories = ["command-line-utilities", "web-programming::http-client", "games"]
 keywords = ["chess", "lichess"]
+rust-version = "1.62"
 edition = "2021"
 exclude = [
     "Stockfish/**/*.o",
