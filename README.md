@@ -14,6 +14,7 @@
 
    Select the binary for your platform
    [from the latest release](https://github.com/lichess-org/fishnet/releases)
+   or [Amazon S3](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/)
    and run it.
 
    ```sh
