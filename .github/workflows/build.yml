@@ -162,6 +162,7 @@ jobs:
           aws_bucket: fishnet-releases
           source_dir: upload
           destination_dir: ${{ steps.get_version.outputs.VERSION }}
+        id: upload_s3
       - uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -170,36 +171,5 @@ jobs:
           release_name: fishnet ${{ steps.get_version.outputs.VERSION }}
           draft: true
           prerelease: false
+          body: ${{ steps.upload_s3.outputs.object_locations }}
         id: create_release
-      - uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: upload/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-unknown-linux-gnu
-          asset_name: fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-unknown-linux-gnu
-          asset_content_type: application/octet-stream
-      - uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: upload/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-pc-windows-gnu.exe
-          asset_name: fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-pc-windows-gnu.exe
-          asset_content_type: application/octet-stream
-      - uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: upload/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-apple-darwin
-          asset_name: fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-apple-darwin
-          asset_content_type: application/octet-stream
-      - uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: upload/fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-apple-darwin
-          asset_name: fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-apple-darwin
-          asset_content_type: application/octet-stream
