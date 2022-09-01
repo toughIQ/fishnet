@@ -37,9 +37,7 @@
 
    **Automatic updates**
 
-   Run with `--auto-update` as recommended above (will currently still require
-   manual restarts on Windows
-   due to [#151](https://github.com/lichess-org/fishnet/issues/151)).
+   Run with `--auto-update` as recommended above.
 
    **Subscribe to release announcements**
 
@@ -108,12 +106,14 @@ of Stockfish NNUE works efficiently on CPUs.
 
 To the best of our knowledge. All engine input is carefully validated.
 
-Note that you implicitly trust the authors and the GitHub infrastructure when
-running with `--auto-update`. You can mitigate this by running fishnet as an
-unprivileged user.
+Note that you implicitly trust the authors and the GitHub and Amazon S3
+infrastructure when running with `--auto-update`. You can mitigate this by
+running fishnet as an unprivileged user.
 
 [`cargo-crev`](https://github.com/crev-dev/cargo-crev) is used to review the
 trustworthiness of dependencies.
+[`cargo-auditable`](https://github.com/rust-secure-code/cargo-auditable)
+is used to embed dependency meta data into binaries.
 
 ### Is there a leaderboard of contributors?
 
