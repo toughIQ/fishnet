@@ -35,7 +35,7 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
-      - run: cargo install --force --git https://github.com/rust-secure-code/cargo-auditable cargo-auditable
+      - run: cargo install --force cargo-auditable
       - run: cargo auditable build --release -vv
       - run: mv target/release/fishnet fishnet-x86_64-unknown-linux-gnu
       - uses: actions/upload-artifact@v3
@@ -100,7 +100,7 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
-      - run: cargo install --force --git https://github.com/rust-secure-code/cargo-auditable cargo-auditable
+      - run: cargo install --force cargo-auditable
       - run: cargo auditable build --release -vv
       - run: mv target/release/fishnet fishnet-x86_64-apple-darwin
       - uses: actions/upload-artifact@v3
@@ -129,7 +129,7 @@ jobs:
           profile: minimal
           toolchain: stable
           target: aarch64-apple-darwin
-      - run: cargo install --force --git https://github.com/rust-secure-code/cargo-auditable cargo-auditable
+      - run: cargo install --force cargo-auditable
       - run: cargo auditable build --release --target aarch64-apple-darwin -vv
       - run: mv target/aarch64-apple-darwin/release/fishnet fishnet-aarch64-apple-darwin
       - uses: actions/upload-artifact@v3
