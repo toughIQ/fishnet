@@ -73,7 +73,7 @@ for chess variants.
 - A small amount of disk space
 - Low-bandwidth network communication with Lichess servers
   (only outgoing HTTP requests, so probably no firewall configuration
-  required)
+  required, IPv4 not required)
 
 ### Is my CPU fast enough?
 
