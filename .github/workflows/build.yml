@@ -146,11 +146,19 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - uses: actions/download-artifact@v3
-      - run: ls -R
-      - run: sha256sum fishnet-x86_64-unknown-linux-gnu/fishnet-x86_64-unknown-linux-gnu
-      - run: sha256sum fishnet-x86_64-pc-windows-gnu/fishnet-x86_64-pc-windows-gnu.exe
-      - run: sha256sum fishnet-x86_64-apple-darwin/fishnet-x86_64-apple-darwin
-      - run: sha256sum fishnet-aarch64-apple-darwin/fishnet-aarch64-apple-darwin
+      - run: |
+        mkdir upload
+        mv fishnet-x86_64-unknown-linux-gnu/fishnet-x86_64-unknown-linux-gnu upload/fishnet-${{ github.ref }}-x86_64-unknown-linux-gnu
+        mv fishnet-x86_64-pc-windows-gnu/fishnet-x86_64-pc-windows-gnu.exe   upload/fishnet-${{ github.ref }}-x86_64-pc-windows-gnu.exe
+        mv fishnet-x86_64-apple-darwin/fishnet-x86_64-apple-darwin           upload/fishnet-${{ github.ref }}-x86_64-apple-darwin
+        mv fishnet-aarch64-apple-darwin/fishnet-aarch64-apple-darwin         upload/fishnet-${{ github.ref }}-aarch64-apple-darwin
+        sha256sum upload
+      - uses: shallwefootball/s3-upload-action@bcd7c2408245fd6cd19b5512a473b1a7a8b48a35
+        with:
+          aws_key_id: ${{ secrets.AWS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_bucket: fishnet-releases
+          destination_dir: ${{ github.ref }}
       - uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -165,30 +173,30 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: fishnet-x86_64-unknown-linux-gnu/fishnet-x86_64-unknown-linux-gnu
-          asset_name: fishnet-x86_64-unknown-linux-gnu
+          asset_path: upload/fishnet-${{ github.ref }}-x86_64-unknown-linux-gnu
+          asset_name: fishnet-${{ github.ref }}-x86_64-unknown-linux-gnu
           asset_content_type: application/octet-stream
       - uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: fishnet-x86_64-pc-windows-gnu/fishnet-x86_64-pc-windows-gnu.exe
-          asset_name: fishnet-x86_64-pc-windows-gnu.exe
+          asset_path: upload/fishnet-${{ github.ref }}-x86_64-pc-windows-gnu.exe
+          asset_name: fishnet-${{ github.ref }}-x86_64-pc-windows-gnu.exe
           asset_content_type: application/octet-stream
       - uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: fishnet-x86_64-apple-darwin/fishnet-x86_64-apple-darwin
-          asset_name: fishnet-x86_64-apple-darwin
+          asset_path: upload/fishnet-${{ github.ref }}-x86_64-apple-darwin
+          asset_name: fishnet-${{ github.ref }}-x86_64-apple-darwin
           asset_content_type: application/octet-stream
       - uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: fishnet-aarch64-apple-darwin/fishnet-aarch64-apple-darwin
-          asset_name: fishnet-aarch64-apple-darwin
+          asset_path: upload/fishnet-${{ github.ref }}-aarch64-apple-darwin
+          asset_name: fishnet-${{ github.ref }}-aarch64-apple-darwin
           asset_content_type: application/octet-stream
