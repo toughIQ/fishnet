@@ -147,12 +147,12 @@ jobs:
     steps:
       - uses: actions/download-artifact@v3
       - run: |
-        mkdir upload
-        mv fishnet-x86_64-unknown-linux-gnu/fishnet-x86_64-unknown-linux-gnu upload/fishnet-${{ github.ref }}-x86_64-unknown-linux-gnu
-        mv fishnet-x86_64-pc-windows-gnu/fishnet-x86_64-pc-windows-gnu.exe   upload/fishnet-${{ github.ref }}-x86_64-pc-windows-gnu.exe
-        mv fishnet-x86_64-apple-darwin/fishnet-x86_64-apple-darwin           upload/fishnet-${{ github.ref }}-x86_64-apple-darwin
-        mv fishnet-aarch64-apple-darwin/fishnet-aarch64-apple-darwin         upload/fishnet-${{ github.ref }}-aarch64-apple-darwin
-        sha256sum upload
+          mkdir upload
+          mv fishnet-x86_64-unknown-linux-gnu/fishnet-x86_64-unknown-linux-gnu upload/fishnet-${{ github.ref }}-x86_64-unknown-linux-gnu
+          mv fishnet-x86_64-pc-windows-gnu/fishnet-x86_64-pc-windows-gnu.exe   upload/fishnet-${{ github.ref }}-x86_64-pc-windows-gnu.exe
+          mv fishnet-x86_64-apple-darwin/fishnet-x86_64-apple-darwin           upload/fishnet-${{ github.ref }}-x86_64-apple-darwin
+          mv fishnet-aarch64-apple-darwin/fishnet-aarch64-apple-darwin         upload/fishnet-${{ github.ref }}-aarch64-apple-darwin
+          sha256sum upload
       - uses: shallwefootball/s3-upload-action@bcd7c2408245fd6cd19b5512a473b1a7a8b48a35
         with:
           aws_key_id: ${{ secrets.AWS_KEY_ID }}
