@@ -914,8 +914,7 @@ dependencies = [
 [[package]]
 name = "self_update"
 version = "0.30.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88c865d17fb512577be02a09fd2fd96c31c7e46fe649205d84feefd8b2a332da"
+source = "git+https://github.com/niklasf/self_update?branch=s3-dualstack#b1d488b33d52576b1b4291ae59aa3ee9463b9336"
 dependencies = [
  "hyper",
  "indicatif",

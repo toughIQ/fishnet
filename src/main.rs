@@ -22,6 +22,7 @@ use std::{
 };
 
 use atty::Stream;
+use self_update::backends::s3::{EndPoint, Update};
 use thousands::Separable as _;
 use tokio::{
     signal,
@@ -447,9 +448,10 @@ async fn auto_update(
             logger.headline("Updating ...");
         }
         logger.fishnet_info("Checking for updates (--auto-update) ...");
-        self_update::backends::s3::Update::configure()
+        Update::configure()
             .bucket_name("fishnet-releases")
-            .region("dualstack.eu-west-3")
+            .end_point(EndPoint::S3DualStack)
+            .region("eu-west-3")
             .bin_name("fishnet")
             .show_output(verbose)
             .show_download_progress(atty::is(Stream::Stdout) && verbose)
