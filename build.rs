@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use std::{env, fs, fs::File, io, path::Path, process::Command};
 
 use glob::glob;

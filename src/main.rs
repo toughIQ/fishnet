@@ -1,4 +1,4 @@
-#![forbid(unsafe_op_in_unsafe_fn)]
+#![forbid(unsafe_code)]
 
 mod api;
 mod assets;

@@ -1,9 +1,15 @@
-use std::{io, num::NonZeroU8, path::PathBuf, process::Stdio, time::Duration};
+use std::{
+    io,
+    num::NonZeroU8,
+    path::PathBuf,
+    process::{Command, Stdio},
+    time::Duration,
+};
 
 use shakmaty::variant::Variant;
 use tokio::{
     io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader, BufWriter, Lines},
-    process::{ChildStdin, ChildStdout, Command},
+    process::{ChildStdin, ChildStdout},
     sync::{mpsc, oneshot},
 };
 
@@ -101,28 +107,19 @@ impl From<io::Error> for EngineError {
 }
 
 #[cfg(unix)]
-fn new_process_group(command: &mut Command) -> &mut Command {
-    // SAFETY: The closure is run in a fork, and is not allowed to break
-    // invariants by using raw handles. Can be replaced with safe code once
-    // https://github.com/rust-lang/rust/issues/93857 is stabilized.
-    unsafe {
-        // Stop SIGINT from propagating to child process.
-        command.pre_exec(|| {
-            if libc::setpgid(0, 0) == -1 {
-                Err(io::Error::last_os_error())
-            } else {
-                Ok(())
-            }
-        })
-    }
+fn set_new_process_group(command: &mut Command) {
+    // Stop SIGINT from propagating to child process.
+    use std::os::unix::process::CommandExt as _;
+    command.process_group(0);
 }
 
 #[cfg(windows)]
-fn new_process_group(command: &mut Command) -> &mut Command {
+fn set_new_process_group(command: &mut Command) {
     // Stop CTRL+C from propagating to child process:
     // https://docs.microsoft.com/en-us/windows/win32/procthread/process-creation-flags
+    use std::os::windows::process::CommandExt as _;
     let create_new_process_group = 0x0000_0200;
-    command.creation_flags(create_new_process_group)
+    command.creation_flags(create_new_process_group);
 }
 
 impl StockfishActor {
@@ -134,13 +131,13 @@ impl StockfishActor {
     }
 
     async fn run_inner(mut self) -> Result<(), EngineError> {
-        let mut child = new_process_group(
-            Command::new(&self.exe)
-                .stdout(Stdio::piped())
-                .stdin(Stdio::piped())
-                .kill_on_drop(true),
-        )
-        .spawn()?;
+        let mut command = Command::new(&self.exe);
+        set_new_process_group(&mut command);
+        let mut child = tokio::process::Command::from(command)
+            .stdout(Stdio::piped())
+            .stdin(Stdio::piped())
+            .kill_on_drop(true)
+            .spawn()?;
 
         let pid = child.id().expect("pid");
         let mut stdout = Stdout::new(

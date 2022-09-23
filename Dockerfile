@@ -1,4 +1,4 @@
-FROM rust:1.62 AS builder
+FROM rust:1.64 AS builder
 WORKDIR /fishnet
 RUN cargo install cargo-auditable
 COPY . .
