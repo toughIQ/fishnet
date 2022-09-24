@@ -107,6 +107,8 @@ impl Target {
                 .current_dir(src_dir)
                 .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
                 .arg("-B")
+                .arg(format!("COMP={}", comp))
+                .arg(format!("CXX={}", cxx))
                 .arg("net")
                 .status()
                 .unwrap()
@@ -302,6 +304,8 @@ fn compress(dir: &str, file: &str) {
 fn hooks() {
     println!("cargo:rerun-if-env-changed=CXX");
     println!("cargo:rerun-if-env-changed=CXXFLAGS");
+    println!("cargo:rerun-if-env-changed=DEPENDFLAGS");
+    println!("cargo:rerun-if-env-changed=LDFLAGS");
     println!("cargo:rerun-if-env-changed=MAKE");
     println!("cargo:rerun-if-env-changed=SDE_PATH");
 
