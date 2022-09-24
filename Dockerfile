@@ -1,17 +1,10 @@
-FROM rust:1.64 AS builder
+FROM niklasf/fishnet-builder:2 AS builder
 WORKDIR /fishnet
-RUN cargo install cargo-auditable
 COPY . .
-RUN (git submodule update --init --recursive || true) \
-    && ( \
-        if [ -e sde-external-9.0.0-2021-11-07-lin/sde64 ]; then \
-            env SDE_PATH="$PWD/sde-external-9.0.0-2021-11-07-lin/sde64" cargo auditable build --release -vv; \
-        else \
-            cargo auditable build --release -vv; \
-        fi \
-    )
+RUN git submodule update --init || true
+RUN cargo auditable build --release -vv
 
-FROM debian:11-slim
+FROM alpine:3
 COPY --from=builder /fishnet/target/release/fishnet /fishnet
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 CMD ["/docker-entrypoint.sh"]
