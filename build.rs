@@ -107,8 +107,6 @@ impl Target {
                 .current_dir(src_dir)
                 .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
                 .arg("-B")
-                .arg(format!("COMP={}", comp))
-                .arg(format!("CXX={}", cxx))
                 .arg("net")
                 .status()
                 .unwrap()
