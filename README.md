@@ -14,22 +14,23 @@
 
    Select the binary for your platform
    [from the latest release](https://github.com/lichess-org/fishnet/releases)
-   or [Amazon S3](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/)
    and run it.
 
    ```sh
    # After download:
-   chmod +x fishnet-x86_64-unknown-linux-musl
-   ./fishnet-x86_64-unknown-linux-musl --auto-update
+   mv fishnet-v2.6.5-x86_64-unknown-linux-musl fishnet
+   chmod +x fishnet
+   ./fishnet --auto-update
    ```
 
    **Useful commands**
 
    ```sh
-   ./fishnet-x86_64-unknown-linux-musl configure              # Rerun config dialog
-   ./fishnet-x86_64-unknown-linux-musl systemd --auto-update  # Print a .service file
-   ./fishnet-x86_64-unknown-linux-musl --help                 # List commands and options
+   ./fishnet configure              # Rerun config dialog
+   ./fishnet systemd --auto-update  # Print a .service file
+   ./fishnet --help                 # List commands and options
    ```
+
    **Other installation methods:** [From source](/doc/install.md#from-source),
    [AUR](/doc/install.md#aur), [Docker](/doc/install.md#docker),
    [Kubernetes](/doc/install.md#kubernetes)
@@ -135,5 +136,5 @@ Also supports [`SSLKEYLOGFILE`](https://developer.mozilla.org/en-US/docs/Mozilla
 
 ## License
 
-fishnet is licensed under the GPLv3+. See LICENSE.txt or
-`./fishnet-x86_64-unknown-linux-musl license` for the full license text.
+fishnet is licensed under the GPLv3+. See LICENSE.txt or `./fishnet license`
+for the full license text.
