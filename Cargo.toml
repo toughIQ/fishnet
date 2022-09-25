@@ -22,7 +22,7 @@ exclude = [
 ]
 
 [profile.release]
-strip = false
+strip = true
 
 [dependencies]
 arrayvec = "0.7"
