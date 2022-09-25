@@ -41,7 +41,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
         if: github.event_name == 'push'
-      - run: docker cp "$(docker create ${{ steps.docker_build.imageid }}):/fishnet" fishnet-x86_64-unknown-linux-musl
+      - run: docker cp "$(docker create ${{ steps.docker_build.outputs.imageid }}):/fishnet" fishnet-x86_64-unknown-linux-musl
       - uses: actions/upload-artifact@v3
         with:
           name: fishnet-x86_64-unknown-linux-musl
