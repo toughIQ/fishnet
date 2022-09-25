@@ -19,16 +19,16 @@
 
    ```sh
    # After download:
-   chmod +x fishnet-x86_64-unknown-linux-gnu
-   ./fishnet-x86_64-unknown-linux-gnu --auto-update
+   chmod +x fishnet-x86_64-unknown-linux-musl
+   ./fishnet-x86_64-unknown-linux-musl --auto-update
    ```
 
    **Useful commands**
 
    ```sh
-   ./fishnet-x86_64-unknown-linux-gnu configure              # Rerun config dialog
-   ./fishnet-x86_64-unknown-linux-gnu systemd --auto-update  # Print a .service file
-   ./fishnet-x86_64-unknown-linux-gnu --help                 # List commands and options
+   ./fishnet-x86_64-unknown-linux-musl configure              # Rerun config dialog
+   ./fishnet-x86_64-unknown-linux-musl systemd --auto-update  # Print a .service file
+   ./fishnet-x86_64-unknown-linux-musl --help                 # List commands and options
    ```
    **Other installation methods:** [From source](/doc/install.md#from-source),
    [AUR](/doc/install.md#aur), [Docker](/doc/install.md#docker),
@@ -63,12 +63,12 @@ for chess variants.
 
 | Available for | 64-bit Intel and AMD        | ARMv8 / Silicon             |
 | ------------- | --------------------------- | --------------------------- |
-| **Linux**     | `x86_64-unknown-linux-gnu`  | build from source           |
+| **Linux**     | `x86_64-unknown-linux-musl` | build from source           |
 | **Windows**   | `x86_64-pc-windows-gnu.exe` |                             |
 | **macOS**     | `x86_64-apple-darwin`       | `aarch64-apple-darwin`      |
 | **FreeBSD**   | build from source           |                             |
 
-- Needs an operating system from around 2019 or later
+- Needs Linux or an operating system from around 2019 or later
 - Will max out the configured number of CPU cores
 - Uses about 64 MiB RAM per CPU core
 - A small amount of disk space
@@ -136,4 +136,4 @@ Also supports [`SSLKEYLOGFILE`](https://developer.mozilla.org/en-US/docs/Mozilla
 ## License
 
 fishnet is licensed under the GPLv3+. See LICENSE.txt or
-`./fishnet-x86_64-unknown-linux-gnu license` for the full license text.
+`./fishnet-x86_64-unknown-linux-musl license` for the full license text.
