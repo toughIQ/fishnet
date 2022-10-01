@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-use clap::{builder::PathBufValueParser, ArgAction, Parser};
+use clap::{ArgAction, Parser, builder::PathBufValueParser};
 use configparser::ini::Ini;
 use url::Url;
 
@@ -17,51 +17,51 @@ use crate::{api, logger::Logger};
 
 /// Distributed Stockfish analysis for lichess.org.
 #[derive(Debug, Parser)]
-#[clap(version, disable_help_subcommand = true)]
+#[command(version, disable_help_subcommand = true)]
 pub struct Opt {
-    #[clap(flatten)]
+    #[command(flatten)]
     pub verbose: Verbose,
 
     /// Automatically install available updates on startup and at random
     /// intervals.
-    #[clap(long, global = true)]
+    #[arg(long, global = true)]
     pub auto_update: bool,
 
     /// Configuration file. Defaults to fishnet.ini in the current working
     /// directory.
-    #[clap(long, value_parser = PathBufValueParser::new(), global = true)]
+    #[arg(long, value_parser = PathBufValueParser::new(), global = true)]
     pub conf: Option<PathBuf>,
 
     /// Do not use a configuration file.
-    #[clap(long, conflicts_with = "conf", global = true)]
+    #[arg(long, conflicts_with = "conf", global = true)]
     pub no_conf: bool,
 
     /// Fishnet key.
-    #[clap(long, alias = "apikey", short = 'k', global = true)]
+    #[arg(long, alias = "apikey", short = 'k', global = true)]
     pub key: Option<Key>,
 
     /// Fishnet key file.
-    #[clap(long, value_parser = PathBufValueParser::new(), conflicts_with = "key", global = true)]
+    #[arg(long, value_parser = PathBufValueParser::new(), conflicts_with = "key", global = true)]
     pub key_file: Option<PathBuf>,
 
     /// Lichess HTTP endpoint. Defaults to https://lichess.org/fishnet.
-    #[clap(long, global = true)]
+    #[arg(long, global = true)]
     pub endpoint: Option<Endpoint>,
 
     /// Number of logical CPU cores to use for engine processes
     /// (or auto for n - 1, or all for n).
-    #[clap(long, alias = "threads", global = true)]
+    #[arg(long, alias = "threads", global = true)]
     pub cores: Option<Cores>,
 
     /// Maximum backoff time. The client will use randomized expontential
     /// backoff when repeatedly receiving no job. Defaults to 30s.
-    #[clap(long, global = true)]
+    #[arg(long, global = true)]
     pub max_backoff: Option<MaxBackoff>,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     pub backlog: BacklogOpt,
 
-    #[clap(subcommand)]
+    #[command(subcommand)]
     pub command: Option<Command>,
 }
 
@@ -118,7 +118,7 @@ impl Endpoint {
 #[derive(Debug, Default, Copy, Clone, Parser)]
 pub struct Verbose {
     /// Increase verbosity.
-    #[clap(long = "verbose", short = 'v', action = ArgAction::Count, global = true)]
+    #[arg(long = "verbose", short = 'v', action = ArgAction::Count, global = true)]
     pub level: u8,
 }
 
@@ -211,12 +211,12 @@ impl Cores {
 pub struct BacklogOpt {
     /// Prefer to run high-priority jobs only if older than this duration
     /// (for example 120s).
-    #[clap(long = "user-backlog", global = true)]
+    #[arg(long = "user-backlog", global = true)]
     pub user: Option<Backlog>,
 
     /// Prefer to run low-priority jobs only if older than this duration
     /// (for example 2h).
-    #[clap(long = "system-backlog", global = true)]
+    #[arg(long = "system-backlog", global = true)]
     pub system: Option<Backlog>,
 }
 
