@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-use clap::{ArgAction, Parser, builder::PathBufValueParser};
+use clap::{builder::PathBufValueParser, ArgAction, Parser};
 use configparser::ini::Ini;
 use url::Url;
 

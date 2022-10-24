@@ -4,7 +4,7 @@ use std::{env, fs, fs::File, io, path::Path, process::Command};
 
 use glob::glob;
 
-const EVAL_FILE: &str = "nn-6877cd24400e.nnue";
+const EVAL_FILE: &str = "nn-ad9b42354671.nnue";
 
 fn has_target_feature(feature: &str) -> bool {
     env::var("CARGO_CFG_TARGET_FEATURE")
@@ -292,7 +292,12 @@ fn compress(dir: &str, file: &str) {
     let mut encoder = xz2::write::XzEncoder::new(compressed, 6);
 
     let uncompressed_path = Path::new(dir).join(file);
-    let mut uncompressed = File::open(&uncompressed_path).unwrap();
+    let mut uncompressed = File::open(&uncompressed_path).unwrap_or_else(|err| {
+        panic!(
+            "Failed to open {:?} for compression: {}",
+            uncompressed_path, err
+        )
+    });
 
     io::copy(&mut uncompressed, &mut encoder).unwrap();
     encoder.finish().unwrap();
