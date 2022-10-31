@@ -1,6 +1,9 @@
-/target
+.git
+.gitignore
+.github
+
+target
 fishnet.ini
 
 README.md
 doc
-.github
