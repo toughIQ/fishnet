@@ -40,13 +40,14 @@ jobs:
             org.opencontainers.image.licenses=GPL-3.0-or-later
         if: github.event_name == 'push'
       - uses: docker/build-push-action@v3
+        id: docker_push
         with:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
         if: github.event_name == 'push'
-      - run: echo "${{ steps.meta.outputs.tags }}" | xargs -I {} cosign sign {}@${{ steps.docker_build.outputs.digest }}
+      - run: echo "${{ steps.meta.outputs.tags }}" | xargs -I {} cosign sign {}@${{ steps.docker_push.outputs.digest }}
         env:
           COSIGN_EXPERIMENTAL: "true"
         if: github.event_name == 'push'
