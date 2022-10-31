@@ -46,7 +46,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
         if: github.event_name == 'push'
-      - run: echo "${{ steps.meta.outputs.tags }}" | xargs -I {} cosign sign {}@${{ steps.build-and-push.outputs.digest }
+      - run: echo "${{ steps.meta.outputs.tags }}" | xargs -I {} cosign sign {}@${{ steps.docker_build.outputs.digest }}
         env:
           COSIGN_EXPERIMENTAL: "true"
         if: github.event_name == 'push'
