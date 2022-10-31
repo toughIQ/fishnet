@@ -22,14 +22,6 @@ git submodule update
 RUSTFLAGS="-C target-cpu=native" cargo run --release -vv --
 ```
 
-## AUR
-
-For Arch Linux users, the following third-party packages are available on AUR:
-
-* https://aur.archlinux.org/packages/fishnet-bin/
-* https://aur.archlinux.org/packages/fishnet/
-* https://aur.archlinux.org/packages/fishnet-git/
-
 ## Docker
 
 ```sh
