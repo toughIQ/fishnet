@@ -39,7 +39,7 @@ serde = "1"
 serde_json = "1"
 serde_with = "2"
 home = "0.5"
-shakmaty = { version = "0.22", features = ["variant"], git = "https://github.com/niklasf/shakmaty.git" }
+shakmaty = { version = "0.23", features = ["variant"] }
 shell-escape = "0.1"
 tempfile = "3"
 tokio = { version = "1", features = ["rt", "macros", "sync", "time", "signal", "process", "io-util"], default-features = false }
