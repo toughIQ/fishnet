@@ -1,11 +1,11 @@
 use std::{num::NonZeroU8, time::Duration};
 
-use shakmaty::{fen::Fen, uci::Uci};
+use shakmaty::{fen::Fen, uci::Uci, variant::Variant};
 use tokio::sync::oneshot;
 use url::Url;
 
 use crate::{
-    api::{AnalysisPart, BatchId, LichessVariant, Score, Work},
+    api::{AnalysisPart, BatchId, Score, Work},
     assets::EngineFlavor,
 };
 
@@ -20,7 +20,7 @@ pub struct Position {
     pub flavor: EngineFlavor,
     pub url: Option<Url>,
 
-    pub variant: LichessVariant,
+    pub variant: Variant,
     pub root_fen: Fen,
     pub moves: Vec<Uci>,
 }

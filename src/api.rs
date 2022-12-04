@@ -299,8 +299,9 @@ pub struct AcquireResponseBody {
     pub game_id: Option<String>,
     #[serde_as(as = "DisplayFromStr")]
     pub position: Fen,
+    #[serde_as(as = "DisplayFromStr")]
     #[serde(default)]
-    pub variant: LichessVariant,
+    pub variant: Variant,
     #[serde_as(as = "StringWithSeparator::<SpaceSeparator, Uci>")]
     pub moves: Vec<Uci>,
     #[serde(rename = "skipPositions", default)]
@@ -314,61 +315,6 @@ impl AcquireResponseBody {
             url.set_path(g);
             url
         })
-    }
-}
-
-#[derive(Debug, Deserialize, Copy, Clone, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub enum LichessVariant {
-    Antichess,
-    Atomic,
-    Chess960,
-    Crazyhouse,
-    FromPosition,
-    Horde,
-    KingOfTheHill,
-    RacingKings,
-    Standard,
-    ThreeCheck,
-}
-
-impl LichessVariant {
-    pub fn short_name(self) -> Option<&'static str> {
-        Some(match self {
-            LichessVariant::Antichess => "anti",
-            LichessVariant::Atomic => "atomic",
-            LichessVariant::Chess960 => "chess960",
-            LichessVariant::Crazyhouse => "zh",
-            LichessVariant::FromPosition => "setup",
-            LichessVariant::Horde => "horde",
-            LichessVariant::KingOfTheHill => "koth",
-            LichessVariant::RacingKings => "race",
-            LichessVariant::ThreeCheck => "3check",
-            LichessVariant::Standard => return None,
-        })
-    }
-}
-
-impl From<LichessVariant> for Variant {
-    fn from(lichess: LichessVariant) -> Variant {
-        match lichess {
-            LichessVariant::Antichess => Variant::Antichess,
-            LichessVariant::Atomic => Variant::Atomic,
-            LichessVariant::Chess960 | LichessVariant::Standard | LichessVariant::FromPosition => {
-                Variant::Chess
-            }
-            LichessVariant::Crazyhouse => Variant::Crazyhouse,
-            LichessVariant::Horde => Variant::Horde,
-            LichessVariant::KingOfTheHill => Variant::KingOfTheHill,
-            LichessVariant::RacingKings => Variant::RacingKings,
-            LichessVariant::ThreeCheck => Variant::ThreeCheck,
-        }
-    }
-}
-
-impl Default for LichessVariant {
-    fn default() -> LichessVariant {
-        LichessVariant::Standard
     }
 }
 

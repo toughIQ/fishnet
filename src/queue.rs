@@ -10,7 +10,7 @@ use std::{
 use shakmaty::{
     fen::Fen,
     uci::{IllegalUciError, Uci},
-    variant::VariantPosition,
+    variant::{Variant, VariantPosition},
     CastlingMode, EnPassantMode, Position as _, PositionError,
 };
 use tokio::{
@@ -20,14 +20,11 @@ use tokio::{
 use url::Url;
 
 use crate::{
-    api::{
-        AcquireQuery, AcquireResponseBody, Acquired, AnalysisPart, ApiStub, BatchId,
-        LichessVariant, Work,
-    },
+    api::{AcquireQuery, AcquireResponseBody, Acquired, AnalysisPart, ApiStub, BatchId, Work},
     assets::{EngineFlavor, EvalFlavor},
     configure::{BacklogOpt, Endpoint, MaxBackoff},
     ipc::{Position, PositionFailed, PositionId, PositionResponse, Pull},
-    logger::{Logger, ProgressAt, QueueStatusBar},
+    logger::{short_variant_name, Logger, ProgressAt, QueueStatusBar},
     stats::{NpsRecorder, Stats, StatsRecorder},
     util::{NevermindExt as _, RandomizedBackoff},
 };
@@ -231,7 +228,7 @@ impl QueueState {
             match pending.try_into_completed() {
                 Ok(completed) => {
                     let mut extra = Vec::new();
-                    extra.extend(completed.variant.short_name().map(|n| n.to_owned()));
+                    extra.extend(short_variant_name(completed.variant).map(|n| n.to_owned()));
                     if completed.flavor.eval_flavor().is_hce() {
                         extra.push("hce".to_owned());
                     }
@@ -506,7 +503,7 @@ impl<T> Skip<T> {
 pub struct IncomingBatch {
     work: Work,
     flavor: EngineFlavor,
-    variant: LichessVariant,
+    variant: Variant,
     positions: Vec<Skip<Position>>,
     url: Option<Url>,
 }
@@ -519,7 +516,7 @@ impl IncomingBatch {
         let url = body.batch_url(endpoint);
 
         let maybe_root_pos = VariantPosition::from_setup(
-            body.variant.into(),
+            body.variant,
             body.position.into_setup(),
             CastlingMode::Chess960,
         );
@@ -658,7 +655,7 @@ struct PendingBatch {
     work: Work,
     url: Option<Url>,
     flavor: EngineFlavor,
-    variant: LichessVariant,
+    variant: Variant,
     positions: Vec<Option<Skip<PositionResponse>>>,
     started_at: Instant,
 }
@@ -702,7 +699,7 @@ pub struct CompletedBatch {
     work: Work,
     url: Option<Url>,
     flavor: EngineFlavor,
-    variant: LichessVariant,
+    variant: Variant,
     positions: Vec<Skip<PositionResponse>>,
     started_at: Instant,
     completed_at: Instant,

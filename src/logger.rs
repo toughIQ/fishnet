@@ -7,6 +7,7 @@ use std::{
 };
 
 use atty::Stream;
+use shakmaty::variant::Variant;
 use url::Url;
 
 use crate::{
@@ -186,4 +187,17 @@ impl fmt::Display for QueueStatusBar {
         f.write_str(&" ".repeat(empty_width.unwrap_or(0)))?;
         f.write_str(if empty_width.is_none() { ">" } else { "]" })
     }
+}
+
+pub fn short_variant_name(variant: Variant) -> Option<&'static str> {
+    Some(match variant {
+        Variant::Antichess => "anti",
+        Variant::Atomic => "atomic",
+        Variant::Crazyhouse => "zh",
+        Variant::Horde => "horde",
+        Variant::KingOfTheHill => "koth",
+        Variant::RacingKings => "race",
+        Variant::ThreeCheck => "3check",
+        Variant::Chess => return None,
+    })
 }

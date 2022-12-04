@@ -6,7 +6,6 @@ use std::{
     time::Duration,
 };
 
-use shakmaty::variant::Variant;
 use tokio::{
     io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader, BufWriter, Lines},
     process::{ChildStdin, ChildStdout},
@@ -255,11 +254,14 @@ impl StockfishActor {
                 .as_bytes(),
             )
             .await?;
-        let variant = Variant::from(position.variant);
         if position.flavor == EngineFlavor::MultiVariant {
             stdin
                 .write_all(
-                    format!("setoption name UCI_Variant value {}\n", variant.uci()).as_bytes(),
+                    format!(
+                        "setoption name UCI_Variant value {}\n",
+                        position.variant.uci()
+                    )
+                    .as_bytes(),
                 )
                 .await?;
         }
