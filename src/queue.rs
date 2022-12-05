@@ -373,7 +373,7 @@ impl QueueActor {
             }
             Err(IncomingError::AllSkipped(completed)) => {
                 self.logger
-                    .warn(&format!("Completed empty batch {}.", context));
+                    .warn(&format!("Completed empty batch {context}."));
                 self.api.submit_analysis(
                     completed.work.id(),
                     completed.flavor.eval_flavor(),
@@ -382,7 +382,7 @@ impl QueueActor {
             }
             Err(err) => {
                 self.logger
-                    .warn(&format!("Ignoring invalid batch {}: {:?}", context, err));
+                    .warn(&format!("Ignoring invalid batch {context}: {err:?}"));
             }
         }
     }
@@ -440,9 +440,9 @@ impl QueueActor {
 
                     if wait >= Duration::from_secs(1) {
                         if wait >= Duration::from_secs(40) {
-                            self.logger.info(&format!("Going idle for {:?}.", wait));
+                            self.logger.info(&format!("Going idle for {wait:?}."));
                         } else {
-                            self.logger.debug(&format!("Going idle for {:?}.", wait));
+                            self.logger.debug(&format!("Going idle for {wait:?}."));
                         }
 
                         tokio::select! {
@@ -460,7 +460,7 @@ impl QueueActor {
                         Some(Acquired::NoContent) => {
                             let backoff = self.backoff.next();
                             self.logger
-                                .debug(&format!("No job received. Backing off {:?}.", backoff));
+                                .debug(&format!("No job received. Backing off {backoff:?}."));
                             tokio::select! {
                                 _ = callback.closed() => break,
                                 _ = self.interrupt.notified() => (),

@@ -52,12 +52,12 @@ async fn main() {
         )
         .await
         {
-            Err(err) => logger.error(&format!("Failed to update: {}", err)),
+            Err(err) => logger.error(&format!("Failed to update: {err}")),
             Ok(self_update::Status::UpToDate(version)) => {
-                logger.fishnet_info(&format!("Fishnet {} is up to date", version));
+                logger.fishnet_info(&format!("Fishnet {version} is up to date"));
             }
             Ok(self_update::Status::Updated(version)) => {
-                logger.fishnet_info(&format!("Fishnet updated to {}", version));
+                logger.fishnet_info(&format!("Fishnet updated to {version}"));
                 restart_process(current_exe, &logger);
             }
         }
@@ -76,7 +76,7 @@ async fn run(opt: Opt, logger: &Logger) {
     logger.headline("Checking configuration ...");
 
     let endpoint = opt.endpoint();
-    logger.info(&format!("Endpoint: {}", endpoint));
+    logger.info(&format!("Endpoint: {endpoint}"));
 
     logger.info(&format!(
         "Backlog: Join queue if user backlog >= {:?} or system backlog >= {:?}",
@@ -85,7 +85,7 @@ async fn run(opt: Opt, logger: &Logger) {
     ));
 
     let cpu = Cpu::detect();
-    logger.info(&format!("CPU features: {:?}", cpu));
+    logger.info(&format!("CPU features: {cpu:?}"));
 
     let assets = Assets::prepare(cpu).expect("prepared bundled stockfish");
     logger.info(&format!(
@@ -95,7 +95,7 @@ async fn run(opt: Opt, logger: &Logger) {
     ));
 
     let cores = opt.cores.unwrap_or(Cores::Auto).number();
-    logger.info(&format!("Cores: {}", cores));
+    logger.info(&format!("Cores: {cores}"));
 
     // Install handler for SIGTERM.
     #[cfg(unix)]
@@ -128,7 +128,7 @@ async fn run(opt: Opt, logger: &Logger) {
     } else {
         "SIGINT"
     };
-    logger.headline(&format!("Running ({} to stop) ...", to_stop));
+    logger.headline(&format!("Running ({to_stop} to stop) ..."));
 
     // Spawn queue actor.
     let mut queue = {
@@ -176,15 +176,13 @@ async fn run(opt: Opt, logger: &Logger) {
             up_to_date = now;
             let current_exe = env::current_exe().expect("current exe");
             match auto_update(false, logger.clone()).await {
-                Err(err) => logger.error(&format!("Failed to update in the background: {}", err)),
+                Err(err) => logger.error(&format!("Failed to update in the background: {err}")),
                 Ok(self_update::Status::UpToDate(version)) => {
-                    logger.fishnet_info(&format!("Fishnet {} is up to date", version));
+                    logger.fishnet_info(&format!("Fishnet {version} is up to date"));
                 }
                 Ok(self_update::Status::Updated(version)) => {
-                    logger.fishnet_info(&format!(
-                        "Fishnet updated to {}. Will restart soon",
-                        version
-                    ));
+                    logger
+                        .fishnet_info(&format!("Fishnet updated to {version}. Will restart soon"));
                     restart = Some(current_exe);
                     shutdown_soon = true;
                     queue.shutdown_soon().await;
@@ -216,7 +214,7 @@ async fn run(opt: Opt, logger: &Logger) {
                     logger.fishnet_info("Stopping now.");
                     rx.close();
                 } else {
-                    logger.headline(&format!("Stopping soon. {} again to abort pending batches ...", to_stop));
+                    logger.headline(&format!("Stopping soon. {to_stop} again to abort pending batches ..."));
                     queue.shutdown_soon().await;
                     shutdown_soon = true;
                 }
@@ -254,7 +252,7 @@ async fn run(opt: Opt, logger: &Logger) {
 }
 
 async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: Logger) {
-    logger.debug(&format!("Started worker {}.", i));
+    logger.debug(&format!("Started worker {i}."));
 
     let mut job: Option<Position> = None;
     let mut engine = ByEngineFlavor {
@@ -279,13 +277,11 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                     let backoff = engine_backoff.next();
                     if backoff >= Duration::from_secs(5) {
                         logger.info(&format!(
-                            "Waiting {:?} before attempting to start engine",
-                            backoff
+                            "Waiting {backoff:?} before attempting to start engine"
                         ));
                     } else {
                         logger.debug(&format!(
-                            "Waiting {:?} before attempting to start engine",
-                            backoff
+                            "Waiting {backoff:?} before attempting to start engine"
                         ));
                     }
                     tokio::select! {
@@ -316,7 +312,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
             let batch_id = job.work.id();
             let res = tokio::select! {
                 _ = tx.closed() => {
-                    logger.debug(&format!("Worker {} shutting down engine early", i));
+                    logger.debug(&format!("Worker {i} shutting down engine early"));
                     drop(sf);
                     join_handle.await.expect("join");
                     break;
@@ -330,7 +326,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                         }
                         Err(failed) => {
                             drop(sf);
-                            logger.warn(&format!("Worker {} waiting for engine to shut down after error. Context: {}", i, context));
+                            logger.warn(&format!("Worker {i} waiting for engine to shut down after error. Context: {context}"));
                             join_handle.await.expect("join");
                             Err(failed)
                         },
@@ -338,8 +334,8 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                 }
                 _ = time::sleep(budget) => {
                     logger.warn(&match flavor {
-                        EngineFlavor::Official => format!("Official Stockfish timed out in worker {}. If this happens frequently it is better to stop and defer to clients with better hardware. Context: {}", i, context),
-                        EngineFlavor::MultiVariant => format!("Fairy-Stockfish timed out in worker {}. Context: {}", i, context),
+                        EngineFlavor::Official => format!("Official Stockfish timed out in worker {i}. If this happens frequently it is better to stop and defer to clients with better hardware. Context: {context}"),
+                        EngineFlavor::MultiVariant => format!("Fairy-Stockfish timed out in worker {i}. Context: {context}"),
                     });
                     drop(sf);
                     join_handle.await.expect("join");
@@ -350,7 +346,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
             // Update time budget.
             budget = budget.checked_sub(timer.elapsed()).unwrap_or_default();
             if budget < default_budget {
-                logger.debug(&format!("Low engine timeout budget: {:?}", budget));
+                logger.debug(&format!("Low engine timeout budget: {budget:?}"));
             }
 
             Some(res)
@@ -362,8 +358,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
 
         if tx.send(Pull { response, callback }).await.is_err() {
             logger.debug(&format!(
-                "Worker {} was about to send result, but shutting down",
-                i
+                "Worker {i} was about to send result, but shutting down"
             ));
             break;
         }
@@ -381,8 +376,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
 
     if let Some((sf, join_handle)) = engine.get_mut(EngineFlavor::Official).take() {
         logger.debug(&format!(
-            "Worker {} waiting for standard engine to shut down",
-            i
+            "Worker {i} waiting for standard engine to shut down"
         ));
         drop(sf);
         join_handle.await.expect("join");
@@ -390,14 +384,13 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
 
     if let Some((sf, join_handle)) = engine.get_mut(EngineFlavor::MultiVariant).take() {
         logger.debug(&format!(
-            "Worker {} waiting for multi-variant engine to shut down",
-            i
+            "Worker {i} waiting for multi-variant engine to shut down"
         ));
         drop(sf);
         join_handle.await.expect("join");
     }
 
-    logger.debug(&format!("Stopped worker {}", i));
+    logger.debug(&format!("Stopped worker {i}"));
     drop(tx);
 }
 
@@ -409,13 +402,10 @@ fn license(logger: &Logger) {
 }
 
 fn restart_process(current_exe: PathBuf, logger: &Logger) {
-    logger.headline(&format!(
-        "Waiting 5s before restarting {:?} ...",
-        current_exe
-    ));
+    logger.headline(&format!("Waiting 5s before restarting {current_exe:?} ..."));
     thread::sleep(Duration::from_secs(5));
     let err = exec(process::Command::new(current_exe).args(std::env::args().into_iter().skip(1)));
-    panic!("Failed to restart: {}", err);
+    panic!("Failed to restart: {err}");
 }
 
 #[cfg(unix)]

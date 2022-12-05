@@ -509,7 +509,7 @@ impl ApiActor {
                     key.iter()
                         .map(|Key(k)| {
                             (AUTHORIZATION, {
-                                let mut value = HeaderValue::from_str(&format!("Bearer {}", k))
+                                let mut value = HeaderValue::from_str(&format!("Bearer {k}"))
                                     .expect("bearer authorization");
                                 value.set_sensitive(true);
                                 value
@@ -550,14 +550,13 @@ impl ApiActor {
             } else if err.status() == Some(StatusCode::TOO_MANY_REQUESTS) {
                 let backoff = Duration::from_secs(60) + self.error_backoff.next();
                 self.logger.error(&format!(
-                    "Too many requests. Suspending requests for {:?}.",
-                    backoff
+                    "Too many requests. Suspending requests for {backoff:?}."
                 ));
                 time::sleep(backoff).await;
             } else {
                 let backoff = self.error_backoff.next();
                 self.logger
-                    .error(&format!("{}. Backing off {:?}.", err, backoff));
+                    .error(&format!("{err}. Backing off {backoff:?}."));
                 time::sleep(backoff).await;
             }
         } else {
@@ -567,7 +566,7 @@ impl ApiActor {
 
     async fn abort(&mut self, batch_id: BatchId) -> reqwest::Result<()> {
         let url = format!("{}/abort/{}", self.endpoint, batch_id);
-        self.logger.warn(&format!("Aborting batch {}.", batch_id));
+        self.logger.warn(&format!("Aborting batch {batch_id}."));
         let res = self
             .client
             .post(&url)
@@ -579,8 +578,7 @@ impl ApiActor {
 
         if res.status() == StatusCode::NOT_FOUND {
             self.logger.warn(&format!(
-                "Fishnet server does not support abort (404 for {}).",
-                batch_id
+                "Fishnet server does not support abort (404 for {batch_id})."
             ));
             Ok(())
         } else {
@@ -618,8 +616,7 @@ impl ApiActor {
                             StatusCode::OK => callback.send(Ok(())).nevermind("callback dropped"),
                             status => {
                                 self.logger.warn(&format!(
-                                    "Unexpected status while checking legacy key: {}",
-                                    status
+                                    "Unexpected status while checking legacy key: {status}"
                                 ));
                                 res.error_for_status()?;
                             }
@@ -627,7 +624,7 @@ impl ApiActor {
                     }
                     status => {
                         self.logger
-                            .warn(&format!("Unexpected status while checking key: {}", status));
+                            .warn(&format!("Unexpected status while checking key: {status}"));
                         res.error_for_status()?;
                     }
                 }
@@ -642,7 +639,7 @@ impl ApiActor {
                     StatusCode::NOT_FOUND => (),
                     status => {
                         self.logger
-                            .warn(&format!("Unexpected status for queue status: {}", status));
+                            .warn(&format!("Unexpected status for queue status: {status}"));
                         res.error_for_status()?;
                     }
                 }
@@ -672,7 +669,7 @@ impl ApiActor {
                     | StatusCode::NOT_ACCEPTABLE => {
                         let text = res.text().await?;
                         self.logger
-                            .error(&format!("Server rejected request: {}", text));
+                            .error(&format!("Server rejected request: {text}"));
                         callback
                             .send(Acquired::Rejected)
                             .nevermind("callback dropped");
@@ -688,7 +685,7 @@ impl ApiActor {
                     }
                     status => {
                         self.logger
-                            .warn(&format!("Unexpected status for acquire: {}", status));
+                            .warn(&format!("Unexpected status for acquire: {status}"));
                         res.error_for_status()?;
                     }
                 }

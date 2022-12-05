@@ -190,7 +190,7 @@ impl fmt::Display for Cores {
         match self {
             Cores::Auto => f.write_str("auto"),
             Cores::All => f.write_str("all"),
-            Cores::Number(n) => write!(f, "{}", n),
+            Cores::Number(n) => write!(f, "{n}"),
         }
     }
 }
@@ -411,7 +411,7 @@ pub async fn parse_and_configure() -> Opt {
                 true
             }
             Err(err) if err.kind() == io::ErrorKind::NotFound => false,
-            Err(err) => panic!("failed to open config file: {}", err),
+            Err(err) => panic!("failed to open config file: {err}"),
         };
 
         // Configuration dialog.
@@ -484,7 +484,7 @@ pub async fn parse_and_configure() -> Opt {
                         ini.set("Fishnet", "Key", Some(key));
                         break;
                     }
-                    Err(err) => eprintln!("Invalid: {}", err),
+                    Err(err) => eprintln!("Invalid: {err}"),
                 }
             }
 
@@ -495,8 +495,7 @@ pub async fn parse_and_configure() -> Opt {
                 let all = Cores::All.number();
                 let auto = Cores::Auto.number();
                 eprint!(
-                    "Number of logical cores to use for engine threads (default {}, max {}): ",
-                    auto, all
+                    "Number of logical cores to use for engine threads (default {auto}, max {all}): "
                 );
                 io::stderr().flush().expect("flush stderr");
                 io::stdin()
@@ -508,13 +507,13 @@ pub async fn parse_and_configure() -> Opt {
                     .map_or(Ok(Cores::Auto), Cores::from_str)
                 {
                     Ok(Cores::Number(n)) if n > all => {
-                        eprintln!("At most {} logical cores available on your machine.", all);
+                        eprintln!("At most {all} logical cores available on your machine.");
                     }
                     Ok(cores) => {
                         ini.set("Fishnet", "Cores", Some(cores.to_string()));
                         break;
                     }
-                    Err(err) => eprintln!("Invalid: {}", err),
+                    Err(err) => eprintln!("Invalid: {err}"),
                 }
             }
 
@@ -602,8 +601,7 @@ pub async fn parse_and_configure() -> Opt {
     match opt.cores {
         Some(Cores::Number(n)) if n > all => {
             logger.warn(&format!(
-                "Requested logical {} cores, but only {} available. Capped.",
-                n, all
+                "Requested logical {n} cores, but only {all} available. Capped."
             ));
             opt.cores = Some(Cores::All);
         }

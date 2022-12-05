@@ -125,7 +125,7 @@ impl StockfishActor {
     pub async fn run(self) {
         let logger = self.logger.clone();
         if let Err(EngineError::IoError(err)) = self.run_inner().await {
-            logger.error(&format!("Engine error: {}", err));
+            logger.error(&format!("Engine error: {err}"));
         }
     }
 
@@ -164,10 +164,10 @@ impl StockfishActor {
                 status = child.wait() => {
                     match status? {
                         status if status.success() => {
-                            self.logger.debug(&format!("Stockfish process {} exited with status {}", pid, status));
+                            self.logger.debug(&format!("Stockfish process {pid} exited with status {status}"));
                         }
                         status => {
-                            self.logger.error(&format!("Stockfish process {} exited with status {}", pid, status));
+                            self.logger.error(&format!("Stockfish process {pid} exited with status {status}"));
                         }
                     }
                     break;
@@ -450,7 +450,7 @@ impl StockfishActor {
                 }
                 _ => self
                     .logger
-                    .warn(&format!("Unexpected engine output: {}", line)),
+                    .warn(&format!("Unexpected engine output: {line}")),
             }
         }
     }

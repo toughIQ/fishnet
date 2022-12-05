@@ -19,7 +19,7 @@ fn stats_path() -> io::Result<PathBuf> {
         .ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::Other,
-                format!("Could not resolve ~/.{}", STATS_FILENAME),
+                format!("Could not resolve ~/.{STATS_FILENAME}"),
             )
         })
 }
@@ -76,17 +76,16 @@ impl StatsRecorder {
             Ok(mut file) => (
                 match Stats::load_from(&mut file) {
                     Ok(Some(stats)) => {
-                        println!("Resuming from ~/{} ...", STATS_FILENAME);
+                        println!("Resuming from ~/{STATS_FILENAME} ...");
                         stats
                     }
                     Ok(None) => {
-                        println!("Recording to new stats file ~/{} ...", STATS_FILENAME);
+                        println!("Recording to new stats file ~/{STATS_FILENAME} ...");
                         Stats::default()
                     }
                     Err(err) => {
                         eprintln!(
-                            "E: Failed to resume from ~/{}: {}. Resetting ...",
-                            STATS_FILENAME, err
+                            "E: Failed to resume from ~/{STATS_FILENAME}: {err}. Resetting ..."
                         );
                         Stats::default()
                     }
@@ -94,7 +93,7 @@ impl StatsRecorder {
                 Some(file),
             ),
             Err(err) => {
-                eprintln!("E: Failed to open ~/{}: {}", STATS_FILENAME, err);
+                eprintln!("E: Failed to open ~/{STATS_FILENAME}: {err}");
                 (Stats::default(), None)
             }
         };
@@ -117,7 +116,7 @@ impl StatsRecorder {
 
         if let Some(ref mut stats_file) = self.stats_file {
             if let Err(err) = self.stats.save_to(stats_file) {
-                eprintln!("E: Failed to write stats to ~/{}: {}", STATS_FILENAME, err);
+                eprintln!("E: Failed to write stats to ~/{STATS_FILENAME}: {err}");
             }
         }
     }

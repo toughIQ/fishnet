@@ -52,10 +52,7 @@ impl Target {
             if windows { ".exe" } else { "" }
         );
         if release && !pgo {
-            println!(
-                "cargo:warning=Building {} without profile-guided optimization",
-                exe
-            );
+            println!("cargo:warning=Building {exe} without profile-guided optimization");
         }
 
         let (comp, default_cxx, default_make) = if windows {
@@ -75,11 +72,10 @@ impl Target {
                 .arg("--version")
                 .status()
                 .unwrap_or_else(|err| panic!(
-                    "{}. Is `{}` installed?\n\
+                    "{err}. Is `{make}` installed?\n\
                     * Debian: sudo apt install build-essential\n\
                     * Arch: sudo pacman -S base-devel\n\
-                    * MSYS2: pacman -S mingw32-make\n",
-                    err, make
+                    * MSYS2: pacman -S mingw32-make\n"
                 ))
                 .success(),
             "$(MAKE) --version"
@@ -91,15 +87,14 @@ impl Target {
             Command::new(&cxx)
                 .arg("--version")
                 .status()
-                .unwrap_or_else(|err| panic!("{}. Is `{}` installed?", err, cxx))
+                .unwrap_or_else(|err| panic!("{err}. Is `{cxx}` installed?"))
                 .success(),
             "$(CXX) --version"
         );
 
         assert!(
             Path::new(src_dir).is_dir(),
-            "Directory {:?} does not exist. Try: git submodule update --init",
-            src_dir
+            "Directory {src_dir:?} does not exist. Try: git submodule update --init",
         );
 
         if flavor == Flavor::Official
@@ -113,7 +108,7 @@ impl Target {
                 .success()
         {
             fs::remove_file(Path::new(src_dir).join(EVAL_FILE)).unwrap();
-            println!("cargo:warning=Deleted corrupted network file {}", EVAL_FILE);
+            println!("cargo:warning=Deleted corrupted network file {EVAL_FILE}");
         }
 
         let mut build_command = Command::new(&make);
@@ -128,10 +123,10 @@ impl Target {
                 ),
             )
             .arg("-B")
-            .arg(format!("COMP={}", comp))
-            .arg(format!("CXX={}", cxx))
+            .arg(format!("COMP={comp}"))
+            .arg(format!("CXX={cxx}"))
             .arg(format!("ARCH={}", self.arch))
-            .arg(format!("EXE={}", exe))
+            .arg(format!("EXE={exe}"))
             .arg(if pgo { "profile-build" } else { "build" });
         if !pgo || self.native {
             // Avoid SDE overhead if not required.
@@ -143,7 +138,7 @@ impl Target {
             Command::new(&make)
                 .current_dir(src_dir)
                 .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
-                .arg(format!("EXE={}", exe))
+                .arg(format!("EXE={exe}"))
                 .arg("strip")
                 .status()
                 .unwrap()
@@ -287,16 +282,12 @@ fn stockfish_build() {
 
 fn compress(dir: &str, file: &str) {
     let compressed =
-        File::create(Path::new(&env::var("OUT_DIR").unwrap()).join(&format!("{}.xz", file)))
-            .unwrap();
+        File::create(Path::new(&env::var("OUT_DIR").unwrap()).join(format!("{file}.xz"))).unwrap();
     let mut encoder = xz2::write::XzEncoder::new(compressed, 6);
 
     let uncompressed_path = Path::new(dir).join(file);
     let mut uncompressed = File::open(&uncompressed_path).unwrap_or_else(|err| {
-        panic!(
-            "Failed to open {:?} for compression: {}",
-            uncompressed_path, err
-        )
+        panic!("Failed to open {uncompressed_path:?} for compression: {err}",)
     });
 
     io::copy(&mut uncompressed, &mut encoder).unwrap();
@@ -312,7 +303,7 @@ fn hooks() {
     println!("cargo:rerun-if-env-changed=MAKE");
     println!("cargo:rerun-if-env-changed=SDE_PATH");
 
-    println!("cargo:rustc-env=EVAL_FILE={}", EVAL_FILE);
+    println!("cargo:rustc-env=EVAL_FILE={EVAL_FILE}");
     println!("cargo:rerun-if-changed=Stockfish/src/Makefile");
     for entry in glob("Stockfish/src/**/*.cpp").unwrap() {
         println!("cargo:rerun-if-changed={}", entry.unwrap().display());

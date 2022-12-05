@@ -46,14 +46,11 @@ pub fn systemd_system(opt: Opt) {
         let command = exec_start(Invocation::Relative, &opt);
         eprintln!();
         eprintln!("# Example usage:");
-        eprintln!(
-            "# {} systemd | sudo tee /etc/systemd/system/fishnet.service",
-            command
-        );
+        eprintln!("# {command} systemd | sudo tee /etc/systemd/system/fishnet.service");
         eprintln!("# systemctl enable fishnet.service");
         eprintln!("# systemctl start fishnet.service");
         eprintln!("# Live view of log: journalctl --unit fishnet --follow");
-        eprintln!("# Prefer a user unit? {} systemd-user", command);
+        eprintln!("# Prefer a user unit? {command} systemd-user");
     }
 }
 

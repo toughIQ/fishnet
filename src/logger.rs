@@ -40,11 +40,11 @@ impl Logger {
         state.line_feed();
 
         if self.stderr {
-            writeln!(io::stderr(), "{}", line).nevermind("log to stderr");
-        } else if let Err(e) = writeln!(io::stdout(), "{}", line) {
+            writeln!(io::stderr(), "{line}").nevermind("log to stderr");
+        } else if let Err(e) = writeln!(io::stdout(), "{line}") {
             // Error when printing to stdout - print error and original
             // line to stderr.
-            writeln!(io::stderr(), "E: {} while logging to stdout: {}", e, line)
+            writeln!(io::stderr(), "E: {e} while logging to stdout: {line}")
                 .nevermind("log to stderr");
         }
     }
@@ -55,12 +55,12 @@ impl Logger {
     }
 
     pub fn headline(&self, title: &str) {
-        self.println(&format!("\n### {}\n", title));
+        self.println(&format!("\n### {title}\n"));
     }
 
     pub fn debug(&self, line: &str) {
         if self.verbose.level > 0 {
-            self.println(&format!("D: {}", line));
+            self.println(&format!("D: {line}"));
         }
     }
 
@@ -69,15 +69,15 @@ impl Logger {
     }
 
     pub fn fishnet_info(&self, line: &str) {
-        self.println(&format!("><> {}", line));
+        self.println(&format!("><> {line}"));
     }
 
     pub fn warn(&self, line: &str) {
-        self.println(&format!("W: {}", line));
+        self.println(&format!("W: {line}"));
     }
 
     pub fn error(&self, line: &str) {
-        self.println(&format!("E: {}", line));
+        self.println(&format!("E: {line}"));
     }
 
     pub fn progress<P>(&self, queue: QueueStatusBar, progress: P)
@@ -123,7 +123,7 @@ impl fmt::Display for ProgressAt {
         } else {
             write!(f, "{}", self.batch_id)?;
             if let Some(PositionId(positon_id)) = self.position_id {
-                write!(f, "#{}", positon_id)?;
+                write!(f, "#{positon_id}")?;
             }
             Ok(())
         }
