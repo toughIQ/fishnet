@@ -3,7 +3,7 @@ use std::{
     fmt,
     fs::{File, OpenOptions},
     io,
-    io::{Read as _, Seek as _, SeekFrom, Write as _},
+    io::{Read as _, Seek as _, Write as _},
     num::NonZeroUsize,
     path::PathBuf,
     time::Duration,
@@ -39,7 +39,7 @@ pub struct Stats {
 
 impl Stats {
     fn load_from(file: &mut File) -> io::Result<Option<Stats>> {
-        file.seek(SeekFrom::Start(0))?;
+        file.rewind()?;
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)?;
         Ok(if buf.is_empty() {
@@ -54,7 +54,7 @@ impl Stats {
 
     fn save_to(&self, file: &mut File) -> io::Result<()> {
         file.set_len(0)?;
-        file.seek(SeekFrom::Start(0))?;
+        file.rewind()?;
         file.write_all(
             serde_json::to_string_pretty(&self)
                 .expect("serialize stats")
