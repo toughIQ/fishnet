@@ -89,8 +89,8 @@ opposed to the system queue for slower clients).
 Your client may remain idle if fishnet estimates that another client would
 be able to complete the next batch more quickly, or if the client has been
 configured to join the queue only if a backlog is building up. By standing
-by, you're still contributing to the *potential* maximum throughput of the
-fishnet network.
+by, you're still contributing to reliability by providing redundancy, and also
+to the *potential* maximum throughput in case requests peak.
 
 ### What happens if I stop my client?
 
