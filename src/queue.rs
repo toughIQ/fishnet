@@ -509,6 +509,7 @@ pub struct IncomingBatch {
 }
 
 impl IncomingBatch {
+    #[allow(clippy::result_large_err)]
     fn from_acquired(
         endpoint: &Endpoint,
         body: AcquireResponseBody,
@@ -661,6 +662,7 @@ struct PendingBatch {
 }
 
 impl PendingBatch {
+    #[allow(clippy::result_large_err)]
     fn try_into_completed(self) -> Result<CompletedBatch, PendingBatch> {
         match self.positions.clone().into_iter().collect() {
             Some(positions) => Ok(CompletedBatch {
