@@ -32,8 +32,7 @@
    ```
 
    **Other installation methods:** [From source](/doc/install.md#from-source),
-   [AUR](/doc/install.md#aur), [Docker](/doc/install.md#docker),
-   [Kubernetes](/doc/install.md#kubernetes)
+   [Docker](/doc/install.md#docker), [Kubernetes](/doc/install.md#kubernetes)
 
 3. Pick an update strategy.
 
