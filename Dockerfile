@@ -1,7 +1,7 @@
-FROM niklasf/fishnet-builder:3 AS builder
+FROM niklasf/fishnet-builder:4 AS builder
 WORKDIR /fishnet
 COPY . .
-RUN cargo auditable build --target=x86_64-unknown-linux-musl --release -vv
+RUN cargo auditable build --release -vv
 
 FROM alpine:3
 RUN apk --no-cache add bash
