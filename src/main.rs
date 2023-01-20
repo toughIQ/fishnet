@@ -23,6 +23,7 @@ use std::{
 
 use atty::Stream;
 use self_update::backends::s3::{EndPoint, Update};
+use shell_escape::escape;
 use thousands::Separable as _;
 use tokio::{
     signal,
@@ -91,7 +92,13 @@ async fn run(opt: Opt, logger: &Logger) {
     logger.info(&format!(
         "Engine: {} (for GPLv3, run: {} license)",
         assets.sf_name,
-        env::args().next().unwrap_or_else(|| "./fishnet".to_owned())
+        escape(
+            env::args_os()
+                .next()
+                .and_then(|exe| exe.into_string().ok())
+                .unwrap_or("./fishnet".to_owned())
+                .into()
+        )
     ));
 
     let cores = opt.cores.unwrap_or(Cores::Auto).number();
@@ -404,7 +411,7 @@ fn license(logger: &Logger) {
 fn restart_process(current_exe: PathBuf, logger: &Logger) {
     logger.headline(&format!("Waiting 5s before restarting {current_exe:?} ..."));
     thread::sleep(Duration::from_secs(5));
-    let err = exec(process::Command::new(current_exe).args(std::env::args().skip(1)));
+    let err = exec(process::Command::new(current_exe).args(std::env::args_os().skip(1)));
     panic!("Failed to restart: {err}");
 }
 

@@ -104,7 +104,7 @@ impl Invocation {
     fn exe(self) -> PathBuf {
         match self {
             Invocation::Absolute => env::current_exe().expect("current exe"),
-            Invocation::Relative => env::args().next().expect("argv[0]").into(),
+            Invocation::Relative => env::args_os().next().expect("argv[0]").into(),
         }
     }
 
