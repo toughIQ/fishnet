@@ -6,4 +6,4 @@ metadata:
     kubernetes.io/metadata.name: fishnet
   annotations:
     openshift.io/description: 'FishNet Worker'
-    openshift.io/display-name: 'Fishnet Worker'
+    openshift.io/display-name: 'FishNet Worker'
