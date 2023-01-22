@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-args=("--no-conf")
+args=("--no-conf" "--no-stats-file")
 
 if [ -n "$KEY" ]; then args+=("--key" "$KEY"); fi
 if [ -n "$KEY_FILE" ]; then args+=("--key-file" "$KEY_FILE"); fi
