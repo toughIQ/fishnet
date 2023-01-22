@@ -61,6 +61,9 @@ pub struct Opt {
     #[command(flatten)]
     pub backlog: BacklogOpt,
 
+    #[command(flatten)]
+    pub stats: StatsOpt,
+
     #[command(subcommand)]
     pub command: Option<Command>,
 }
@@ -158,17 +161,12 @@ impl FromStr for Key {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone)]
 pub enum Cores {
+    #[default]
     Auto,
     All,
     Number(NonZeroUsize),
-}
-
-impl Default for Cores {
-    fn default() -> Cores {
-        Cores::Auto
-    }
 }
 
 impl FromStr for Cores {
@@ -218,6 +216,16 @@ pub struct BacklogOpt {
     /// (for example 2h).
     #[arg(long = "system-backlog", global = true)]
     pub system: Option<Backlog>,
+}
+
+#[derive(Debug, Clone, Parser)]
+pub struct StatsOpt {
+    /// File to record local statistics. Defaults to ~/.fishnet-stats.
+    #[arg(long, global = true)]
+    pub stats_file: Option<PathBuf>,
+    /// Do not record local statistics to a file.
+    #[arg(long, conflicts_with = "stats_file", global = true)]
+    pub no_stats_file: bool,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -333,17 +341,12 @@ fn parse_duration(s: &str) -> Result<Duration, ParseIntError> {
     ))
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone)]
 enum Toggle {
     Yes,
     No,
+    #[default]
     Default,
-}
-
-impl Default for Toggle {
-    fn default() -> Toggle {
-        Toggle::Default
-    }
 }
 
 impl FromStr for Toggle {

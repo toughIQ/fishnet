@@ -11,23 +11,16 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-const STATS_FILENAME: &str = ".fishnet-stats";
+use crate::configure::StatsOpt;
 
-fn stats_path() -> io::Result<PathBuf> {
-    home::home_dir()
-        .map(|dir| dir.join(STATS_FILENAME))
-        .ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::Other,
-                format!("Could not resolve ~/.{STATS_FILENAME}"),
-            )
-        })
+fn default_stats_file() -> Option<PathBuf> {
+    home::home_dir().map(|dir| dir.join(".fishnet-stats"))
 }
 
 pub struct StatsRecorder {
     pub stats: Stats,
     pub nnue_nps: NpsRecorder,
-    stats_file: Option<File>,
+    store: Option<(PathBuf, File)>,
 }
 
 #[derive(Default, Clone, Serialize, Deserialize)]
@@ -65,43 +58,61 @@ impl Stats {
 }
 
 impl StatsRecorder {
-    pub fn open(cores: NonZeroUsize) -> StatsRecorder {
-        let (stats, stats_file) = match stats_path().and_then(|path| {
-            OpenOptions::new()
-                .read(true)
-                .write(true)
-                .create(true)
-                .open(path)
-        }) {
+    pub fn new(opt: StatsOpt, cores: NonZeroUsize) -> StatsRecorder {
+        let nnue_nps = NpsRecorder::new(cores);
+
+        if opt.no_stats_file {
+            return StatsRecorder {
+                stats: Stats::default(),
+                store: None,
+                nnue_nps,
+            };
+        }
+
+        let path = if let Some(path) = opt.stats_file.or_else(default_stats_file) {
+            path
+        } else {
+            eprintln!("E: Could not resolve ~/.fishnet-stats");
+            return StatsRecorder {
+                stats: Stats::default(),
+                store: None,
+                nnue_nps,
+            };
+        };
+
+        let (stats, store) = match OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(&path)
+        {
             Ok(mut file) => (
                 match Stats::load_from(&mut file) {
                     Ok(Some(stats)) => {
-                        println!("Resuming from ~/{STATS_FILENAME} ...");
+                        println!("Resuming from {path:?} ...");
                         stats
                     }
                     Ok(None) => {
-                        println!("Recording to new stats file ~/{STATS_FILENAME} ...");
+                        println!("Recording to new stats file {path:?} ...");
                         Stats::default()
                     }
                     Err(err) => {
-                        eprintln!(
-                            "E: Failed to resume from ~/{STATS_FILENAME}: {err}. Resetting ..."
-                        );
+                        eprintln!("E: Failed to resume from {path:?}: {err}. Resetting ...");
                         Stats::default()
                     }
                 },
-                Some(file),
+                Some((path, file)),
             ),
             Err(err) => {
-                eprintln!("E: Failed to open ~/{STATS_FILENAME}: {err}");
+                eprintln!("E: Failed to open {path:?}: {err}");
                 (Stats::default(), None)
             }
         };
 
         StatsRecorder {
             stats,
-            stats_file,
-            nnue_nps: NpsRecorder::new(cores),
+            store,
+            nnue_nps,
         }
     }
 
@@ -114,9 +125,9 @@ impl StatsRecorder {
             self.nnue_nps.record(nnue_nps);
         }
 
-        if let Some(ref mut stats_file) = self.stats_file {
+        if let Some((ref path, ref mut stats_file)) = self.store {
             if let Err(err) = self.stats.save_to(stats_file) {
-                eprintln!("E: Failed to write stats to ~/{STATS_FILENAME}: {err}");
+                eprintln!("E: Failed to write stats to {path:?}: {err}");
             }
         }
     }

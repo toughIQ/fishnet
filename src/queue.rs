@@ -22,7 +22,7 @@ use url::Url;
 use crate::{
     api::{AcquireQuery, AcquireResponseBody, Acquired, AnalysisPart, ApiStub, BatchId, Work},
     assets::{EngineFlavor, EvalFlavor},
-    configure::{BacklogOpt, Endpoint, MaxBackoff},
+    configure::{BacklogOpt, Endpoint, MaxBackoff, StatsOpt},
     ipc::{Position, PositionFailed, PositionId, PositionResponse, Pull},
     logger::{short_variant_name, Logger, ProgressAt, QueueStatusBar},
     stats::{NpsRecorder, Stats, StatsRecorder},
@@ -30,7 +30,8 @@ use crate::{
 };
 
 pub fn channel(
-    opt: BacklogOpt,
+    stats_opt: StatsOpt,
+    backlog_opt: BacklogOpt,
     cores: NonZeroUsize,
     api: ApiStub,
     max_backoff: MaxBackoff,
@@ -38,7 +39,11 @@ pub fn channel(
 ) -> (QueueStub, QueueActor) {
     let (tx, rx) = mpsc::unbounded_channel();
     let interrupt = Arc::new(Notify::new());
-    let state = Arc::new(Mutex::new(QueueState::new(cores, logger.clone())));
+    let state = Arc::new(Mutex::new(QueueState::new(
+        stats_opt,
+        cores,
+        logger.clone(),
+    )));
     let stub = QueueStub {
         tx: Some(tx),
         interrupt: interrupt.clone(),
@@ -50,7 +55,7 @@ pub fn channel(
         interrupt,
         state,
         api,
-        opt,
+        backlog_opt,
         logger,
         backoff: RandomizedBackoff::new(max_backoff),
     };
@@ -125,14 +130,14 @@ struct QueueState {
 }
 
 impl QueueState {
-    fn new(cores: NonZeroUsize, logger: Logger) -> QueueState {
+    fn new(stats_opt: StatsOpt, cores: NonZeroUsize, logger: Logger) -> QueueState {
         QueueState {
             shutdown_soon: false,
             cores,
             incoming: VecDeque::new(),
             pending: HashMap::new(),
             move_submissions: VecDeque::new(),
-            stats_recorder: StatsRecorder::open(cores),
+            stats_recorder: StatsRecorder::new(stats_opt, cores),
             logger,
         }
     }
@@ -312,7 +317,7 @@ pub struct QueueActor {
     interrupt: Arc<Notify>,
     state: Arc<Mutex<QueueState>>,
     api: ApiStub,
-    opt: BacklogOpt,
+    backlog_opt: BacklogOpt,
     backoff: RandomizedBackoff,
     logger: Logger,
 }
@@ -331,9 +336,9 @@ impl QueueActor {
         };
         let user_backlog = max(
             min_user_backlog,
-            self.opt.user.map(Duration::from).unwrap_or_default(),
+            self.backlog_opt.user.map(Duration::from).unwrap_or_default(),
         );
-        let system_backlog = self.opt.system.map(Duration::from).unwrap_or_default();
+        let system_backlog = self.backlog_opt.system.map(Duration::from).unwrap_or_default();
 
         if user_backlog >= sec || system_backlog >= sec {
             if let Some(status) = self.api.status().await {
