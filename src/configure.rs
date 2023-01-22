@@ -61,6 +61,9 @@ pub struct Opt {
     #[command(flatten)]
     pub backlog: BacklogOpt,
 
+    #[command(flatten)]
+    pub stats: StatsOpt,
+
     #[command(subcommand)]
     pub command: Option<Command>,
 }
@@ -218,6 +221,16 @@ pub struct BacklogOpt {
     /// (for example 2h).
     #[arg(long = "system-backlog", global = true)]
     pub system: Option<Backlog>,
+}
+
+#[derive(Debug, Clone, Parser)]
+pub struct StatsOpt {
+    /// File to record local statistics. Defaults to ~/.fishnet-stats.
+    #[arg(long, global = true)]
+    pub stats_file: Option<PathBuf>,
+    /// Do not record local statistics to a file.
+    #[arg(long, conflicts_with = "stats_file", global = true)]
+    pub no_stats_file: bool,
 }
 
 #[derive(Debug, Copy, Clone)]

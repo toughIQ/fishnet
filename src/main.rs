@@ -140,6 +140,7 @@ async fn run(opt: Opt, logger: &Logger) {
     // Spawn queue actor.
     let mut queue = {
         let (queue, queue_actor) = queue::channel(
+            opt.stats,
             opt.backlog,
             cores,
             api,
