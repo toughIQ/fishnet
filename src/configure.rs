@@ -161,17 +161,12 @@ impl FromStr for Key {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone)]
 pub enum Cores {
+    #[default]
     Auto,
     All,
     Number(NonZeroUsize),
-}
-
-impl Default for Cores {
-    fn default() -> Cores {
-        Cores::Auto
-    }
 }
 
 impl FromStr for Cores {
@@ -346,17 +341,12 @@ fn parse_duration(s: &str) -> Result<Duration, ParseIntError> {
     ))
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone)]
 enum Toggle {
     Yes,
     No,
+    #[default]
     Default,
-}
-
-impl Default for Toggle {
-    fn default() -> Toggle {
-        Toggle::Default
-    }
 }
 
 impl FromStr for Toggle {
