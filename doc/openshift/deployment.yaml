@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: fishnet
-          image: docker.io/niklasf/fishnet:2
+          image: docker.io/toughiq/fishnet:multi
           envFrom:
             - secretRef:
                 name: fishnet
