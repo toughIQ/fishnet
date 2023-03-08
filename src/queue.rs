@@ -336,9 +336,16 @@ impl QueueActor {
         };
         let user_backlog = max(
             min_user_backlog,
-            self.backlog_opt.user.map(Duration::from).unwrap_or_default(),
+            self.backlog_opt
+                .user
+                .map(Duration::from)
+                .unwrap_or_default(),
         );
-        let system_backlog = self.backlog_opt.system.map(Duration::from).unwrap_or_default();
+        let system_backlog = self
+            .backlog_opt
+            .system
+            .map(Duration::from)
+            .unwrap_or_default();
 
         if user_backlog >= sec || system_backlog >= sec {
             if let Some(status) = self.api.status().await {
