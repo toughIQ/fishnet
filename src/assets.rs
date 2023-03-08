@@ -79,7 +79,7 @@ bitflags! {
         const SF_AVX2         = Cpu::SF_SSE41_POPCNT.bits | Cpu::AVX2.bits;
         const SF_BMI2         = Cpu::SF_AVX2.bits | Cpu::FAST_BMI2.bits;
         const SF_AVX512       = Cpu::SF_BMI2.bits | Cpu::AVX512.bits;
-        const SF_VNNI512      = Cpu::SF_AVX512.bits | Cpu::VNNI512.bits;
+        const SF_VNNI256      = Cpu::SF_AVX512.bits | Cpu::VNNI512.bits; // 256 bit operands
     }
 }
 
@@ -136,9 +136,9 @@ const STOCKFISH: &[Asset] = &[
     // Unix (x86_64)
     #[cfg(stockfish_x86_64_vnni512)]
     Asset {
-        name: "stockfish-x86-64-vnni512",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-vnni512.xz")),
-        needs: Cpu::SF_VNNI512,
+        name: "stockfish-x86-64-vnni256",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-vnni256.xz")),
+        needs: Cpu::SF_VNNI256,
         executable: true,
     },
     #[cfg(stockfish_x86_64_avx512)]
@@ -190,9 +190,9 @@ const STOCKFISH: &[Asset] = &[
     // Windows
     #[cfg(stockfish_x86_64_vnni512_exe)]
     Asset {
-        name: "stockfish-x86-64-vnni512.exe",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-vnni512.exe.xz")),
-        needs: Cpu::SF_VNNI512,
+        name: "stockfish-x86-64-vnni256.exe",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-vnni256.exe.xz")),
+        needs: Cpu::SF_VNNI256,
         executable: true,
     },
     #[cfg(stockfish_x86_64_avx512_exe)]
@@ -247,12 +247,12 @@ const STOCKFISH_MV: &[Asset] = &[
     // Unix (x86_64)
     #[cfg(fairy_stockfish_x86_64_vnni512)]
     Asset {
-        name: "fairy-stockfish-x86-64-vnni512",
+        name: "fairy-stockfish-x86-64-vnni256",
         data: include_bytes!(concat!(
             env!("OUT_DIR"),
-            "/fairy-stockfish-x86-64-vnni512.xz"
+            "/fairy-stockfish-x86-64-vnni256.xz"
         )),
-        needs: Cpu::SF_VNNI512,
+        needs: Cpu::SF_VNNI256,
         executable: true,
     },
     #[cfg(fairy_stockfish_x86_64_avx512)]
@@ -307,12 +307,12 @@ const STOCKFISH_MV: &[Asset] = &[
     // Windows
     #[cfg(fairy_stockfish_x86_64_vnni512_exe)]
     Asset {
-        name: "fairy-stockfish-x86-64-vnni512.exe",
+        name: "fairy-stockfish-x86-64-vnni256.exe",
         data: include_bytes!(concat!(
             env!("OUT_DIR"),
-            "/fairy-stockfish-x86-64-vnni512.exe.xz"
+            "/fairy-stockfish-x86-64-vnni256.exe.xz"
         )),
-        needs: Cpu::SF_VNNI512,
+        needs: Cpu::SF_VNNI256,
         executable: true,
     },
     #[cfg(fairy_stockfish_x86_64_avx512_exe)]
