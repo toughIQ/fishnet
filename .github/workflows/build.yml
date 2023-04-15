@@ -12,11 +12,25 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: true
+      - uses: docker/setup-qemu-action@v2
+        with:
+          platforms: arm64
       - uses: docker/setup-buildx-action@v2
+        with:
+          platforms: linux/amd64,linux/arm64
       - uses: docker/build-push-action@v3
-        id: docker_build
+        id: docker_build_amd64
         with:
           context: .
+          platforms: amd64
+          cache-from: type=gha
+          cache-to: type=gha
+          load: true
+      - uses: docker/build-push-action@v3
+        id: docker_build_arm64
+        with:
+          context: .
+          platforms: arm64
           cache-from: type=gha
           cache-to: type=gha
           load: true
@@ -41,15 +55,21 @@ jobs:
         id: docker_push
         with:
           context: .
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
         if: github.event_name == 'push'
-      - run: docker cp "$(docker create ${{ steps.docker_build.outputs.imageid }}):/fishnet" fishnet-x86_64-unknown-linux-musl
+      - run: docker cp "$(docker create ${{ steps.docker_build_amd64.outputs.imageid }}):/fishnet" fishnet-x86_64-unknown-linux-musl
+      - run: docker cp "$(docker create ${{ steps.docker_build_arm64.outputs.imageid }}):/fishnet" fishnet-aarch64-unknown-linux-musl
       - uses: actions/upload-artifact@v3
         with:
           name: fishnet-x86_64-unknown-linux-musl
           path: fishnet-x86_64-unknown-linux-musl
+      - uses: actions/upload-artifact@v3
+        with:
+          name: fishnet-aarch64-unknown-linux-musl
+          path: fishnet-aarch64-unknown-linux-musl
   windows-x86-64:
     runs-on: windows-2019
     defaults:
@@ -132,11 +152,12 @@ jobs:
       - uses: actions/download-artifact@v3
       - run: |
           mkdir upload
-          cp fishnet-x86_64-unknown-linux-musl/fishnet-x86_64-unknown-linux-musl upload/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-unknown-linux-gnu # bc for --auto-update
-          mv fishnet-x86_64-unknown-linux-musl/fishnet-x86_64-unknown-linux-musl upload/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-unknown-linux-musl
-          mv fishnet-x86_64-pc-windows-gnu/fishnet-x86_64-pc-windows-gnu.exe     upload/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-pc-windows-gnu.exe
-          mv fishnet-x86_64-apple-darwin/fishnet-x86_64-apple-darwin             upload/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-apple-darwin
-          mv fishnet-aarch64-apple-darwin/fishnet-aarch64-apple-darwin           upload/fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-apple-darwin
+          cp fishnet-x86_64-unknown-linux-musl/fishnet-x86_64-unknown-linux-musl   upload/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-unknown-linux-gnu # bc for --auto-update
+          mv fishnet-x86_64-unknown-linux-musl/fishnet-x86_64-unknown-linux-musl   upload/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-unknown-linux-musl
+          mv fishnet-x86_64-pc-windows-gnu/fishnet-x86_64-pc-windows-gnu.exe       upload/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-pc-windows-gnu.exe
+          mv fishnet-x86_64-apple-darwin/fishnet-x86_64-apple-darwin               upload/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-apple-darwin
+          mv fishnet-aarch64-unknown-linux-musl/fishnet-aarch64-unknown-linux-musl upload/fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-unknown-linux-musl
+          mv fishnet-aarch64-apple-darwin/fishnet-aarch64-apple-darwin             upload/fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-apple-darwin
           sha256sum upload/*
       - uses: shallwefootball/s3-upload-action@bcd7c2408245fd6cd19b5512a473b1a7a8b48a35
         with:
@@ -157,6 +178,7 @@ jobs:
           body: |
             Downloads:
 
+            * [fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-unknown-linux-musl](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-unknown-linux-musl)
             * [fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-apple-darwin](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-apple-darwin)
             * [fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-apple-darwin](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-apple-darwin)
             * [fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-pc-windows-gnu.exe](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-pc-windows-gnu.exe)
@@ -194,6 +216,14 @@ jobs:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: upload/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-apple-darwin
           asset_name: fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-apple-darwin
+          asset_content_type: application/octet-stream
+      - uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: upload/fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-unknown-linux-musl
+          asset_name: fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-unknown-linux-musl
           asset_content_type: application/octet-stream
       - uses: actions/upload-release-asset@v1
         env:
