@@ -84,6 +84,16 @@ bitflags! {
     }
 }
 
+impl fmt::Display for Cpu {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_empty() {
+            f.write_str("-")
+        } else {
+            self.0.fmt(f)
+        }
+    }
+}
+
 impl Cpu {
     #[cfg(target_arch = "x86_64")]
     pub fn detect() -> Cpu {

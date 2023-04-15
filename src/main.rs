@@ -86,7 +86,7 @@ async fn run(opt: Opt, logger: &Logger) {
     ));
 
     let cpu = Cpu::detect();
-    logger.info(&format!("CPU features: {cpu:?}"));
+    logger.info(&format!("CPU features: {cpu}"));
 
     let assets = Assets::prepare(cpu).expect("prepared bundled stockfish");
     logger.info(&format!(
