@@ -178,11 +178,11 @@ jobs:
           body: |
             Downloads:
 
+            * [fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-unknown-linux-musl](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-unknown-linux-musl)
+            * [fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-pc-windows-gnu.exe](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-pc-windows-gnu.exe)
+            * [fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-apple-darwin](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-apple-darwin)
             * [fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-unknown-linux-musl](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-unknown-linux-musl)
             * [fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-apple-darwin](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-apple-darwin)
-            * [fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-apple-darwin](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-apple-darwin)
-            * [fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-pc-windows-gnu.exe](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-pc-windows-gnu.exe)
-            * [fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-unknown-linux-musl](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-unknown-linux-musl)
         id: create_release
       - uses: actions/upload-release-asset@v1
         env:
