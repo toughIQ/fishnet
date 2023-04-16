@@ -18,7 +18,7 @@
 
    ```sh
    # After download:
-   mv fishnet-v2.6.5-x86_64-unknown-linux-musl fishnet
+   mv fishnet-v2.6.9-x86_64-unknown-linux-musl fishnet
    chmod +x fishnet
    ./fishnet --auto-update
    ```
