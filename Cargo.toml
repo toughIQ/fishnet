@@ -1,12 +1,12 @@
 [package]
 name = "fishnet"
-version = "2.6.9-dev"
+version = "2.6.9-dev" # pull, test, remove dev, update readme, publish, tag, bump dev, push
 description = "Distributed Stockfish analysis for lichess.org"
 repository = "https://github.com/lichess-org/fishnet"
 readme = "README.md"
 license = "GPL-3.0+"
 authors = ["Niklas Fiekas <niklas.fiekas@backscattering.de>"]
-categories = ["command-line-utilities", "web-programming::http-client", "games"]
+categories = ["command-line-utilities", "games"]
 keywords = ["chess", "lichess"]
 rust-version = "1.64"
 edition = "2021"
