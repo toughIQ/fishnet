@@ -31,8 +31,11 @@
    ./fishnet --help                 # List commands and options
    ```
 
-   **Other installation methods:** [From source](/doc/install.md#from-source),
-   [Docker](/doc/install.md#docker), [Kubernetes](/doc/install.md#kubernetes)
+   **Other installation methods:**
+   [From source](/doc/install.md#from-source),
+   [Docker](/doc/install.md#docker),
+   [Kubernetes](/doc/install.md#kubernetes),
+   [OpenShift](/doc/openshift/README.md)
 
 3. Pick an update strategy.
 
@@ -42,7 +45,7 @@
 
    **Subscribe to release announcements**
 
-   With a GitHub account, you can *watch* this repository (can be set to
+   With a GitHub account, you can _watch_ this repository (can be set to
    release announcements only). See the top right corner on this page.
 
 ## Video introduction
@@ -89,7 +92,7 @@ Your client may remain idle if fishnet estimates that another client would
 be able to complete the next batch more quickly, or if the client has been
 configured to join the queue only if a backlog is building up. By standing
 by, you're still contributing to reliability by providing redundancy, and also
-to the *potential* maximum throughput in case requests peak.
+to the _potential_ maximum throughput in case requests peak.
 
 ### What happens if I stop my client?
 
