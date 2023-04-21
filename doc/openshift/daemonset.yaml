@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fishnet
+  namespace: fishnet
+  labels:
+    app: fishnet
+    app.kubernetes.io/component: fishnet
+    app.kubernetes.io/instance: fishnet
+    app.kubernetes.io/name: fishnet
+    app.kubernetes.io/part-of: fishnet
+spec:
+  selector:
+    matchLabels:
+      app: fishnet
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: fishnet
+        deployment: fishnet
+    spec:
+      containers:
+        - name: fishnet
+          image: 'docker.io/niklasf/fishnet:latest'
+          envFrom:
+            - secretRef:
+                name: fishnet
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: Always
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+
