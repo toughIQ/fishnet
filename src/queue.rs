@@ -539,10 +539,7 @@ impl IncomingBatch {
                 (EngineFlavor::Official, pos)
             }
             Ok(pos) => (EngineFlavor::MultiVariant, pos),
-            Err(pos) => (
-                EngineFlavor::MultiVariant,
-                pos.ignore_impossible_material()?,
-            ),
+            Err(pos) => (EngineFlavor::MultiVariant, pos.ignore_too_much_material()?),
         };
 
         let root_fen = Fen(root_pos.clone().into_setup(EnPassantMode::Legal));
