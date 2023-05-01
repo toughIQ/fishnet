@@ -532,7 +532,9 @@ impl IncomingBatch {
             body.variant,
             body.position.into_setup(),
             CastlingMode::Chess960,
-        );
+        )
+        .or_else(PositionError::ignore_invalid_ep_square)
+        .or_else(PositionError::ignore_invalid_castling_rights);
 
         let (flavor, root_pos) = match maybe_root_pos {
             Ok(pos @ VariantPosition::Chess(_)) if body.work.is_analysis() => {
