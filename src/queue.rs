@@ -643,6 +643,7 @@ impl From<&IncomingBatch> for ProgressAt {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 enum IncomingError {
     Position(PositionError<VariantPosition>),
