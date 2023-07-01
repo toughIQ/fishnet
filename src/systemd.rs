@@ -1,9 +1,9 @@
 use std::{
-    env, fs,
+    env, fs, io,
+    io::IsTerminal as _,
     path::{Path, PathBuf},
 };
 
-use atty::Stream;
 use shell_escape::escape;
 
 use crate::configure::{Key, Opt};
@@ -42,7 +42,7 @@ pub fn systemd_system(opt: Opt) {
     println!("[Install]");
     println!("WantedBy=multi-user.target");
 
-    if atty::is(Stream::Stdout) {
+    if io::stdout().is_terminal() {
         let command = exec_start(Invocation::Relative, &opt);
         eprintln!();
         eprintln!("# Example usage:");
@@ -81,7 +81,7 @@ pub fn systemd_user(opt: Opt) {
     println!("[Install]");
     println!("WantedBy=default.target");
 
-    if atty::is(Stream::Stdout) {
+    if io::stdout().is_terminal() {
         eprintln!();
         eprintln!("# Example usage:");
         eprintln!(

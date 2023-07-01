@@ -14,6 +14,7 @@ mod util;
 use std::{
     cmp::min,
     env, io,
+    io::IsTerminal as _,
     path::PathBuf,
     process,
     sync::Arc,
@@ -21,7 +22,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-use atty::Stream;
 use self_update::backends::s3::{EndPoint, Update};
 use shell_escape::escape;
 use thousands::Separable as _;
@@ -130,7 +130,7 @@ async fn run(opt: Opt, logger: &Logger) {
         api
     };
 
-    let to_stop = if atty::is(Stream::Stdout) {
+    let to_stop = if io::stdout().is_terminal() {
         "CTRL-C"
     } else {
         "SIGINT"
@@ -452,7 +452,7 @@ async fn auto_update(
             .region("eu-west-3")
             .bin_name("fishnet")
             .show_output(verbose)
-            .show_download_progress(atty::is(Stream::Stdout) && verbose)
+            .show_download_progress(verbose && io::stdout().is_terminal())
             .current_version(env!("CARGO_PKG_VERSION"))
             .no_confirm(true)
             .build()

@@ -1,12 +1,11 @@
 use std::{
     cmp::{max, min},
     fmt, io,
-    io::Write as _,
+    io::{IsTerminal as _, Write as _},
     num::NonZeroUsize,
     sync::{Arc, Mutex},
 };
 
-use atty::Stream;
 use shakmaty::variant::Variant;
 use url::Url;
 
@@ -21,7 +20,7 @@ use crate::{
 pub struct Logger {
     verbose: Verbose,
     stderr: bool,
-    atty: bool,
+    terminal: bool,
     state: Arc<Mutex<LoggerState>>,
 }
 
@@ -30,7 +29,7 @@ impl Logger {
         Logger {
             verbose,
             stderr,
-            atty: atty::is(Stream::Stdout),
+            terminal: io::stdout().is_terminal(),
             state: Arc::new(Mutex::new(LoggerState { progress_line: 0 })),
         }
     }
@@ -91,7 +90,7 @@ impl Logger {
             queue.pending,
             progress.into()
         );
-        if self.atty {
+        if self.terminal {
             let mut state = self.state.lock().expect("logger state");
             print!(
                 "\r{}{}",
