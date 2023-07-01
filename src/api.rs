@@ -208,13 +208,15 @@ impl fmt::Display for BatchId {
 pub struct NodeLimit {
     classical: u64,
     sf15: u64,
+    #[serde(default)]
+    sf16: Option<u64>,
 }
 
 impl NodeLimit {
     pub fn get(&self, flavor: EvalFlavor) -> u64 {
         match flavor {
             EvalFlavor::Hce => self.classical,
-            EvalFlavor::Nnue => self.sf15,
+            EvalFlavor::Nnue => self.sf16.unwrap_or(self.sf15), // TODO: remove bc
         }
     }
 }
