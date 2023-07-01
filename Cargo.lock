@@ -336,7 +336,7 @@ dependencies = [
 
 [[package]]
 name = "fishnet"
-version = "2.6.11-dev"
+version = "2.7.0"
 dependencies = [
  "arrayvec",
  "bitflags 2.3.3",
