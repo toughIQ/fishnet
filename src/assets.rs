@@ -76,15 +76,16 @@ bitflags! {
         const AVX512    = 1 << 5;
         const VNNI512   = 1 << 6;
 
+        // aarch64
+        const DOTPROD = 1 << 7;
+
         const SF_SSE2         = Cpu::SSE2.bits();
         const SF_SSE41_POPCNT = Cpu::SSE41.bits() | Cpu::POPCNT.bits();
         const SF_AVX2         = Cpu::SF_SSE41_POPCNT.bits() | Cpu::AVX2.bits();
         const SF_BMI2         = Cpu::SF_AVX2.bits() | Cpu::FAST_BMI2.bits();
         const SF_AVX512       = Cpu::SF_BMI2.bits() | Cpu::AVX512.bits();
         const SF_VNNI256      = Cpu::SF_AVX512.bits() | Cpu::VNNI512.bits(); // 256 bit operands
-
-        // aarch_64
-        const DOTPROD = 1 << 7;
+        const SF_NEON_DOTPROD = Cpu::DOTPROD.bits();
     }
 }
 
@@ -209,7 +210,7 @@ const STOCKFISH: &[Asset] = &[
     Asset {
         name: "stockfish-armv8-dotprod",
         data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-armv8-dotprod.xz")),
-        needs: Cpu::DOTPROD,
+        needs: Cpu::SF_NEON_DOTPROD,
         executable: true,
     },
     #[cfg(stockfish_armv8)]
