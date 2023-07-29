@@ -13,13 +13,26 @@ fn has_target_feature(feature: &str) -> bool {
         .any(|f| f == feature)
 }
 
-macro_rules! has_builder_feature {
+macro_rules! has_x86_64_builder_feature {
     ($feature:tt) => {{
         #[cfg(target_arch = "x86_64")]
         {
-            is_x86_feature_detected!($feature)
+            std::arch::is_x86_feature_detected!($feature)
         }
         #[cfg(not(target_arch = "x86_64"))]
+        {
+            false
+        }
+    }};
+}
+
+macro_rules! has_aarch64_builder_feature {
+    ($feature:tt) => {{
+        #[cfg(target_arch = "aarch64")]
+        {
+            std::arch::is_aarch64_feature_detected!($feature)
+        }
+        #[cfg(not(target_arch = "aarch64"))]
         {
             false
         }
@@ -190,9 +203,9 @@ fn stockfish_build() {
 
             Target {
                 arch: "x86-64-vnni256",
-                native: has_builder_feature!("avx512dq")
-                    && has_builder_feature!("avx512vl")
-                    && has_builder_feature!("avx512vnni"),
+                native: has_x86_64_builder_feature!("avx512dq")
+                    && has_x86_64_builder_feature!("avx512vl")
+                    && has_x86_64_builder_feature!("avx512vnni"),
                 sde,
             }
             .build_both();
@@ -206,7 +219,8 @@ fn stockfish_build() {
 
             Target {
                 arch: "x86-64-avx512",
-                native: has_builder_feature!("avx512f") && has_builder_feature!("avx512bw"),
+                native: has_x86_64_builder_feature!("avx512f")
+                    && has_x86_64_builder_feature!("avx512bw"),
                 sde,
             }
             .build_both();
@@ -217,7 +231,7 @@ fn stockfish_build() {
 
             Target {
                 arch: "x86-64-bmi2",
-                native: has_builder_feature!("bmi2"),
+                native: has_x86_64_builder_feature!("bmi2"),
                 sde,
             }
             .build_both();
@@ -228,7 +242,7 @@ fn stockfish_build() {
 
             Target {
                 arch: "x86-64-avx2",
-                native: has_builder_feature!("avx2"),
+                native: has_x86_64_builder_feature!("avx2"),
                 sde,
             }
             .build_both();
@@ -239,7 +253,8 @@ fn stockfish_build() {
 
             Target {
                 arch: "x86-64-sse41-popcnt",
-                native: has_builder_feature!("sse4.1") && has_builder_feature!("popcnt"),
+                native: has_x86_64_builder_feature!("sse4.1")
+                    && has_x86_64_builder_feature!("popcnt"),
                 sde,
             }
             .build_both();
@@ -266,6 +281,17 @@ fn stockfish_build() {
                 }
                 .build_both();
             } else {
+                Target {
+                    arch: "armv8-dotprod",
+                    native: native && has_aarch64_builder_feature!("dotprod"),
+                    sde: false,
+                }
+                .build_both();
+
+                if has_target_feature("dotprod") {
+                    return;
+                }
+
                 Target {
                     arch: "armv8",
                     native,
