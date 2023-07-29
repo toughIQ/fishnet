@@ -137,7 +137,10 @@ impl Cpu {
     #[cfg(target_arch = "aarch64")]
     pub fn detect() -> Cpu {
         let mut cpu = Cpu::empty();
-        cpu.set(Cpu::DOTPROD, is_aarch64_feature_detected!("dotprod"));
+        cpu.set(
+            Cpu::DOTPROD,
+            std::arch::is_aarch64_feature_detected!("dotprod"),
+        );
         cpu
     }
 
