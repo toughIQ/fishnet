@@ -67,6 +67,7 @@ impl fmt::Debug for Asset {
 bitflags! {
     #[derive(Debug, Copy, Clone, Eq, PartialEq)]
     pub struct Cpu: u32 {
+        // x86_64
         const SSE2      = 1 << 0;
         const POPCNT    = 1 << 1;
         const SSE41     = 1 << 2;
@@ -81,6 +82,9 @@ bitflags! {
         const SF_BMI2         = Cpu::SF_AVX2.bits() | Cpu::FAST_BMI2.bits();
         const SF_AVX512       = Cpu::SF_BMI2.bits() | Cpu::AVX512.bits();
         const SF_VNNI256      = Cpu::SF_AVX512.bits() | Cpu::VNNI512.bits(); // 256 bit operands
+
+        // aarch_64
+        const DOTPROD = 1 << 7;
     }
 }
 
@@ -130,7 +134,17 @@ impl Cpu {
         cpu
     }
 
-    #[cfg(not(target_arch = "x86_64"))]
+    #[cfg(target_arch = "aarch64")]
+    pub fn detect() -> Cpu {
+        let mut cpu = Cpu::empty();
+        cpu.set(
+            Cpu::DOTPROD,
+            std::arch::is_aarch64_feature_detected!("dotprod"),
+        );
+        cpu
+    }
+
+    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
     pub fn detect() -> Cpu {
         Cpu::empty()
     }
@@ -191,6 +205,13 @@ const STOCKFISH: &[Asset] = &[
         executable: true,
     },
     // Unix (aarch64)
+    #[cfg(stockfish_armv8_dotprod)]
+    Asset {
+        name: "stockfish-armv8-dotprod",
+        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-armv8-dotprod.xz")),
+        needs: Cpu::DOTPROD,
+        executable: true,
+    },
     #[cfg(stockfish_armv8)]
     Asset {
         name: "stockfish-armv8",
