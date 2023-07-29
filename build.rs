@@ -300,7 +300,18 @@ fn stockfish_build() {
                     native,
                     sde: false,
                 }
-                .build_both();
+                .build_multi_variant();
+
+                if has_target_feature("dotprod") {
+                    return;
+                }
+
+                Target {
+                    arch: "armv8",
+                    native,
+                    sde: false,
+                }
+                .build_official();
             }
         }
         target_arch => {
