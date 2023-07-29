@@ -178,14 +178,21 @@ impl Target {
         );
     }
 
-    fn build_both(&self) {
+    fn build_official(&self) {
         self.build(Flavor::Official, "Stockfish/src", "stockfish");
+    }
 
+    fn build_multi_variant(&self) {
         self.build(
             Flavor::MultiVariant,
             "Fairy-Stockfish/src",
             "fairy-stockfish",
         );
+    }
+
+    fn build_both(&self) {
+        self.build_official();
+        self.build_multi_variant();
     }
 }
 
@@ -286,11 +293,7 @@ fn stockfish_build() {
                     native: native && has_aarch64_builder_feature!("dotprod"),
                     sde: false,
                 }
-                .build_both();
-
-                if has_target_feature("dotprod") {
-                    return;
-                }
+                .build_official();
 
                 Target {
                     arch: "armv8",

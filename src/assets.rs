@@ -326,16 +326,6 @@ const STOCKFISH_MV: &[Asset] = &[
         executable: true,
     },
     // Unix (aarch64)
-    #[cfg(fairy_stockfish_armv8_dotprod)]
-    Asset {
-        name: "fairy-stockfish-armv8-dotprod",
-        data: include_bytes!(concat!(
-            env!("OUT_DIR"),
-            "/fairy-stockfish-armv8-dotprod.xz"
-        )),
-        needs: Cpu::DOTPROD,
-        executable: true,
-    },
     #[cfg(fairy_stockfish_armv8)]
     Asset {
         name: "fairy-stockfish-armv8",
