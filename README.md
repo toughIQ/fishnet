@@ -134,7 +134,7 @@ is provided.
 ![Sequence diagram](/doc/sequence-diagram.png)
 
 See [protocol.md](/doc/protocol.md) for details.
-Also supports [`SSLKEYLOGFILE`](https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS/Key_Log_Format) for inspection at runtime.
+Also supports [`SSLKEYLOGFILE`](https://wiki.wireshark.org/TLS#tls-decryption) for inspection at runtime.
 
 ## License
 
