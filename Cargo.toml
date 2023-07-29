@@ -45,7 +45,7 @@ tempfile = "3"
 tokio = { version = "1", features = ["rt", "macros", "sync", "time", "signal", "process", "io-util"], default-features = false }
 url = "2"
 serde_repr = "0.1"
-webpki-roots = "0.23"
+webpki-roots = "0.25"
 thousands = "0.2"
 
 [target.'cfg(unix)'.dependencies]
