@@ -34,7 +34,7 @@ use tokio::{
 
 use crate::{
     assets::{Assets, ByEngineFlavor, Cpu, EngineFlavor},
-    configure::{Command, Cores, Opt},
+    configure::{Command, Cores, CpuPriority, Opt},
     ipc::{Position, PositionFailed, Pull},
     logger::{Logger, ProgressAt},
     stockfish::StockfishInit,
@@ -170,15 +170,20 @@ async fn run(opt: Opt, logger: &Logger) {
         rx
     };
 
+    // Set scheduling priority.
+    match opt.cpu_priority.unwrap_or_default() {
+        CpuPriority::Unchanged => (),
+        CpuPriority::Min => {
+            if let Err(err) = set_current_thread_priority(ThreadPriority::Min) {
+                logger.warn(&format!("Failed to decrease CPU priority: {err:?}"));
+            }
+        }
+    }
+
     let mut restart = None;
     let mut up_to_date = Instant::now();
     let mut summarized = Instant::now();
     let mut shutdown_soon = false;
-
-    // Decrease CPU priority
-    if set_current_thread_priority(ThreadPriority::Min).is_err() {
-        logger.warn("Failed to set CPU priority");
-    };
 
     loop {
         // Check for updates from time to time.

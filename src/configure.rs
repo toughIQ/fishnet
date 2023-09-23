@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-use clap::{builder::PathBufValueParser, ArgAction, Parser};
+use clap::{builder::PathBufValueParser, ArgAction, Parser, ValueEnum};
 use configparser::ini::Ini;
 use url::Url;
 
@@ -52,6 +52,11 @@ pub struct Opt {
     /// (or auto for n - 1, or all for n).
     #[arg(long, alias = "threads", global = true)]
     pub cores: Option<Cores>,
+
+    /// Override CPU scheduling priorty of fishnet and engine processes.
+    /// Very low by default.
+    #[arg(long, global = true)]
+    pub cpu_priority: Option<CpuPriority>,
 
     /// Maximum backoff time. The client will use randomized expontential
     /// backoff when repeatedly receiving no job. Defaults to 30s.
@@ -123,6 +128,13 @@ pub struct Verbose {
     /// Increase verbosity.
     #[arg(long = "verbose", short = 'v', action = ArgAction::Count, global = true)]
     pub level: u8,
+}
+
+#[derive(Debug, Default, Copy, Clone, ValueEnum)]
+pub enum CpuPriority {
+    Unchanged,
+    #[default]
+    Min,
 }
 
 #[derive(Debug, Clone)]

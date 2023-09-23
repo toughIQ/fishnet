@@ -22,7 +22,6 @@ pub fn systemd_system(opt: Opt) {
         "User={}",
         env::var("USER").unwrap_or_else(|_| "XXX".to_owned())
     );
-    println!("Nice=5");
     println!("CapabilityBoundingSet=");
     println!("PrivateTmp=true");
     println!("PrivateDevices=true");
@@ -64,7 +63,6 @@ pub fn systemd_user(opt: Opt) {
     println!("ExecStart={} run", exec_start(Invocation::Absolute, &opt));
     println!("KillMode=mixed");
     println!("WorkingDirectory=/tmp");
-    println!("Nice=5");
     println!("PrivateTmp=true");
     println!("DevicePolicy=closed");
     if opt.auto_update
