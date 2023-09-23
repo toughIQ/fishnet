@@ -25,6 +25,7 @@ use std::{
 use self_update::backends::s3::{EndPoint, Update};
 use shell_escape::escape;
 use thousands::Separable as _;
+use thread_priority::{set_current_thread_priority, ThreadPriority};
 use tokio::{
     signal,
     sync::{mpsc, oneshot},
@@ -173,6 +174,11 @@ async fn run(opt: Opt, logger: &Logger) {
     let mut up_to_date = Instant::now();
     let mut summarized = Instant::now();
     let mut shutdown_soon = false;
+
+    // Decrease CPU priority
+    if set_current_thread_priority(ThreadPriority::Min).is_err() {
+        logger.warn("Failed to set CPU priority");
+    };
 
     loop {
         // Check for updates from time to time.
