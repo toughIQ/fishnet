@@ -42,7 +42,7 @@ home = "0.5"
 shakmaty = { version = "0.26", features = ["variant"] }
 shell-escape = "0.1"
 tempfile = "3"
-thread-priority = "0.13"
+thread-priority = "0.15"
 tokio = { version = "1", features = ["rt", "macros", "sync", "time", "signal", "process", "io-util"], default-features = false }
 url = "2"
 serde_repr = "0.1"
