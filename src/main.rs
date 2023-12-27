@@ -125,9 +125,7 @@ async fn run(opt: Opt, logger: &Logger) {
     // Spawn API actor.
     let api = {
         let (api, api_actor) = api::channel(endpoint.clone(), opt.key, logger.clone());
-        join_handles.push(tokio::spawn(async move {
-            api_actor.run().await;
-        }));
+        join_handles.push(tokio::spawn(api_actor.run()));
         api
     };
 
@@ -148,9 +146,7 @@ async fn run(opt: Opt, logger: &Logger) {
             opt.max_backoff.unwrap_or_default(),
             logger.clone(),
         );
-        join_handles.push(tokio::spawn(async move {
-            queue_actor.run().await;
-        }));
+        join_handles.push(tokio::spawn(queue_actor.run()));
         queue
     };
 
@@ -163,9 +159,7 @@ async fn run(opt: Opt, logger: &Logger) {
             let assets = assets.clone();
             let tx = tx.clone();
             let logger = logger.clone();
-            join_handles.push(tokio::spawn(async move {
-                worker(i, assets, tx, logger).await;
-            }));
+            join_handles.push(tokio::spawn(worker(i, assets, tx, logger)));
         }
         rx
     };
@@ -317,9 +311,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                         },
                         logger.clone(),
                     );
-                    let join_handle = tokio::spawn(async move {
-                        sf_actor.run().await;
-                    });
+                    let join_handle = tokio::spawn(sf_actor.run());
                     (sf, join_handle)
                 };
 

@@ -38,9 +38,7 @@ pub fn channel(endpoint: Endpoint, key: Option<Key>, logger: Logger) -> (ApiStub
 
 pub fn spawn(endpoint: Endpoint, key: Option<Key>, logger: Logger) -> ApiStub {
     let (stub, actor) = channel(endpoint, key, logger);
-    tokio::spawn(async move {
-        actor.run().await;
-    });
+    tokio::spawn(actor.run());
     stub
 }
 
