@@ -3,8 +3,9 @@ use std::{fmt, io, path::PathBuf};
 use bitflags::bitflags;
 use serde::Serialize;
 use tempfile::TempDir;
+use xz2::read::XzDecoder;
 
-static ASSETS_TAR_ZST: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/assets.tar.zst"));
+static ASSETS_TAR_XZ: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/assets.tar.xz"));
 
 bitflags! {
     #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -181,8 +182,7 @@ impl Assets {
         let mut stockfish = ByEngineFlavor::<Option<PathBuf>>::default();
         let dir = tempfile::Builder::new().prefix("fishnet-").tempdir()?;
 
-        let mut archive =
-            tar::Archive::new(ruzstd::StreamingDecoder::new(ASSETS_TAR_ZST).expect("zst"));
+        let mut archive = tar::Archive::new(XzDecoder::new(ASSETS_TAR_XZ));
         for entry in archive.entries()? {
             let mut entry = entry?;
             let path = entry.path()?;

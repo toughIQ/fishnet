@@ -3,19 +3,17 @@
 use std::{env, fs, fs::File, io::Write, path::Path, process::Command};
 
 use glob::glob;
+use xz2::write::XzEncoder;
 
 const EVAL_FILE: &str = "nn-5af11540bbfe.nnue";
 
 fn main() {
     hooks();
 
-    let mut archive = tar::Builder::new(
-        zstd::Encoder::new(
-            File::create(Path::new(&env::var("OUT_DIR").unwrap()).join("assets.tar.zst")).unwrap(),
-            19,
-        )
-        .unwrap(),
-    );
+    let mut archive = tar::Builder::new(XzEncoder::new(
+        File::create(Path::new(&env::var("OUT_DIR").unwrap()).join("assets.tar.xz")).unwrap(),
+        6,
+    ));
     archive.mode(tar::HeaderMode::Deterministic);
     stockfish_build(&mut archive);
     stockfish_eval_file(EVAL_FILE, &mut archive);
