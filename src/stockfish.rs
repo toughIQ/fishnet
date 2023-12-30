@@ -1,5 +1,5 @@
 use std::{
-    io,
+    io, mem,
     num::NonZeroU8,
     path::PathBuf,
     process::{Command, Stdio},
@@ -20,18 +20,14 @@ use crate::{
     util::NevermindExt as _,
 };
 
-pub fn channel(
-    exe: PathBuf,
-    init: StockfishInit,
-    logger: Logger,
-) -> (StockfishStub, StockfishActor) {
+pub fn channel(exe: PathBuf, logger: Logger) -> (StockfishStub, StockfishActor) {
     let (tx, rx) = mpsc::channel(1);
     (
         StockfishStub { tx },
         StockfishActor {
             rx,
             exe,
-            init: Some(init),
+            initialized: false,
             logger,
         },
     )
@@ -56,7 +52,7 @@ impl StockfishStub {
 pub struct StockfishActor {
     rx: mpsc::Receiver<StockfishMessage>,
     exe: PathBuf,
-    init: Option<StockfishInit>,
+    initialized: bool,
     logger: Logger,
 }
 
@@ -66,11 +62,6 @@ enum StockfishMessage {
         position: Position,
         callback: oneshot::Sender<PositionResponse>,
     },
-}
-
-#[derive(Debug)]
-pub struct StockfishInit {
-    pub nnue: String,
 }
 
 struct Stdout {
@@ -205,10 +196,7 @@ impl StockfishActor {
         stdout: &mut Stdout,
         stdin: &mut BufWriter<ChildStdin>,
     ) -> io::Result<()> {
-        if let Some(init) = self.init.take() {
-            stdin
-                .write_all(format!("setoption name EvalFile value {}\n", init.nnue).as_bytes())
-                .await?;
+        if !mem::replace(&mut self.initialized, true) {
             stdin
                 .write_all(b"setoption name UCI_Chess960 value true\n")
                 .await?;

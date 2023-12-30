@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use std::{env, fs, fs::File, io, path::Path, process::Command};
+use std::{env, fs, fs::File, io::Write, path::Path, process::Command};
 
 use glob::glob;
 
@@ -52,7 +52,13 @@ enum Flavor {
 }
 
 impl Target {
-    fn build(&self, flavor: Flavor, src_dir: &'static str, name: &'static str) {
+    fn build<W: Write>(
+        &self,
+        flavor: Flavor,
+        src_dir: &'static str,
+        name: &'static str,
+        archive: &mut tar::Builder<W>,
+    ) {
         let release = env::var("PROFILE").unwrap() == "release";
         let windows = env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "windows";
         let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
@@ -159,7 +165,9 @@ impl Target {
             "$(MAKE) strip"
         );
 
-        compress(src_dir, &exe);
+        archive
+            .append_path_with_name(Path::new(src_dir).join(&exe), exe)
+            .unwrap();
 
         assert!(
             Command::new(make)
@@ -171,32 +179,28 @@ impl Target {
                 .success(),
             "$(MAKE) clean"
         );
-
-        println!(
-            "cargo:rustc-cfg={}",
-            exe.replace(|ch| ch == '.' || ch == '-', "_")
-        );
     }
 
-    fn build_official(&self) {
-        self.build(Flavor::Official, "Stockfish/src", "stockfish");
+    fn build_official<W: Write>(&self, archive: &mut tar::Builder<W>) {
+        self.build(Flavor::Official, "Stockfish/src", "stockfish", archive);
     }
 
-    fn build_multi_variant(&self) {
+    fn build_multi_variant<W: Write>(&self, archive: &mut tar::Builder<W>) {
         self.build(
             Flavor::MultiVariant,
             "Fairy-Stockfish/src",
             "fairy-stockfish",
+            archive,
         );
     }
 
-    fn build_both(&self) {
-        self.build_official();
-        self.build_multi_variant();
+    fn build_both<W: Write>(&self, archive: &mut tar::Builder<W>) {
+        self.build_official(archive);
+        self.build_multi_variant(archive);
     }
 }
 
-fn stockfish_build() {
+fn stockfish_build<W: Write>(archive: &mut tar::Builder<W>) {
     // Note: The target arch of the build script is the architecture of the
     // builder and decides if pgo is possible. It is not necessarily the same
     // as CARGO_CFG_TARGET_ARCH, the target arch of the fishnet binary.
@@ -215,7 +219,7 @@ fn stockfish_build() {
                     && has_x86_64_builder_feature!("avx512vnni"),
                 sde,
             }
-            .build_both();
+            .build_both(archive);
 
             if has_target_feature("avx512dq")
                 && has_target_feature("avx512vl")
@@ -230,7 +234,7 @@ fn stockfish_build() {
                     && has_x86_64_builder_feature!("avx512bw"),
                 sde,
             }
-            .build_both();
+            .build_both(archive);
 
             if has_target_feature("avx512f") && has_target_feature("avx512bw") {
                 return;
@@ -241,7 +245,7 @@ fn stockfish_build() {
                 native: has_x86_64_builder_feature!("bmi2"),
                 sde,
             }
-            .build_both();
+            .build_both(archive);
 
             if has_target_feature("bmi2") {
                 // Fast bmi2 can not be detected at compile time.
@@ -252,7 +256,7 @@ fn stockfish_build() {
                 native: has_x86_64_builder_feature!("avx2"),
                 sde,
             }
-            .build_both();
+            .build_both(archive);
 
             if has_target_feature("avx2") {
                 return;
@@ -264,7 +268,7 @@ fn stockfish_build() {
                     && has_x86_64_builder_feature!("popcnt"),
                 sde,
             }
-            .build_both();
+            .build_both(archive);
 
             if has_target_feature("sse4.1") && has_target_feature("popcnt") {
                 return;
@@ -275,7 +279,7 @@ fn stockfish_build() {
                 native: cfg!(target_arch = "x86_64"),
                 sde,
             }
-            .build_both();
+            .build_both(archive);
         }
         "aarch64" => {
             let native = cfg!(target_arch = "aarch64");
@@ -286,21 +290,21 @@ fn stockfish_build() {
                     native,
                     sde: false,
                 }
-                .build_both();
+                .build_both(archive);
             } else {
                 Target {
                     arch: "armv8-dotprod",
                     native: native && has_aarch64_builder_feature!("dotprod"),
                     sde: false,
                 }
-                .build_official();
+                .build_official(archive);
 
                 Target {
                     arch: "armv8",
                     native,
                     sde: false,
                 }
-                .build_multi_variant();
+                .build_multi_variant(archive);
 
                 if has_target_feature("dotprod") {
                     return;
@@ -311,28 +315,13 @@ fn stockfish_build() {
                     native,
                     sde: false,
                 }
-                .build_official();
+                .build_official(archive);
             }
         }
         target_arch => {
             unimplemented!("Stockfish build for {} not supported", target_arch);
         }
     }
-}
-
-fn compress(dir: &str, file: &str) {
-    let compressed =
-        File::create(Path::new(&env::var("OUT_DIR").unwrap()).join(format!("{file}.xz"))).unwrap();
-    let mut encoder = xz2::write::XzEncoder::new(compressed, 6);
-
-    let uncompressed_path = Path::new(dir).join(file);
-    let mut uncompressed = File::open(&uncompressed_path).unwrap_or_else(|err| {
-        panic!("Failed to open {uncompressed_path:?} for compression: {err}",)
-    });
-
-    io::copy(&mut uncompressed, &mut encoder).unwrap();
-    encoder.finish().unwrap();
-    fs::remove_file(uncompressed_path).unwrap();
 }
 
 fn hooks() {
@@ -365,8 +354,23 @@ fn hooks() {
 
 fn main() {
     hooks();
-    stockfish_build();
-    compress("Stockfish/src", EVAL_FILE);
+
+    let mut archive = tar::Builder::new(
+        zstd::Encoder::new(
+            File::create(Path::new(&env::var("OUT_DIR").unwrap()).join("assets.tar.zst")).unwrap(),
+            19,
+        )
+        .unwrap(),
+    );
+    archive.mode(tar::HeaderMode::Deterministic);
+    let eval_file = Path::new("Stockfish")
+        .join("src")
+        .join("nn-5af11540bbfe.nnue");
+    archive
+        .append_path_with_name(&eval_file, eval_file.file_name().unwrap())
+        .unwrap();
+    stockfish_build(&mut archive);
+    archive.into_inner().unwrap().finish().unwrap();
 
     // Resource compilation may fail when toolchain does not match target,
     // e.g. windows-msvc toolchain with windows-gnu target.

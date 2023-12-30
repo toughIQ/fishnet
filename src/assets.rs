@@ -1,68 +1,10 @@
-use std::{
-    fmt,
-    fs::{File, OpenOptions},
-    io,
-    path::{Path, PathBuf},
-};
+use std::{fmt, io, path::PathBuf};
 
 use bitflags::bitflags;
 use serde::Serialize;
 use tempfile::TempDir;
-use xz2::read::XzDecoder;
 
-struct Asset {
-    name: &'static str,
-    data: &'static [u8],
-    needs: Cpu,
-    executable: bool,
-}
-
-impl Asset {
-    #[cfg(unix)]
-    fn open_executable_file(path: &Path) -> io::Result<File> {
-        use std::os::unix::fs::OpenOptionsExt as _;
-        OpenOptions::new()
-            .create(true)
-            .write(true)
-            .mode(0o700)
-            .open(path)
-    }
-
-    #[cfg(not(unix))]
-    fn open_executable_file(path: &Path) -> io::Result<File> {
-        Asset::open_file(path)
-    }
-
-    fn open_file(path: &Path) -> io::Result<File> {
-        OpenOptions::new().create(true).write(true).open(path)
-    }
-
-    fn create(&self, base: &Path) -> io::Result<PathBuf> {
-        let path = base.join(self.name);
-        let mut file = if self.executable {
-            Asset::open_executable_file(&path)
-        } else {
-            Asset::open_file(&path)
-        }?;
-
-        let mut decoder = XzDecoder::new(self.data);
-        io::copy(&mut decoder, &mut file)?;
-
-        file.sync_all()?;
-        Ok(path)
-    }
-}
-
-impl fmt::Debug for Asset {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Asset")
-            .field("name", &self.name)
-            .field("needs", &self.needs)
-            .field("executable", &self.executable)
-            .field("data", &"..")
-            .finish()
-    }
-}
+static ASSETS_TAR_ZST: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/assets.tar.zst"));
 
 bitflags! {
     #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -149,264 +91,27 @@ impl Cpu {
     pub fn detect() -> Cpu {
         Cpu::empty()
     }
+
+    pub fn requirements(filename: &str) -> Cpu {
+        if filename.contains("-armv8-dotprod") {
+            Cpu::SF_NEON_DOTPROD
+        } else if filename.contains("-x86-64-vnni256") {
+            Cpu::SF_VNNI256
+        } else if filename.contains("-x86-64-avx512") {
+            Cpu::SF_AVX512
+        } else if filename.contains("-x86-64-bmi2") {
+            Cpu::SF_BMI2
+        } else if filename.contains("-x86-64-avx2") {
+            Cpu::SF_AVX2
+        } else if filename.contains("-x86-64-sse41-popcnt") {
+            Cpu::SF_SSE41_POPCNT
+        } else if filename.contains("-x86-64") {
+            Cpu::SF_SSE2
+        } else {
+            Cpu::empty()
+        }
+    }
 }
-
-const NNUE: Asset = Asset {
-    name: env!("EVAL_FILE"),
-    data: include_bytes!(concat!(env!("OUT_DIR"), "/", env!("EVAL_FILE"), ".xz")),
-    needs: Cpu::empty(),
-    executable: false,
-};
-
-const STOCKFISH: &[Asset] = &[
-    // Unix (x86_64)
-    #[cfg(stockfish_x86_64_vnni512)]
-    Asset {
-        name: "stockfish-x86-64-vnni256",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-vnni256.xz")),
-        needs: Cpu::SF_VNNI256,
-        executable: true,
-    },
-    #[cfg(stockfish_x86_64_avx512)]
-    Asset {
-        name: "stockfish-x86-64-avx512",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-avx512.xz")),
-        needs: Cpu::SF_AVX512,
-        executable: true,
-    },
-    #[cfg(stockfish_x86_64_bmi2)]
-    Asset {
-        name: "stockfish-x86-64-bmi2",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-bmi2.xz")),
-        needs: Cpu::SF_BMI2,
-        executable: true,
-    },
-    #[cfg(stockfish_x86_64_avx2)]
-    Asset {
-        name: "stockfish-x86-64-avx2",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-avx2.xz")),
-        needs: Cpu::SF_AVX2,
-        executable: true,
-    },
-    #[cfg(stockfish_x86_64_sse41_popcnt)]
-    Asset {
-        name: "stockfish-x86-64-sse41-popcnt",
-        data: include_bytes!(concat!(
-            env!("OUT_DIR"),
-            "/stockfish-x86-64-sse41-popcnt.xz"
-        )),
-        needs: Cpu::SF_SSE41_POPCNT,
-        executable: true,
-    },
-    #[cfg(stockfish_x86_64)]
-    Asset {
-        name: "stockfish-x86-64",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64.xz")),
-        needs: Cpu::SF_SSE2,
-        executable: true,
-    },
-    // Unix (aarch64)
-    #[cfg(stockfish_armv8_dotprod)]
-    Asset {
-        name: "stockfish-armv8-dotprod",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-armv8-dotprod.xz")),
-        needs: Cpu::SF_NEON_DOTPROD,
-        executable: true,
-    },
-    #[cfg(stockfish_armv8)]
-    Asset {
-        name: "stockfish-armv8",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-armv8.xz")),
-        needs: Cpu::empty(),
-        executable: true,
-    },
-    // Windows
-    #[cfg(stockfish_x86_64_vnni512_exe)]
-    Asset {
-        name: "stockfish-x86-64-vnni256.exe",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-vnni256.exe.xz")),
-        needs: Cpu::SF_VNNI256,
-        executable: true,
-    },
-    #[cfg(stockfish_x86_64_avx512_exe)]
-    Asset {
-        name: "stockfish-x86-64-avx512.exe",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-avx512.exe.xz")),
-        needs: Cpu::SF_AVX512,
-        executable: true,
-    },
-    #[cfg(stockfish_x86_64_bmi2_exe)]
-    Asset {
-        name: "stockfish-x86-64-bmi2.exe",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-bmi2.exe.xz")),
-        needs: Cpu::SF_BMI2,
-        executable: true,
-    },
-    #[cfg(stockfish_x86_64_avx2_exe)]
-    Asset {
-        name: "stockfish-x86-64-avx2.exe",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64-avx2.exe.xz")),
-        needs: Cpu::SF_AVX2,
-        executable: true,
-    },
-    #[cfg(stockfish_x86_64_sse41_popcnt_exe)]
-    Asset {
-        name: "stockfish-x86-64-sse41-popcnt.exe",
-        data: include_bytes!(concat!(
-            env!("OUT_DIR"),
-            "/stockfish-x86-64-sse41-popcnt.exe.xz"
-        )),
-        needs: Cpu::SF_SSE41_POPCNT,
-        executable: true,
-    },
-    #[cfg(stockfish_x86_64_exe)]
-    Asset {
-        name: "stockfish-x86-64.exe",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-x86-64.exe.xz")),
-        needs: Cpu::SF_SSE2,
-        executable: true,
-    },
-    // OSX (aarch64)
-    #[cfg(stockfish_apple_silicon)]
-    Asset {
-        name: "stockfish-apple-silicon",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/stockfish-apple-silicon.xz")),
-        needs: Cpu::empty(),
-        executable: true,
-    },
-];
-
-const STOCKFISH_MV: &[Asset] = &[
-    // Unix (x86_64)
-    #[cfg(fairy_stockfish_x86_64_vnni512)]
-    Asset {
-        name: "fairy-stockfish-x86-64-vnni256",
-        data: include_bytes!(concat!(
-            env!("OUT_DIR"),
-            "/fairy-stockfish-x86-64-vnni256.xz"
-        )),
-        needs: Cpu::SF_VNNI256,
-        executable: true,
-    },
-    #[cfg(fairy_stockfish_x86_64_avx512)]
-    Asset {
-        name: "fairy-stockfish-x86-64-avx512",
-        data: include_bytes!(concat!(
-            env!("OUT_DIR"),
-            "/fairy-stockfish-x86-64-avx512.xz"
-        )),
-        needs: Cpu::SF_AVX512,
-        executable: true,
-    },
-    #[cfg(fairy_stockfish_x86_64_bmi2)]
-    Asset {
-        name: "fairy-stockfish-x86-64-bmi2",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64-bmi2.xz")),
-        needs: Cpu::SF_BMI2,
-        executable: true,
-    },
-    #[cfg(fairy_stockfish_x86_64_avx2)]
-    Asset {
-        name: "fairy-stockfish-x86-64-avx2",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64-avx2.xz")),
-        needs: Cpu::SF_AVX2,
-        executable: true,
-    },
-    #[cfg(fairy_stockfish_x86_64_sse41_popcnt)]
-    Asset {
-        name: "fairy-stockfish-x86-64-sse41-popcnt",
-        data: include_bytes!(concat!(
-            env!("OUT_DIR"),
-            "/fairy-stockfish-x86-64-sse41-popcnt.xz"
-        )),
-        needs: Cpu::SF_SSE41_POPCNT,
-        executable: true,
-    },
-    #[cfg(fairy_stockfish_x86_64)]
-    Asset {
-        name: "fairy-stockfish-x86-64",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64.xz")),
-        needs: Cpu::SF_SSE2,
-        executable: true,
-    },
-    // Unix (aarch64)
-    #[cfg(fairy_stockfish_armv8)]
-    Asset {
-        name: "fairy-stockfish-armv8",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-armv8.xz")),
-        needs: Cpu::empty(),
-        executable: true,
-    },
-    // Windows
-    #[cfg(fairy_stockfish_x86_64_vnni512_exe)]
-    Asset {
-        name: "fairy-stockfish-x86-64-vnni256.exe",
-        data: include_bytes!(concat!(
-            env!("OUT_DIR"),
-            "/fairy-stockfish-x86-64-vnni256.exe.xz"
-        )),
-        needs: Cpu::SF_VNNI256,
-        executable: true,
-    },
-    #[cfg(fairy_stockfish_x86_64_avx512_exe)]
-    Asset {
-        name: "fairy-stockfish-x86-64-avx512.exe",
-        data: include_bytes!(concat!(
-            env!("OUT_DIR"),
-            "/fairy-stockfish-x86-64-avx512.exe.xz"
-        )),
-        needs: Cpu::SF_AVX512,
-        executable: true,
-    },
-    #[cfg(fairy_stockfish_x86_64_bmi2_exe)]
-    Asset {
-        name: "fairy-stockfish-x86-64-bmi2.exe",
-        data: include_bytes!(concat!(
-            env!("OUT_DIR"),
-            "/fairy-stockfish-x86-64-bmi2.exe.xz"
-        )),
-        needs: Cpu::SF_BMI2,
-        executable: true,
-    },
-    #[cfg(fairy_stockfish_x86_64_avx2_exe)]
-    Asset {
-        name: "fairy-stockfish-x86-64-avx2.exe",
-        data: include_bytes!(concat!(
-            env!("OUT_DIR"),
-            "/fairy-stockfish-x86-64-avx2.exe.xz"
-        )),
-        needs: Cpu::SF_AVX2,
-        executable: true,
-    },
-    #[cfg(fairy_stockfish_x86_64_sse41_popcnt_exe)]
-    Asset {
-        name: "fairy-stockfish-x86-64-sse41-popcnt.exe",
-        data: include_bytes!(concat!(
-            env!("OUT_DIR"),
-            "/fairy-stockfish-x86-64-sse41-popcnt.exe.xz"
-        )),
-        needs: Cpu::SF_SSE41_POPCNT,
-        executable: true,
-    },
-    #[cfg(fairy_stockfish_x86_64_exe)]
-    Asset {
-        name: "fairy-stockfish-x86-64.exe",
-        data: include_bytes!(concat!(env!("OUT_DIR"), "/fairy-stockfish-x86-64.exe.xz")),
-        needs: Cpu::SF_SSE2,
-        executable: true,
-    },
-    // OSX (aarch64)
-    #[cfg(fairy_stockfish_apple_silicon)]
-    Asset {
-        name: "fairy-stockfish-apple-silicon",
-        data: include_bytes!(concat!(
-            env!("OUT_DIR"),
-            "/fairy-stockfish-apple-silicon.xz"
-        )),
-        needs: Cpu::empty(),
-        executable: true,
-    },
-];
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum EngineFlavor {
@@ -423,7 +128,7 @@ impl EngineFlavor {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ByEngineFlavor<T> {
     pub official: T,
     pub multi_variant: T,
@@ -465,33 +170,48 @@ impl EvalFlavor {
 
 #[derive(Debug)]
 pub struct Assets {
-    pub sf_name: &'static str,
-    pub nnue: String,
+    pub sf_name: String,
     pub stockfish: ByEngineFlavor<PathBuf>,
     _dir: TempDir, // Will be deleted when dropped
 }
 
 impl Assets {
     pub fn prepare(cpu: Cpu) -> io::Result<Assets> {
+        let mut sf_name = None;
+        let mut stockfish = ByEngineFlavor::<Option<PathBuf>>::default();
         let dir = tempfile::Builder::new().prefix("fishnet-").tempdir()?;
-        let sf = STOCKFISH
-            .iter()
-            .find(|a| cpu.contains(a.needs))
-            .expect("compatible stockfish");
+
+        let mut archive = tar::Archive::new(zstd::Decoder::new(ASSETS_TAR_ZST)?);
+        for entry in archive.entries()? {
+            let mut entry = entry?;
+            let path = entry.path()?;
+            let target_path = dir.path().join(&path); // Trusted
+            let filename = path.to_str().expect("path printable");
+            if filename.starts_with("stockfish-") {
+                if stockfish.official.is_none() && cpu.contains(Cpu::requirements(filename)) {
+                    sf_name = Some(filename.to_owned());
+                    stockfish.official = Some(target_path.clone());
+                } else {
+                    continue;
+                }
+            }
+            if filename.starts_with("fairy-stockfish-") {
+                if stockfish.multi_variant.is_none() && cpu.contains(Cpu::requirements(filename)) {
+                    stockfish.multi_variant = Some(target_path.clone());
+                } else {
+                    continue;
+                }
+            }
+            entry.unpack(target_path)?;
+        }
+
         Ok(Assets {
-            nnue: NNUE
-                .create(dir.path())?
-                .to_str()
-                .expect("nnue path printable")
-                .to_owned(),
-            sf_name: sf.name,
+            sf_name: sf_name.expect("compatible stockfish"),
             stockfish: ByEngineFlavor {
-                official: sf.create(dir.path())?,
-                multi_variant: STOCKFISH_MV
-                    .iter()
-                    .find(|a| cpu.contains(a.needs))
-                    .expect("compatible stockfish")
-                    .create(dir.path())?,
+                official: stockfish.official.expect("compatible stockfish"),
+                multi_variant: stockfish
+                    .multi_variant
+                    .expect("compatible multi-variant stockfish"),
             },
             _dir: dir,
         })

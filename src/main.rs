@@ -37,7 +37,6 @@ use crate::{
     configure::{Command, Cores, CpuPriority, Opt},
     ipc::{Position, PositionFailed, Pull},
     logger::{Logger, ProgressAt},
-    stockfish::StockfishInit,
     util::RandomizedBackoff,
 };
 
@@ -304,13 +303,8 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
 
                     // Reset budget, start engine and spawn actor.
                     budget = default_budget;
-                    let (sf, sf_actor) = stockfish::channel(
-                        assets.stockfish.get(flavor).clone(),
-                        StockfishInit {
-                            nnue: assets.nnue.clone(),
-                        },
-                        logger.clone(),
-                    );
+                    let (sf, sf_actor) =
+                        stockfish::channel(assets.stockfish.get(flavor).clone(), logger.clone());
                     let join_handle = tokio::spawn(sf_actor.run());
                     (sf, join_handle)
                 };
