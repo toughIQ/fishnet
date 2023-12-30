@@ -181,7 +181,7 @@ impl Assets {
         let mut stockfish = ByEngineFlavor::<Option<PathBuf>>::default();
         let dir = tempfile::Builder::new().prefix("fishnet-").tempdir()?;
 
-        let mut archive = tar::Archive::new(zstd::Decoder::new(ASSETS_TAR_ZST)?);
+        let mut archive = tar::Archive::new(ruzstd::StreamingDecoder::new(ASSETS_TAR_ZST)?);
         for entry in archive.entries()? {
             let mut entry = entry?;
             let path = entry.path()?;
