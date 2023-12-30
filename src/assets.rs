@@ -1,11 +1,18 @@
-use std::{fmt, io, path::PathBuf};
+use std::{
+    fmt,
+    fs::File,
+    io,
+    path::{Path, PathBuf},
+    str,
+};
 
+use ar::Archive;
 use bitflags::bitflags;
 use serde::Serialize;
 use tempfile::TempDir;
 use xz2::read::XzDecoder;
 
-static ASSETS_TAR_XZ: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/assets.tar.xz"));
+static ASSETS_AR_XZ: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/assets.ar.xz"));
 
 bitflags! {
     #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -182,12 +189,11 @@ impl Assets {
         let mut stockfish = ByEngineFlavor::<Option<PathBuf>>::default();
         let dir = tempfile::Builder::new().prefix("fishnet-").tempdir()?;
 
-        let mut archive = tar::Archive::new(XzDecoder::new(ASSETS_TAR_XZ));
-        for entry in archive.entries()? {
+        let mut archive = Archive::new(XzDecoder::new(ASSETS_AR_XZ));
+        while let Some(entry) = archive.next_entry() {
             let mut entry = entry?;
-            let path = entry.path()?;
-            let target_path = dir.path().join(&path); // Trusted
-            let filename = path.to_str().expect("path printable");
+            let filename = str::from_utf8(entry.header().identifier()).expect("utf-8 filename");
+            let target_path = dir.path().join(filename); // Trusted
             if filename.starts_with("stockfish-") {
                 if stockfish.official.is_none() && cpu.contains(Cpu::requirements(filename)) {
                     sf_name = Some(filename.to_owned());
@@ -203,7 +209,8 @@ impl Assets {
                     continue;
                 }
             }
-            entry.unpack(target_path)?;
+            let mode = entry.header().mode();
+            io::copy(&mut entry, &mut create_file(&target_path, mode)?)?;
         }
 
         Ok(Assets {
@@ -217,4 +224,19 @@ impl Assets {
             _dir: dir,
         })
     }
+}
+
+#[cfg(unix)]
+fn create_file(path: &Path, mode: u32) -> io::Result<File> {
+    use std::os::unix::fs::OpenOptionsExt as _;
+    File::options()
+        .create_new(true)
+        .write(true)
+        .mode(mode)
+        .open(path)
+}
+
+#[cfg(not(unix))]
+fn create_file(path: &Path, _mode: u32) -> io::Result<File> {
+    File::options().create_new(true).write(true).open(path)
 }

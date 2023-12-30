@@ -10,11 +10,10 @@ const EVAL_FILE: &str = "nn-5af11540bbfe.nnue";
 fn main() {
     hooks();
 
-    let mut archive = tar::Builder::new(XzEncoder::new(
-        File::create(Path::new(&env::var("OUT_DIR").unwrap()).join("assets.tar.xz")).unwrap(),
+    let mut archive = ar::Builder::new(XzEncoder::new(
+        File::create(Path::new(&env::var("OUT_DIR").unwrap()).join("assets.ar.xz")).unwrap(),
         6,
     ));
-    archive.mode(tar::HeaderMode::Deterministic);
     stockfish_build(&mut archive);
     stockfish_eval_file(EVAL_FILE, &mut archive);
     archive.into_inner().unwrap().finish().unwrap();
@@ -90,7 +89,7 @@ macro_rules! has_aarch64_builder_feature {
     }};
 }
 
-fn stockfish_build<W: Write>(archive: &mut tar::Builder<W>) {
+fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
     // Note: The target arch of the build script is the architecture of the
     // builder and decides if pgo is possible. It is not necessarily the same
     // as CARGO_CFG_TARGET_ARCH, the target arch of the fishnet binary.
@@ -232,7 +231,7 @@ impl Target {
         flavor: Flavor,
         src_dir: &'static str,
         name: &'static str,
-        archive: &mut tar::Builder<W>,
+        archive: &mut ar::Builder<W>,
     ) {
         let release = env::var("PROFILE").unwrap() == "release";
         let windows = env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "windows";
@@ -340,9 +339,7 @@ impl Target {
             "$(MAKE) strip"
         );
 
-        archive
-            .append_path_with_name(Path::new(src_dir).join(&exe), exe)
-            .unwrap();
+        archive.append_path(Path::new(src_dir).join(exe)).unwrap();
 
         assert!(
             Command::new(make)
@@ -356,11 +353,11 @@ impl Target {
         );
     }
 
-    fn build_official<W: Write>(&self, archive: &mut tar::Builder<W>) {
+    fn build_official<W: Write>(&self, archive: &mut ar::Builder<W>) {
         self.build(Flavor::Official, "Stockfish/src", "stockfish", archive);
     }
 
-    fn build_multi_variant<W: Write>(&self, archive: &mut tar::Builder<W>) {
+    fn build_multi_variant<W: Write>(&self, archive: &mut ar::Builder<W>) {
         self.build(
             Flavor::MultiVariant,
             "Fairy-Stockfish/src",
@@ -369,14 +366,14 @@ impl Target {
         );
     }
 
-    fn build_both<W: Write>(&self, archive: &mut tar::Builder<W>) {
+    fn build_both<W: Write>(&self, archive: &mut ar::Builder<W>) {
         self.build_official(archive);
         self.build_multi_variant(archive);
     }
 }
 
-fn stockfish_eval_file<W: Write>(name: &str, archive: &mut tar::Builder<W>) {
+fn stockfish_eval_file<W: Write>(name: &str, archive: &mut ar::Builder<W>) {
     archive
-        .append_path_with_name(Path::new("Stockfish").join("src").join(name), name)
+        .append_path(Path::new("Stockfish").join("src").join(name))
         .unwrap();
 }

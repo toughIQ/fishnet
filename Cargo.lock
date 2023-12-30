@@ -90,6 +90,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ar"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d67af77d68a931ecd5cbd8a3b5987d63a1d1d1278f7f6a60ae33db485cdebb69"
+
+[[package]]
 name = "arrayvec"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -377,6 +383,7 @@ checksum = "25cbce373ec4653f1a01a31e8a5e5ec0c622dc27ff9c4e6606eefef5cbbed4a5"
 name = "fishnet"
 version = "2.7.2-dev"
 dependencies = [
+ "ar",
  "arrayvec",
  "bitflags 2.4.1",
  "clap",
@@ -395,7 +402,6 @@ dependencies = [
  "serde_with",
  "shakmaty",
  "shell-escape",
- "tar",
  "tempfile",
  "thousands",
  "thread-priority",
@@ -1302,14 +1308,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a75fb188eb626b924683e3b95e3a48e63551fcfb51949de2f06a9d91dbee93c9"
 dependencies = [
  "core-foundation-sys",
- "libc",
-]
-
-[[package]]
-name = "tar"
-version = "0.4.38"
-source = "git+https://github.com/chris-morgan/tar-rs?rev=b031dee050b6efb242b14f93b27a9734d0c334fb#b031dee050b6efb242b14f93b27a9734d0c334fb"
-dependencies = [
  "libc",
 ]
 
