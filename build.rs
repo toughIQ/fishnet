@@ -6,6 +6,59 @@ use glob::glob;
 
 const EVAL_FILE: &str = "nn-5af11540bbfe.nnue";
 
+fn main() {
+    hooks();
+
+    let mut archive = tar::Builder::new(
+        zstd::Encoder::new(
+            File::create(Path::new(&env::var("OUT_DIR").unwrap()).join("assets.tar.zst")).unwrap(),
+            19,
+        )
+        .unwrap(),
+    );
+    archive.mode(tar::HeaderMode::Deterministic);
+    stockfish_build(&mut archive);
+    stockfish_eval_file(EVAL_FILE, &mut archive);
+    archive.into_inner().unwrap().finish().unwrap();
+
+    // Resource compilation may fail when toolchain does not match target,
+    // e.g. windows-msvc toolchain with windows-gnu target.
+    #[cfg(target_family = "windows")]
+    winres::WindowsResource::new()
+        .set_icon("favicon.ico")
+        .compile()
+        .unwrap_or_else(|err| {
+            println!("cargo:warning=Resource compiler not invoked: {}", err);
+        });
+}
+
+fn hooks() {
+    println!("cargo:rerun-if-env-changed=CXX");
+    println!("cargo:rerun-if-env-changed=CXXFLAGS");
+    println!("cargo:rerun-if-env-changed=DEPENDFLAGS");
+    println!("cargo:rerun-if-env-changed=LDFLAGS");
+    println!("cargo:rerun-if-env-changed=MAKE");
+    println!("cargo:rerun-if-env-changed=SDE_PATH");
+
+    println!("cargo:rerun-if-changed=Stockfish/src/Makefile");
+    for entry in glob("Stockfish/src/**/*.cpp").unwrap() {
+        println!("cargo:rerun-if-changed={}", entry.unwrap().display());
+    }
+    for entry in glob("Stockfish/src/**/*.h").unwrap() {
+        println!("cargo:rerun-if-changed={}", entry.unwrap().display());
+    }
+
+    println!("cargo:rerun-if-changed=Fairy-Stockfish/src/Makefile");
+    for entry in glob("Fairy-Stockfish/src/**/*.cpp").unwrap() {
+        println!("cargo:rerun-if-changed={}", entry.unwrap().display());
+    }
+    for entry in glob("Fairy-Stockfish/src/**/*.h").unwrap() {
+        println!("cargo:rerun-if-changed={}", entry.unwrap().display());
+    }
+
+    println!("cargo:rerun-if-changed=favicon.ico");
+}
+
 fn has_target_feature(feature: &str) -> bool {
     env::var("CARGO_CFG_TARGET_FEATURE")
         .unwrap()
@@ -37,6 +90,130 @@ macro_rules! has_aarch64_builder_feature {
             false
         }
     }};
+}
+
+fn stockfish_build<W: Write>(archive: &mut tar::Builder<W>) {
+    // Note: The target arch of the build script is the architecture of the
+    // builder and decides if pgo is possible. It is not necessarily the same
+    // as CARGO_CFG_TARGET_ARCH, the target arch of the fishnet binary.
+    //
+    // Can skip building more broadly compatible Stockfish binaries and return
+    // early when building with something like -C target-cpu=native.
+
+    match env::var("CARGO_CFG_TARGET_ARCH").unwrap().as_str() {
+        "x86_64" => {
+            let sde = cfg!(target_arch = "x86_64");
+
+            Target {
+                arch: "x86-64-vnni256",
+                native: has_x86_64_builder_feature!("avx512dq")
+                    && has_x86_64_builder_feature!("avx512vl")
+                    && has_x86_64_builder_feature!("avx512vnni"),
+                sde,
+            }
+            .build_both(archive);
+
+            if has_target_feature("avx512dq")
+                && has_target_feature("avx512vl")
+                && has_target_feature("avx512vnni")
+            {
+                return;
+            }
+
+            Target {
+                arch: "x86-64-avx512",
+                native: has_x86_64_builder_feature!("avx512f")
+                    && has_x86_64_builder_feature!("avx512bw"),
+                sde,
+            }
+            .build_both(archive);
+
+            if has_target_feature("avx512f") && has_target_feature("avx512bw") {
+                return;
+            }
+
+            Target {
+                arch: "x86-64-bmi2",
+                native: has_x86_64_builder_feature!("bmi2"),
+                sde,
+            }
+            .build_both(archive);
+
+            if has_target_feature("bmi2") {
+                // Fast bmi2 can not be detected at compile time.
+            }
+
+            Target {
+                arch: "x86-64-avx2",
+                native: has_x86_64_builder_feature!("avx2"),
+                sde,
+            }
+            .build_both(archive);
+
+            if has_target_feature("avx2") {
+                return;
+            }
+
+            Target {
+                arch: "x86-64-sse41-popcnt",
+                native: has_x86_64_builder_feature!("sse4.1")
+                    && has_x86_64_builder_feature!("popcnt"),
+                sde,
+            }
+            .build_both(archive);
+
+            if has_target_feature("sse4.1") && has_target_feature("popcnt") {
+                return;
+            }
+
+            Target {
+                arch: "x86-64",
+                native: cfg!(target_arch = "x86_64"),
+                sde,
+            }
+            .build_both(archive);
+        }
+        "aarch64" => {
+            let native = cfg!(target_arch = "aarch64");
+
+            if env::var("CARGO_CFG_TARGET_OS").unwrap() == "macos" {
+                Target {
+                    arch: "apple-silicon",
+                    native,
+                    sde: false,
+                }
+                .build_both(archive);
+            } else {
+                Target {
+                    arch: "armv8-dotprod",
+                    native: native && has_aarch64_builder_feature!("dotprod"),
+                    sde: false,
+                }
+                .build_official(archive);
+
+                Target {
+                    arch: "armv8",
+                    native,
+                    sde: false,
+                }
+                .build_multi_variant(archive);
+
+                if has_target_feature("dotprod") {
+                    return;
+                }
+
+                Target {
+                    arch: "armv8",
+                    native,
+                    sde: false,
+                }
+                .build_official(archive);
+            }
+        }
+        target_arch => {
+            unimplemented!("Stockfish build for {} not supported", target_arch);
+        }
+    }
 }
 
 struct Target {
@@ -200,185 +377,8 @@ impl Target {
     }
 }
 
-fn stockfish_build<W: Write>(archive: &mut tar::Builder<W>) {
-    // Note: The target arch of the build script is the architecture of the
-    // builder and decides if pgo is possible. It is not necessarily the same
-    // as CARGO_CFG_TARGET_ARCH, the target arch of the fishnet binary.
-    //
-    // Can skip building more broadly compatible Stockfish binaries and return
-    // early when building with something like -C target-cpu=native.
-
-    match env::var("CARGO_CFG_TARGET_ARCH").unwrap().as_str() {
-        "x86_64" => {
-            let sde = cfg!(target_arch = "x86_64");
-
-            Target {
-                arch: "x86-64-vnni256",
-                native: has_x86_64_builder_feature!("avx512dq")
-                    && has_x86_64_builder_feature!("avx512vl")
-                    && has_x86_64_builder_feature!("avx512vnni"),
-                sde,
-            }
-            .build_both(archive);
-
-            if has_target_feature("avx512dq")
-                && has_target_feature("avx512vl")
-                && has_target_feature("avx512vnni")
-            {
-                return;
-            }
-
-            Target {
-                arch: "x86-64-avx512",
-                native: has_x86_64_builder_feature!("avx512f")
-                    && has_x86_64_builder_feature!("avx512bw"),
-                sde,
-            }
-            .build_both(archive);
-
-            if has_target_feature("avx512f") && has_target_feature("avx512bw") {
-                return;
-            }
-
-            Target {
-                arch: "x86-64-bmi2",
-                native: has_x86_64_builder_feature!("bmi2"),
-                sde,
-            }
-            .build_both(archive);
-
-            if has_target_feature("bmi2") {
-                // Fast bmi2 can not be detected at compile time.
-            }
-
-            Target {
-                arch: "x86-64-avx2",
-                native: has_x86_64_builder_feature!("avx2"),
-                sde,
-            }
-            .build_both(archive);
-
-            if has_target_feature("avx2") {
-                return;
-            }
-
-            Target {
-                arch: "x86-64-sse41-popcnt",
-                native: has_x86_64_builder_feature!("sse4.1")
-                    && has_x86_64_builder_feature!("popcnt"),
-                sde,
-            }
-            .build_both(archive);
-
-            if has_target_feature("sse4.1") && has_target_feature("popcnt") {
-                return;
-            }
-
-            Target {
-                arch: "x86-64",
-                native: cfg!(target_arch = "x86_64"),
-                sde,
-            }
-            .build_both(archive);
-        }
-        "aarch64" => {
-            let native = cfg!(target_arch = "aarch64");
-
-            if env::var("CARGO_CFG_TARGET_OS").unwrap() == "macos" {
-                Target {
-                    arch: "apple-silicon",
-                    native,
-                    sde: false,
-                }
-                .build_both(archive);
-            } else {
-                Target {
-                    arch: "armv8-dotprod",
-                    native: native && has_aarch64_builder_feature!("dotprod"),
-                    sde: false,
-                }
-                .build_official(archive);
-
-                Target {
-                    arch: "armv8",
-                    native,
-                    sde: false,
-                }
-                .build_multi_variant(archive);
-
-                if has_target_feature("dotprod") {
-                    return;
-                }
-
-                Target {
-                    arch: "armv8",
-                    native,
-                    sde: false,
-                }
-                .build_official(archive);
-            }
-        }
-        target_arch => {
-            unimplemented!("Stockfish build for {} not supported", target_arch);
-        }
-    }
-}
-
-fn hooks() {
-    println!("cargo:rerun-if-env-changed=CXX");
-    println!("cargo:rerun-if-env-changed=CXXFLAGS");
-    println!("cargo:rerun-if-env-changed=DEPENDFLAGS");
-    println!("cargo:rerun-if-env-changed=LDFLAGS");
-    println!("cargo:rerun-if-env-changed=MAKE");
-    println!("cargo:rerun-if-env-changed=SDE_PATH");
-
-    println!("cargo:rustc-env=EVAL_FILE={EVAL_FILE}");
-    println!("cargo:rerun-if-changed=Stockfish/src/Makefile");
-    for entry in glob("Stockfish/src/**/*.cpp").unwrap() {
-        println!("cargo:rerun-if-changed={}", entry.unwrap().display());
-    }
-    for entry in glob("Stockfish/src/**/*.h").unwrap() {
-        println!("cargo:rerun-if-changed={}", entry.unwrap().display());
-    }
-
-    println!("cargo:rerun-if-changed=Fairy-Stockfish/src/Makefile");
-    for entry in glob("Fairy-Stockfish/src/**/*.cpp").unwrap() {
-        println!("cargo:rerun-if-changed={}", entry.unwrap().display());
-    }
-    for entry in glob("Fairy-Stockfish/src/**/*.h").unwrap() {
-        println!("cargo:rerun-if-changed={}", entry.unwrap().display());
-    }
-
-    println!("cargo:rerun-if-changed=favicon.ico");
-}
-
-fn main() {
-    hooks();
-
-    let mut archive = tar::Builder::new(
-        zstd::Encoder::new(
-            File::create(Path::new(&env::var("OUT_DIR").unwrap()).join("assets.tar.zst")).unwrap(),
-            19,
-        )
-        .unwrap(),
-    );
-    archive.mode(tar::HeaderMode::Deterministic);
-    let eval_file = Path::new("Stockfish")
-        .join("src")
-        .join("nn-5af11540bbfe.nnue");
+fn stockfish_eval_file<W: Write>(name: &str, archive: &mut tar::Builder<W>) {
     archive
-        .append_path_with_name(&eval_file, eval_file.file_name().unwrap())
+        .append_path_with_name(Path::new("Stockfish").join("src").join(name), name)
         .unwrap();
-    stockfish_build(&mut archive);
-    archive.into_inner().unwrap().finish().unwrap();
-
-    // Resource compilation may fail when toolchain does not match target,
-    // e.g. windows-msvc toolchain with windows-gnu target.
-    #[cfg(target_family = "windows")]
-    winres::WindowsResource::new()
-        .set_icon("favicon.ico")
-        .compile()
-        .unwrap_or_else(|err| {
-            println!("cargo:warning=Resource compiler not invoked: {}", err);
-        });
 }
