@@ -367,7 +367,6 @@ dependencies = [
  "fastrand 2.0.1",
  "glob",
  "home",
- "libc",
  "raw-cpuid",
  "reqwest",
  "rustls",
