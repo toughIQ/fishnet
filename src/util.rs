@@ -3,7 +3,7 @@ use std::{
     time::Duration,
 };
 
-use rand::Rng;
+use fastrand::Rng;
 
 use crate::configure::MaxBackoff;
 
@@ -11,6 +11,7 @@ use crate::configure::MaxBackoff;
 pub struct RandomizedBackoff {
     duration: Duration,
     max_backoff: MaxBackoff,
+    rng: Rng,
 }
 
 impl RandomizedBackoff {
@@ -18,6 +19,7 @@ impl RandomizedBackoff {
         RandomizedBackoff {
             duration: Duration::default(),
             max_backoff,
+            rng: Rng::new(),
         }
     }
 
@@ -26,7 +28,7 @@ impl RandomizedBackoff {
         let cap = max(low, Duration::from(self.max_backoff).as_millis() as u64);
         let last = self.duration.as_millis() as u64;
         let high = 4 * max(low, last);
-        let t = min(cap, rand::thread_rng().gen_range(low..high));
+        let t = min(cap, self.rng.u64(low..high));
         self.duration = Duration::from_millis(t);
         self.duration
     }
