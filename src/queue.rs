@@ -146,7 +146,7 @@ impl QueueState {
 
     fn status_bar(&self) -> QueueStatusBar {
         QueueStatusBar {
-            pending: self.incoming.len(),
+            pending: self.pending.values().map(|p| p.pending()).sum(),
             cores: self.cores,
         }
     }

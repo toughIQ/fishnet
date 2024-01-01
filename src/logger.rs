@@ -84,7 +84,7 @@ impl Logger {
         P: Into<ProgressAt>,
     {
         let line = format!(
-            "{} {} cores, {} chunks, latest: {}",
+            "{} {} cores, {} queued, latest: {}",
             queue,
             queue.cores,
             queue.pending,
