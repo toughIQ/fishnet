@@ -35,7 +35,7 @@ use tokio::{
 use crate::{
     assets::{Assets, ByEngineFlavor, Cpu, EngineFlavor},
     configure::{Command, Cores, CpuPriority, Opt},
-    ipc::{Position, PositionFailed, Pull},
+    ipc::{ChunkFailed, Pull, Chunk},
     logger::{Logger, ProgressAt},
     util::RandomizedBackoff,
 };
@@ -249,7 +249,7 @@ async fn run(opt: Opt, logger: &Logger) {
         }
     }
 
-    // Shutdown queue to abort remaining jobs.
+    // Shutdown queue to abort remaining chunks.
     queue.shutdown().await;
 
     // Wait for all workers.
@@ -266,7 +266,7 @@ async fn run(opt: Opt, logger: &Logger) {
 async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: Logger) {
     logger.debug(&format!("Started worker {i}."));
 
-    let mut job: Option<Position> = None;
+    let mut chunk: Option<Chunk> = None;
     let mut engine = ByEngineFlavor {
         official: None,
         multi_variant: None,
@@ -277,10 +277,10 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
     let mut budget = default_budget;
 
     loop {
-        let response = if let Some(job) = job.take() {
+        let responses = if let Some(chunk) = chunk.take() {
             // Ensure engine process is ready.
-            let flavor = job.flavor;
-            let context = ProgressAt::from(&job);
+            let flavor = chunk.flavor;
+            let context = ProgressAt::from(&chunk);
             let (mut sf, join_handle) =
                 if let Some((sf, join_handle)) = engine.get_mut(flavor).take() {
                     (sf, join_handle)
@@ -310,11 +310,11 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                 };
 
             // Provide time budget.
-            budget = min(default_budget, budget) + job.work.timeout();
+            budget = min(default_budget, budget) + chunk.timeout();
 
             // Analyse or play.
             let timer = Instant::now();
-            let batch_id = job.work.id();
+            let batch_id = chunk.work.id();
             let res = tokio::select! {
                 _ = tx.closed() => {
                     logger.debug(&format!("Worker {i} shutting down engine early"));
@@ -322,7 +322,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                     join_handle.await.expect("join");
                     break;
                 }
-                res = sf.go(job) => {
+                res = sf.go_multiple(chunk) => {
                     match res {
                         Ok(res) => {
                             *engine.get_mut(flavor) = Some((sf, join_handle));
@@ -344,7 +344,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                     });
                     drop(sf);
                     join_handle.await.expect("join");
-                    Err(PositionFailed { batch_id })
+                    Err(ChunkFailed { batch_id })
                 }
             };
 
@@ -354,14 +354,14 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                 logger.debug(&format!("Low engine timeout budget: {budget:?}"));
             }
 
-            Some(res)
+            res
         } else {
-            None
+            Ok(Vec::new())
         };
 
         let (callback, waiter) = oneshot::channel();
 
-        if tx.send(Pull { response, callback }).await.is_err() {
+        if tx.send(Pull { responses, callback }).await.is_err() {
             logger.debug(&format!(
                 "Worker {i} was about to send result, but shutting down"
             ));
@@ -372,7 +372,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
             _ = tx.closed() => break,
             res = waiter => {
                 match res {
-                    Ok(next_job) => job = Some(next_job),
+                    Ok(next_chunk) => chunk = Some(next_chunk),
                     Err(_) => break,
                 }
             }

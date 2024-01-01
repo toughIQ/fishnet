@@ -14,8 +14,8 @@ use tokio::{
 
 use crate::{
     api::{Score, Work},
-    assets::EngineFlavor,
-    ipc::{Matrix, Position, PositionFailed, PositionResponse},
+    assets::{EngineFlavor, EvalFlavor},
+    ipc::{Matrix, Position, ChunkFailed, PositionResponse, Chunk},
     logger::Logger,
     util::NevermindExt as _,
 };
@@ -38,14 +38,14 @@ pub struct StockfishStub {
 }
 
 impl StockfishStub {
-    pub async fn go(&mut self, position: Position) -> Result<PositionResponse, PositionFailed> {
-        let (callback, response) = oneshot::channel();
-        let batch_id = position.work.id();
+    pub async fn go_multiple(&mut self, chunk: Chunk) -> Result<Vec<PositionResponse>, ChunkFailed> {
+        let (callback, responses) = oneshot::channel();
+        let batch_id = chunk.work.id();
         self.tx
-            .send(StockfishMessage::Go { position, callback })
+            .send(StockfishMessage::GoMultiple { chunk, callback })
             .await
-            .map_err(|_| PositionFailed { batch_id })?;
-        response.await.map_err(|_| PositionFailed { batch_id })
+            .map_err(|_| ChunkFailed { batch_id })?;
+        responses.await.map_err(|_| ChunkFailed { batch_id })
     }
 }
 
@@ -58,9 +58,9 @@ pub struct StockfishActor {
 
 #[derive(Debug)]
 enum StockfishMessage {
-    Go {
-        position: Position,
-        callback: oneshot::Sender<PositionResponse>,
+    GoMultiple {
+        chunk: Chunk,
+        callback: oneshot::Sender<Vec<PositionResponse>>,
     },
 }
 
@@ -176,13 +176,13 @@ impl StockfishActor {
         msg: StockfishMessage,
     ) -> Result<(), EngineError> {
         match msg {
-            StockfishMessage::Go {
+            StockfishMessage::GoMultiple {
                 mut callback,
-                position,
+                chunk,
             } => {
                 tokio::select! {
                     _ = callback.closed() => Err(EngineError::Shutdown),
-                    res = self.go(stdout, stdin, position) => {
+                    res = self.go_multiple(stdout, stdin, chunk) => {
                         callback.send(res?).nevermind("go receiver dropped");
                         Ok(())
                     }
@@ -220,12 +220,7 @@ impl StockfishActor {
         Ok(())
     }
 
-    async fn go(
-        &mut self,
-        stdout: &mut Stdout,
-        stdin: &mut BufWriter<ChildStdin>,
-        position: Position,
-    ) -> io::Result<PositionResponse> {
+    async fn go_multiple(&mut self, stdout: &mut Stdout, stdin: &mut BufWriter<ChildStdin>, chunk: Chunk) -> io::Result<Vec<PositionResponse>> {
         // Set global options (once).
         self.init(stdout, stdin).await?;
 
@@ -237,17 +232,17 @@ impl StockfishActor {
             .write_all(
                 format!(
                     "setoption name Use NNUE value {}\n",
-                    position.flavor.eval_flavor().is_nnue()
+                    chunk.flavor.eval_flavor().is_nnue()
                 )
                 .as_bytes(),
             )
             .await?;
-        if position.flavor == EngineFlavor::MultiVariant {
+        if chunk.flavor == EngineFlavor::MultiVariant {
             stdin
                 .write_all(
                     format!(
                         "setoption name UCI_Variant value {}\n",
-                        position.variant.uci()
+                        chunk.variant.uci()
                     )
                     .as_bytes(),
                 )
@@ -255,10 +250,24 @@ impl StockfishActor {
         }
         stdin
             .write_all(
-                format!("setoption name MultiPV value {}\n", position.work.multipv()).as_bytes(),
+                format!("setoption name MultiPV value {}\n", chunk.work.multipv()).as_bytes(),
             )
             .await?;
 
+        let mut responses = Vec::new();
+        for position in chunk.positions {
+            responses.push(self.go(stdout, stdin, chunk.flavor.eval_flavor(), position).await?);
+        }
+        Ok(responses)
+    }
+
+    async fn go(
+        &mut self,
+        stdout: &mut Stdout,
+        stdin: &mut BufWriter<ChildStdin>,
+        eval_flavor: EvalFlavor,
+        position: Position,
+    ) -> io::Result<PositionResponse> {
         // Setup position.
         let moves = position
             .moves
@@ -317,7 +326,7 @@ impl StockfishActor {
                 let mut go = vec![
                     "go".to_owned(),
                     "nodes".to_owned(),
-                    nodes.get(position.flavor.eval_flavor()).to_string(),
+                    nodes.get(eval_flavor).to_string(),
                 ];
 
                 if let Some(depth) = depth {
@@ -353,7 +362,6 @@ impl StockfishActor {
                         work: position.work,
                         position_id: position.position_id,
                         url: position.url,
-                        skip: position.skip,
                         best_move: parts.next().and_then(|m| m.parse().ok()),
                         scores,
                         depth,

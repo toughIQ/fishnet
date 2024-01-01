@@ -12,7 +12,7 @@ use url::Url;
 use crate::{
     api::{BatchId, PositionId},
     configure::Verbose,
-    ipc::{Position, PositionResponse},
+    ipc::{Chunk, Position, PositionResponse},
     util::NevermindExt as _,
 };
 
@@ -84,7 +84,7 @@ impl Logger {
         P: Into<ProgressAt>,
     {
         let line = format!(
-            "{} {} cores, {} queued, latest: {}",
+            "{} {} cores, {} chunks, latest: {}",
             queue,
             queue.cores,
             queue.pending,
@@ -129,12 +129,22 @@ impl fmt::Display for ProgressAt {
     }
 }
 
+impl From<&Chunk> for ProgressAt {
+    fn from(chunk: &Chunk) -> ProgressAt {
+        ProgressAt {
+            batch_id: chunk.work.id(),
+            batch_url: chunk.positions.last().and_then(|pos| pos.url.clone()),
+            position_id: chunk.positions.last().and_then(|pos| pos.position_id),
+        }
+    }
+}
+
 impl From<&Position> for ProgressAt {
     fn from(pos: &Position) -> ProgressAt {
         ProgressAt {
             batch_id: pos.work.id(),
             batch_url: pos.url.clone(),
-            position_id: Some(pos.position_id),
+            position_id: pos.position_id,
         }
     }
 }
@@ -144,7 +154,7 @@ impl From<&PositionResponse> for ProgressAt {
         ProgressAt {
             batch_id: pos.work.id(),
             batch_url: pos.url.clone(),
-            position_id: Some(pos.position_id),
+            position_id: pos.position_id,
         }
     }
 }

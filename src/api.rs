@@ -155,7 +155,7 @@ impl Work {
         }
     }
 
-    pub fn timeout(&self) -> Duration {
+    pub fn timeout_per_position(&self) -> Duration {
         match *self {
             Work::Analysis { timeout, .. } => timeout,
             Work::Move { .. } => Duration::from_secs(2),

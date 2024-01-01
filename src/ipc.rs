@@ -9,16 +9,29 @@ use crate::{
     assets::EngineFlavor,
 };
 
+#[derive(Debug)]
+pub struct Chunk {
+    pub work: Work,
+    pub variant: Variant,
+    pub flavor: EngineFlavor,
+    pub positions: Vec<Position>,
+}
+
+impl Chunk {
+    pub const MAX_POSITIONS: usize = 5;
+
+    pub fn timeout(&self) -> Duration {
+        self.positions.len() as u32 * self.work.timeout_per_position()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Position {
     pub work: Work,
-    pub position_id: PositionId,
-    pub flavor: EngineFlavor,
+    pub position_id: Option<PositionId>,
     pub url: Option<Url>,
-
     pub skip: bool,
 
-    pub variant: Variant,
     pub root_fen: Fen,
     pub moves: Vec<Uci>,
 }
@@ -26,10 +39,8 @@ pub struct Position {
 #[derive(Debug, Clone)]
 pub struct PositionResponse {
     pub work: Work,
-    pub position_id: PositionId,
+    pub position_id: Option<PositionId>,
     pub url: Option<Url>,
-
-    pub skip: bool,
 
     pub scores: Matrix<Score>,
     pub pvs: Matrix<Vec<Uci>>,
@@ -93,23 +104,23 @@ impl<T> Matrix<T> {
 }
 
 #[derive(Debug)]
-pub struct PositionFailed {
+pub struct ChunkFailed {
     pub batch_id: BatchId,
 }
 
 #[derive(Debug)]
 pub struct Pull {
-    pub response: Option<Result<PositionResponse, PositionFailed>>,
-    pub callback: oneshot::Sender<Position>,
+    pub responses: Result<Vec<PositionResponse>, ChunkFailed>,
+    pub callback: oneshot::Sender<Chunk>,
 }
 
 impl Pull {
     pub fn split(
         self,
     ) -> (
-        Option<Result<PositionResponse, PositionFailed>>,
-        oneshot::Sender<Position>,
+        Result<Vec<PositionResponse>, ChunkFailed>,
+        oneshot::Sender<Chunk>,
     ) {
-        (self.response, self.callback)
+        (self.responses, self.callback)
     }
 }

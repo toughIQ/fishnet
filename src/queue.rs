@@ -2,6 +2,7 @@ use std::{
     cmp::{max, min},
     collections::{hash_map::Entry, HashMap, VecDeque},
     convert::TryInto,
+    iter::{once, zip},
     num::NonZeroUsize,
     sync::Arc,
     time::{Duration, Instant},
@@ -26,7 +27,7 @@ use crate::{
     },
     assets::{EngineFlavor, EvalFlavor},
     configure::{BacklogOpt, Endpoint, MaxBackoff, StatsOpt},
-    ipc::{Position, PositionFailed, PositionResponse, Pull},
+    ipc::{Chunk, Position, ChunkFailed, PositionResponse, Pull},
     logger::{short_variant_name, Logger, ProgressAt, QueueStatusBar},
     stats::{NpsRecorder, Stats, StatsRecorder},
     util::{NevermindExt as _, RandomizedBackoff},
@@ -76,10 +77,8 @@ pub struct QueueStub {
 impl QueueStub {
     pub async fn pull(&mut self, pull: Pull) {
         let mut state = self.state.lock().await;
-        let (response, callback) = pull.split();
-        if let Some(response) = response {
-            state.handle_position_response(self.clone(), response);
-        }
+        let (responses, callback) = pull.split();
+        state.handle_position_responses(self, responses);
         if let Err(callback) = state.try_pull(callback) {
             if let Some(ref mut tx) = self.tx {
                 tx.send(QueueMessage::Pull { callback })
@@ -125,7 +124,7 @@ impl QueueStub {
 struct QueueState {
     shutdown_soon: bool,
     cores: NonZeroUsize,
-    incoming: VecDeque<Position>,
+    incoming: VecDeque<Chunk>,
     pending: HashMap<BatchId, PendingBatch>,
     move_submissions: VecDeque<CompletedBatch>,
     stats_recorder: StatsRecorder,
@@ -161,18 +160,18 @@ impl QueueState {
             Entry::Vacant(entry) => {
                 let progress_at = ProgressAt::from(&batch);
 
-                // Reversal only for cosmetics when displaying progress.
-                let mut positions = Vec::with_capacity(batch.positions.len());
-                for pos in batch.positions.into_iter().rev() {
-                    positions.insert(
-                        0,
-                        if pos.skip {
-                            Some(Skip::Skip)
-                        } else {
-                            self.incoming.push_back(pos);
-                            None
-                        },
-                    );
+                let mut positions = Vec::new();
+                for chunk in &batch.chunks {
+                    for pos in &chunk.positions {
+                        if let Some(position_id) = pos.position_id {
+                            if positions.len() <= position_id.0 {
+                                positions.resize(position_id.0 + 1, None);
+                            }
+                            if pos.skip {
+                                positions[position_id.0] = Some(Skip::Skip);
+                            }
+                        }
+                    }
                 }
 
                 entry.insert(PendingBatch {
@@ -189,22 +188,32 @@ impl QueueState {
         }
     }
 
-    fn handle_position_response(
+    fn handle_position_responses(
         &mut self,
-        queue: QueueStub,
-        res: Result<PositionResponse, PositionFailed>,
+        queue: &QueueStub,
+        responses: Result<Vec<PositionResponse>, ChunkFailed>,
     ) {
-        match res {
-            Ok(res) => {
-                let progress_at = ProgressAt::from(&res);
-                let batch_id = res.work.id();
-                if let Some(pending) = self.pending.get_mut(&batch_id) {
-                    if let Some(pos) = pending.positions.get_mut(res.position_id.0) {
-                        *pos = Some(Skip::Present(res));
-                    }
+        match responses {
+            Ok(responses) => {
+                let mut progress_at = None;
+                for res in responses {
+                    let Some(position_id) = res.position_id else {
+                        continue;
+                    };
+                    let batch_id = res.work.id();
+                    let Some(pending) = self.pending.get_mut(&batch_id) else {
+                        continue;
+                    };
+                    let Some(pos) = pending.positions.get_mut(position_id.0) else {
+                        continue;
+                    };
+                    progress_at = Some(ProgressAt::from(&res));
+                    *pos = Some(Skip::Present(res));
+                    self.maybe_finished(queue.clone(), batch_id);
                 }
-                self.logger.progress(self.status_bar(), progress_at);
-                self.maybe_finished(queue, batch_id);
+                if let Some(progress_at) = progress_at {
+                    self.logger.progress(self.status_bar(), progress_at);
+                }
             }
             Err(failed) => {
                 // Just forget about batches with failed positions,
@@ -216,12 +225,9 @@ impl QueueState {
         }
     }
 
-    fn try_pull(
-        &mut self,
-        callback: oneshot::Sender<Position>,
-    ) -> Result<(), oneshot::Sender<Position>> {
-        if let Some(position) = self.incoming.pop_front() {
-            if let Err(err) = callback.send(position) {
+    fn try_pull(&mut self, callback: oneshot::Sender<Chunk>) -> Result<(), oneshot::Sender<Chunk>> {
+        if let Some(chunk) = self.incoming.pop_front() {
+            if let Err(err) = callback.send(chunk) {
                 self.incoming.push_front(err);
             }
             Ok(())
@@ -288,17 +294,11 @@ impl QueueState {
                 Err(pending) => {
                     if !pending.work.matrix_wanted() {
                         // Send partially analysis as progress report.
-                        let progress_report = pending.progress_report();
-                        if progress_report.iter().filter(|p| p.is_some()).count()
-                            % (self.cores.get() * 2)
-                            == 0
-                        {
-                            queue.api.submit_analysis(
-                                pending.work.id(),
-                                pending.flavor.eval_flavor(),
-                                progress_report,
-                            );
-                        }
+                        /* TODO: queue.api.submit_analysis(
+                            pending.work.id(),
+                            pending.flavor.eval_flavor(),
+                            pending.progress_report(),
+                        ); */
                     }
 
                     self.pending.insert(pending.work.id(), pending);
@@ -310,7 +310,7 @@ impl QueueState {
 
 #[derive(Debug)]
 enum QueueMessage {
-    Pull { callback: oneshot::Sender<Position> },
+    Pull { callback: oneshot::Sender<Chunk> },
     MoveSubmitted,
 }
 
@@ -507,12 +507,12 @@ enum Skip<T> {
     Skip,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct IncomingBatch {
     work: Work,
     flavor: EngineFlavor,
     variant: Variant,
-    positions: Vec<Position>,
+    chunks: Vec<Chunk>,
     url: Option<Url>,
 }
 
@@ -558,23 +558,27 @@ impl IncomingBatch {
             url: url.clone(),
             flavor,
             variant: body.variant,
-            positions: match body.work {
+            chunks: match body.work {
                 Work::Move { .. } => {
-                    vec![Position {
-                        work: body.work,
-                        url,
-                        skip: false,
+                    vec![Chunk {
+                        work: body.work.clone(),
                         flavor,
-                        position_id: PositionId(0),
                         variant: body.variant,
-                        root_fen,
-                        moves: body_moves,
+                        positions: vec![Position {
+                            work: body.work,
+                            url,
+                            skip: false,
+                            position_id: Some(PositionId(0)),
+                            root_fen,
+                            moves: body_moves,
+                        }],
                     }]
                 }
                 Work::Analysis { .. } => {
+                    // Iterate forwards to prepare positions.
                     let mut moves = Vec::new();
-                    let mut positions = Vec::with_capacity(body_moves.len() + 1);
-
+                    let num_positions = body_moves.len() + 1;
+                    let mut positions = Vec::with_capacity(num_positions);
                     positions.push(Position {
                         work: body.work.clone(),
                         url: url.clone().map(|mut url| {
@@ -582,13 +586,10 @@ impl IncomingBatch {
                             url
                         }),
                         skip: body.skip_positions.contains(&PositionId(0)),
-                        flavor,
-                        position_id: PositionId(0),
-                        variant: body.variant,
+                        position_id: Some(PositionId(0)),
                         root_fen: root_fen.clone(),
                         moves: moves.clone(),
                     });
-
                     for (i, m) in body_moves.into_iter().enumerate() {
                         let position_id = PositionId(i + 1);
                         moves.push(m);
@@ -599,30 +600,68 @@ impl IncomingBatch {
                                 url
                             }),
                             skip: body.skip_positions.contains(&position_id),
-                            flavor,
-                            position_id,
-                            variant: body.variant,
+                            position_id: Some(position_id),
                             root_fen: root_fen.clone(),
                             moves: moves.clone(),
                         });
                     }
 
+                    // Reverse for backwards analysis.
+                    positions.reverse();
+
+                    // Prepare dummy positions, so the respective previous
+                    // position is available when creating chunks.
+                    let prev_and_current: Vec<_> = zip(
+                        once(None).chain(positions.clone().into_iter().map(|pos| {
+                            Some(Position {
+                                position_id: None,
+                                ..pos
+                            })
+                        })),
+                        positions,
+                    )
+                    .collect();
+
+                    // Create chunks with overlap.
+                    let mut chunks = Vec::new();
+                    for prev_and_current_chunked in prev_and_current.chunks(Chunk::MAX_POSITIONS) {
+                        let mut chunk_positions = Vec::new();
+                        for (prev, current) in prev_and_current_chunked {
+                            if !current.skip {
+                                if let Some(prev) = prev {
+                                    if prev.skip || chunk_positions.is_empty() {
+                                        chunk_positions.push(prev.clone());
+                                    }
+                                }
+                                chunk_positions.push(current.clone());
+                            }
+                        }
+                        if !chunk_positions.is_empty() {
+                            chunks.push(Chunk {
+                                work: body.work.clone(),
+                                flavor,
+                                variant: body.variant,
+                                positions: chunk_positions,
+                            });
+                        }
+                    }
+
                     // Edge case: Batch is immediately completed, because all
                     // positions are skipped.
-                    if positions.iter().all(|p| p.skip) {
+                    if chunks.is_empty() {
                         let now = Instant::now();
                         return Err(IncomingError::AllSkipped(CompletedBatch {
                             work: body.work,
                             url,
                             flavor,
                             variant: body.variant,
-                            positions: positions.into_iter().map(|_| Skip::Skip).collect(),
+                            positions: vec![Skip::Skip; num_positions],
                             started_at: now,
                             completed_at: now,
                         }));
                     }
 
-                    positions
+                    chunks
                 }
             },
         })
