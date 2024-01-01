@@ -5,13 +5,9 @@ use tokio::sync::oneshot;
 use url::Url;
 
 use crate::{
-    api::{AnalysisPart, BatchId, Score, Work},
+    api::{AnalysisPart, BatchId, PositionId, Score, Work},
     assets::EngineFlavor,
 };
-
-/// Uniquely identifies a position within a batch.
-#[derive(Debug, Copy, Clone)]
-pub struct PositionId(pub usize);
 
 #[derive(Debug, Clone)]
 pub struct Position {
@@ -19,6 +15,8 @@ pub struct Position {
     pub position_id: PositionId,
     pub flavor: EngineFlavor,
     pub url: Option<Url>,
+
+    pub skip: bool,
 
     pub variant: Variant,
     pub root_fen: Fen,
@@ -30,6 +28,8 @@ pub struct PositionResponse {
     pub work: Work,
     pub position_id: PositionId,
     pub url: Option<Url>,
+
+    pub skip: bool,
 
     pub scores: Matrix<Score>,
     pub pvs: Matrix<Vec<Uci>>,

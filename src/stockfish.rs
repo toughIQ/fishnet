@@ -353,6 +353,7 @@ impl StockfishActor {
                         work: position.work,
                         position_id: position.position_id,
                         url: position.url,
+                        skip: position.skip,
                         best_move: parts.next().and_then(|m| m.parse().ok()),
                         scores,
                         depth,

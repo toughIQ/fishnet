@@ -20,10 +20,13 @@ use tokio::{
 use url::Url;
 
 use crate::{
-    api::{AcquireQuery, AcquireResponseBody, Acquired, AnalysisPart, ApiStub, BatchId, Work},
+    api::{
+        AcquireQuery, AcquireResponseBody, Acquired, AnalysisPart, ApiStub, BatchId, PositionId,
+        Work,
+    },
     assets::{EngineFlavor, EvalFlavor},
     configure::{BacklogOpt, Endpoint, MaxBackoff, StatsOpt},
-    ipc::{Position, PositionFailed, PositionId, PositionResponse, Pull},
+    ipc::{Position, PositionFailed, PositionResponse, Pull},
     logger::{short_variant_name, Logger, ProgressAt, QueueStatusBar},
     stats::{NpsRecorder, Stats, StatsRecorder},
     util::{NevermindExt as _, RandomizedBackoff},
@@ -163,12 +166,11 @@ impl QueueState {
                 for pos in batch.positions.into_iter().rev() {
                     positions.insert(
                         0,
-                        match pos {
-                            Skip::Present(pos) => {
-                                self.incoming.push_back(pos);
-                                None
-                            }
-                            Skip::Skip => Some(Skip::Skip),
+                        if pos.skip {
+                            Some(Skip::Skip)
+                        } else {
+                            self.incoming.push_back(pos);
+                            None
                         },
                     );
                 }
@@ -505,18 +507,12 @@ enum Skip<T> {
     Skip,
 }
 
-impl<T> Skip<T> {
-    fn is_skipped(&self) -> bool {
-        matches!(self, Skip::Skip)
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct IncomingBatch {
     work: Work,
     flavor: EngineFlavor,
     variant: Variant,
-    positions: Vec<Skip<Position>>,
+    positions: Vec<Position>,
     url: Option<Url>,
 }
 
@@ -564,56 +560,56 @@ impl IncomingBatch {
             variant: body.variant,
             positions: match body.work {
                 Work::Move { .. } => {
-                    vec![Skip::Present(Position {
+                    vec![Position {
                         work: body.work,
                         url,
+                        skip: false,
                         flavor,
                         position_id: PositionId(0),
                         variant: body.variant,
                         root_fen,
                         moves: body_moves,
-                    })]
+                    }]
                 }
                 Work::Analysis { .. } => {
                     let mut moves = Vec::new();
-                    let mut positions = vec![Skip::Present(Position {
+                    let mut positions = Vec::with_capacity(body_moves.len() + 1);
+
+                    positions.push(Position {
                         work: body.work.clone(),
                         url: url.clone().map(|mut url| {
                             url.set_fragment(Some("0"));
                             url
                         }),
+                        skip: body.skip_positions.contains(&PositionId(0)),
                         flavor,
                         position_id: PositionId(0),
                         variant: body.variant,
                         root_fen: root_fen.clone(),
                         moves: moves.clone(),
-                    })];
+                    });
 
                     for (i, m) in body_moves.into_iter().enumerate() {
+                        let position_id = PositionId(i + 1);
                         moves.push(m);
-                        positions.push(Skip::Present(Position {
+                        positions.push(Position {
                             work: body.work.clone(),
                             url: url.clone().map(|mut url| {
-                                url.set_fragment(Some(&(1 + i).to_string()));
+                                url.set_fragment(Some(&position_id.0.to_string()));
                                 url
                             }),
+                            skip: body.skip_positions.contains(&position_id),
                             flavor,
-                            position_id: PositionId(1 + i),
+                            position_id,
                             variant: body.variant,
                             root_fen: root_fen.clone(),
                             moves: moves.clone(),
-                        }));
-                    }
-
-                    for skip in body.skip_positions.into_iter() {
-                        if let Some(pos) = positions.get_mut(skip) {
-                            *pos = Skip::Skip;
-                        }
+                        });
                     }
 
                     // Edge case: Batch is immediately completed, because all
                     // positions are skipped.
-                    if positions.iter().all(Skip::is_skipped) {
+                    if positions.iter().all(|p| p.skip) {
                         let now = Instant::now();
                         return Err(IncomingError::AllSkipped(CompletedBatch {
                             work: body.work,

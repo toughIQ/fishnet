@@ -10,9 +10,9 @@ use shakmaty::variant::Variant;
 use url::Url;
 
 use crate::{
-    api::BatchId,
+    api::{BatchId, PositionId},
     configure::Verbose,
-    ipc::{Position, PositionId, PositionResponse},
+    ipc::{Position, PositionResponse},
     util::NevermindExt as _,
 };
 

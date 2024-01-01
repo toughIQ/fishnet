@@ -288,6 +288,9 @@ impl From<Centis> for Duration {
     }
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize)]
+pub struct PositionId(pub usize);
+
 #[serde_as]
 #[derive(Debug, Deserialize)]
 pub struct AcquireResponseBody {
@@ -303,7 +306,7 @@ pub struct AcquireResponseBody {
     #[serde_as(as = "StringWithSeparator::<SpaceSeparator, Uci>")]
     pub moves: Vec<Uci>,
     #[serde(rename = "skipPositions", default)]
-    pub skip_positions: Vec<usize>,
+    pub skip_positions: Vec<PositionId>,
 }
 
 impl AcquireResponseBody {
