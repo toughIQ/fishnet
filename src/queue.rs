@@ -165,10 +165,10 @@ impl QueueState {
                     for pos in &chunk.positions {
                         if let Some(position_id) = pos.position_id {
                             if positions.len() <= position_id.0 {
-                                positions.resize(position_id.0 + 1, None);
+                                positions.resize(position_id.0 + 1, Some(Skip::Skip));
                             }
-                            if pos.skip {
-                                positions[position_id.0] = Some(Skip::Skip);
+                            if !pos.skip {
+                                positions[position_id.0] = None;
                             }
                         }
                     }
@@ -631,7 +631,7 @@ impl IncomingBatch {
 
                     // Create chunks with overlap.
                     let mut chunks = Vec::new();
-                    for prev_and_current_chunked in prev_and_current.chunks(Chunk::MAX_POSITIONS) {
+                    for prev_and_current_chunked in prev_and_current.chunks(Chunk::MAX_POSITIONS - 1) {
                         let mut chunk_positions = Vec::new();
                         for (prev, current) in prev_and_current_chunked {
                             if !current.skip {
@@ -718,7 +718,7 @@ struct PendingBatch {
 impl PendingBatch {
     #[allow(clippy::result_large_err)]
     fn try_into_completed(self) -> Result<CompletedBatch, PendingBatch> {
-        match dbg!(self.positions.clone()).into_iter().collect() {
+        match self.positions.clone().into_iter().collect() {
             Some(positions) => Ok(CompletedBatch {
                 work: self.work,
                 url: self.url,
