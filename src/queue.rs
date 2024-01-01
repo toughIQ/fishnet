@@ -22,7 +22,7 @@ use url::Url;
 
 use crate::{
     api::{
-        AcquireQuery, AcquireResponseBody, Acquired, AnalysisPart, ApiStub, BatchId, PositionId,
+        AcquireQuery, AcquireResponseBody, Acquired, AnalysisPart, ApiStub, BatchId, PositionIndex,
         Work,
     },
     assets::{EngineFlavor, EvalFlavor},
@@ -163,12 +163,12 @@ impl QueueState {
                 let mut positions = Vec::new();
                 for chunk in batch.chunks {
                     for pos in &chunk.positions {
-                        if let Some(position_id) = pos.position_id {
-                            if positions.len() <= position_id.0 {
-                                positions.resize(position_id.0 + 1, Some(Skip::Skip));
+                        if let Some(position_index) = pos.position_index {
+                            if positions.len() <= position_index.0 {
+                                positions.resize(position_index.0 + 1, Some(Skip::Skip));
                             }
                             if !pos.skip {
-                                positions[position_id.0] = None;
+                                positions[position_index.0] = None;
                             }
                         }
                     }
@@ -199,14 +199,14 @@ impl QueueState {
                 let mut progress_at = None;
                 let mut batch_ids = Vec::new();
                 for res in responses {
-                    let Some(position_id) = res.position_id else {
+                    let Some(position_index) = res.position_index else {
                         continue;
                     };
                     let batch_id = res.work.id();
                     let Some(pending) = self.pending.get_mut(&batch_id) else {
                         continue;
                     };
-                    let Some(pos) = pending.positions.get_mut(position_id.0) else {
+                    let Some(pos) = pending.positions.get_mut(position_index.0) else {
                         continue;
                     };
                     progress_at = Some(ProgressAt::from(&res));
@@ -384,7 +384,7 @@ impl QueueActor {
         let context = ProgressAt {
             batch_id: body.work.id(),
             batch_url: body.batch_url(self.api.endpoint()),
-            position_id: None,
+            position_index: None,
         };
 
         match IncomingBatch::from_acquired(self.api.endpoint(), body) {
@@ -575,7 +575,7 @@ impl IncomingBatch {
                             work: body.work,
                             url,
                             skip: false,
-                            position_id: Some(PositionId(0)),
+                            position_index: Some(PositionIndex(0)),
                             root_fen,
                             moves: body_moves,
                         }],
@@ -592,22 +592,22 @@ impl IncomingBatch {
                             url.set_fragment(Some("0"));
                             url
                         }),
-                        skip: body.skip_positions.contains(&PositionId(0)),
-                        position_id: Some(PositionId(0)),
+                        skip: body.skip_positions.contains(&PositionIndex(0)),
+                        position_index: Some(PositionIndex(0)),
                         root_fen: root_fen.clone(),
                         moves: moves.clone(),
                     });
                     for (i, m) in body_moves.into_iter().enumerate() {
-                        let position_id = PositionId(i + 1);
+                        let position_index = PositionIndex(i + 1);
                         moves.push(m);
                         positions.push(Position {
                             work: body.work.clone(),
                             url: url.clone().map(|mut url| {
-                                url.set_fragment(Some(&position_id.0.to_string()));
+                                url.set_fragment(Some(&position_index.0.to_string()));
                                 url
                             }),
-                            skip: body.skip_positions.contains(&position_id),
-                            position_id: Some(position_id),
+                            skip: body.skip_positions.contains(&position_index),
+                            position_index: Some(position_index),
                             root_fen: root_fen.clone(),
                             moves: moves.clone(),
                         });
@@ -621,7 +621,7 @@ impl IncomingBatch {
                     let prev_and_current: Vec<_> = zip(
                         once(None).chain(positions.clone().into_iter().map(|pos| {
                             Some(Position {
-                                position_id: None,
+                                position_index: None,
                                 ..pos
                             })
                         })),
@@ -680,7 +680,7 @@ impl From<&IncomingBatch> for ProgressAt {
         ProgressAt {
             batch_id: batch.work.id(),
             batch_url: batch.url.clone(),
-            position_id: None,
+            position_index: None,
         }
     }
 }

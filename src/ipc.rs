@@ -5,7 +5,7 @@ use tokio::sync::oneshot;
 use url::Url;
 
 use crate::{
-    api::{AnalysisPart, BatchId, PositionId, Score, Work},
+    api::{AnalysisPart, BatchId, PositionIndex, Score, Work},
     assets::EngineFlavor,
 };
 
@@ -28,7 +28,7 @@ impl Chunk {
 #[derive(Debug, Clone)]
 pub struct Position {
     pub work: Work,
-    pub position_id: Option<PositionId>,
+    pub position_index: Option<PositionIndex>,
     pub url: Option<Url>,
     pub skip: bool,
 
@@ -39,7 +39,7 @@ pub struct Position {
 #[derive(Debug, Clone)]
 pub struct PositionResponse {
     pub work: Work,
-    pub position_id: Option<PositionId>,
+    pub position_index: Option<PositionIndex>,
     pub url: Option<Url>,
 
     pub scores: Matrix<Score>,

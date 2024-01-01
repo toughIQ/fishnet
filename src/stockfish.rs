@@ -368,7 +368,7 @@ impl StockfishActor {
 
                     return Ok(PositionResponse {
                         work: position.work,
-                        position_id: position.position_id,
+                        position_index: position.position_index,
                         url: position.url,
                         best_move: parts.next().and_then(|m| m.parse().ok()),
                         scores,

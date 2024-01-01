@@ -10,7 +10,7 @@ use shakmaty::variant::Variant;
 use url::Url;
 
 use crate::{
-    api::{BatchId, PositionId},
+    api::{BatchId, PositionIndex},
     configure::Verbose,
     ipc::{Chunk, Position, PositionResponse},
     util::NevermindExt as _,
@@ -108,20 +108,20 @@ impl Logger {
 pub struct ProgressAt {
     pub batch_id: BatchId,
     pub batch_url: Option<Url>,
-    pub position_id: Option<PositionId>,
+    pub position_index: Option<PositionIndex>,
 }
 
 impl fmt::Display for ProgressAt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(ref batch_url) = self.batch_url {
             let mut url = batch_url.clone();
-            if let Some(PositionId(positon_id)) = self.position_id {
+            if let Some(PositionIndex(positon_id)) = self.position_index {
                 url.set_fragment(Some(&positon_id.to_string()));
             }
             fmt::Display::fmt(&url, f)
         } else {
             write!(f, "{}", self.batch_id)?;
-            if let Some(PositionId(positon_id)) = self.position_id {
+            if let Some(PositionIndex(positon_id)) = self.position_index {
                 write!(f, "#{positon_id}")?;
             }
             Ok(())
@@ -134,7 +134,7 @@ impl From<&Chunk> for ProgressAt {
         ProgressAt {
             batch_id: chunk.work.id(),
             batch_url: chunk.positions.last().and_then(|pos| pos.url.clone()),
-            position_id: chunk.positions.last().and_then(|pos| pos.position_id),
+            position_index: chunk.positions.last().and_then(|pos| pos.position_index),
         }
     }
 }
@@ -144,7 +144,7 @@ impl From<&Position> for ProgressAt {
         ProgressAt {
             batch_id: pos.work.id(),
             batch_url: pos.url.clone(),
-            position_id: pos.position_id,
+            position_index: pos.position_index,
         }
     }
 }
@@ -154,7 +154,7 @@ impl From<&PositionResponse> for ProgressAt {
         ProgressAt {
             batch_id: pos.work.id(),
             batch_url: pos.url.clone(),
-            position_id: pos.position_id,
+            position_index: pos.position_index,
         }
     }
 }
