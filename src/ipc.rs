@@ -18,7 +18,7 @@ pub struct Chunk {
 }
 
 impl Chunk {
-    pub const MAX_POSITIONS: usize = 5;
+    pub const MAX_POSITIONS: usize = 6;
 
     pub fn timeout(&self) -> Duration {
         self.positions.len() as u32 * self.work.timeout_per_position()
