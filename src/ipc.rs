@@ -87,7 +87,7 @@ impl<T> Matrix<T> {
 
     pub fn best(&self) -> Option<&T> {
         self.matrix
-            .get(0)
+            .first()
             .and_then(|row| row.last().and_then(|v| v.as_ref()))
     }
 }
