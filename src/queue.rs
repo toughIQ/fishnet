@@ -27,7 +27,7 @@ use crate::{
     },
     assets::{EngineFlavor, EvalFlavor},
     configure::{BacklogOpt, Endpoint, MaxBackoff, StatsOpt},
-    ipc::{Chunk, Position, ChunkFailed, PositionResponse, Pull},
+    ipc::{Chunk, ChunkFailed, Position, PositionResponse, Pull},
     logger::{short_variant_name, Logger, ProgressAt, QueueStatusBar},
     stats::{NpsRecorder, Stats, StatsRecorder},
     util::{NevermindExt as _, RandomizedBackoff},
@@ -146,7 +146,7 @@ impl QueueState {
 
     fn status_bar(&self) -> QueueStatusBar {
         QueueStatusBar {
-            pending: self.pending.values().map(|p| p.pending()).sum(),
+            pending: self.incoming.len(),
             cores: self.cores,
         }
     }
@@ -161,7 +161,7 @@ impl QueueState {
                 let progress_at = ProgressAt::from(&batch);
 
                 let mut positions = Vec::new();
-                for chunk in &batch.chunks {
+                for chunk in batch.chunks {
                     for pos in &chunk.positions {
                         if let Some(position_id) = pos.position_id {
                             if positions.len() <= position_id.0 {
@@ -172,6 +172,7 @@ impl QueueState {
                             }
                         }
                     }
+                    self.incoming.push_back(chunk);
                 }
 
                 entry.insert(PendingBatch {
@@ -196,6 +197,7 @@ impl QueueState {
         match responses {
             Ok(responses) => {
                 let mut progress_at = None;
+                let mut batch_ids = Vec::new();
                 for res in responses {
                     let Some(position_id) = res.position_id else {
                         continue;
@@ -209,10 +211,15 @@ impl QueueState {
                     };
                     progress_at = Some(ProgressAt::from(&res));
                     *pos = Some(Skip::Present(res));
-                    self.maybe_finished(queue.clone(), batch_id);
+                    if !batch_ids.contains(&batch_id) {
+                        batch_ids.push(batch_id);
+                    }
                 }
                 if let Some(progress_at) = progress_at {
                     self.logger.progress(self.status_bar(), progress_at);
+                }
+                for batch_id in batch_ids {
+                    self.maybe_finished(queue.clone(), batch_id);
                 }
             }
             Err(failed) => {
@@ -293,12 +300,12 @@ impl QueueState {
                 }
                 Err(pending) => {
                     if !pending.work.matrix_wanted() {
-                        // Send partially analysis as progress report.
-                        /* TODO: queue.api.submit_analysis(
+                        // Send partial analysis as progress report.
+                        queue.api.submit_analysis(
                             pending.work.id(),
                             pending.flavor.eval_flavor(),
                             pending.progress_report(),
-                        ); */
+                        );
                     }
 
                     self.pending.insert(pending.work.id(), pending);
@@ -711,7 +718,7 @@ struct PendingBatch {
 impl PendingBatch {
     #[allow(clippy::result_large_err)]
     fn try_into_completed(self) -> Result<CompletedBatch, PendingBatch> {
-        match self.positions.clone().into_iter().collect() {
+        match dbg!(self.positions.clone()).into_iter().collect() {
             Some(positions) => Ok(CompletedBatch {
                 work: self.work,
                 url: self.url,

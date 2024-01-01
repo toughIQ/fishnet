@@ -15,7 +15,7 @@ use tokio::{
 use crate::{
     api::{Score, Work},
     assets::{EngineFlavor, EvalFlavor},
-    ipc::{Matrix, Position, ChunkFailed, PositionResponse, Chunk},
+    ipc::{Chunk, ChunkFailed, Matrix, Position, PositionResponse},
     logger::Logger,
     util::NevermindExt as _,
 };
@@ -38,7 +38,10 @@ pub struct StockfishStub {
 }
 
 impl StockfishStub {
-    pub async fn go_multiple(&mut self, chunk: Chunk) -> Result<Vec<PositionResponse>, ChunkFailed> {
+    pub async fn go_multiple(
+        &mut self,
+        chunk: Chunk,
+    ) -> Result<Vec<PositionResponse>, ChunkFailed> {
         let (callback, responses) = oneshot::channel();
         let batch_id = chunk.work.id();
         self.tx
@@ -220,7 +223,12 @@ impl StockfishActor {
         Ok(())
     }
 
-    async fn go_multiple(&mut self, stdout: &mut Stdout, stdin: &mut BufWriter<ChildStdin>, chunk: Chunk) -> io::Result<Vec<PositionResponse>> {
+    async fn go_multiple(
+        &mut self,
+        stdout: &mut Stdout,
+        stdin: &mut BufWriter<ChildStdin>,
+        chunk: Chunk,
+    ) -> io::Result<Vec<PositionResponse>> {
         // Set global options (once).
         self.init(stdout, stdin).await?;
 
@@ -240,11 +248,8 @@ impl StockfishActor {
         if chunk.flavor == EngineFlavor::MultiVariant {
             stdin
                 .write_all(
-                    format!(
-                        "setoption name UCI_Variant value {}\n",
-                        chunk.variant.uci()
-                    )
-                    .as_bytes(),
+                    format!("setoption name UCI_Variant value {}\n", chunk.variant.uci())
+                        .as_bytes(),
                 )
                 .await?;
         }
@@ -256,7 +261,10 @@ impl StockfishActor {
 
         let mut responses = Vec::new();
         for position in chunk.positions {
-            responses.push(self.go(stdout, stdin, chunk.flavor.eval_flavor(), position).await?);
+            responses.push(
+                self.go(stdout, stdin, chunk.flavor.eval_flavor(), position)
+                    .await?,
+            );
         }
         Ok(responses)
     }

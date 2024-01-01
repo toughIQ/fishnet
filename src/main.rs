@@ -35,7 +35,7 @@ use tokio::{
 use crate::{
     assets::{Assets, ByEngineFlavor, Cpu, EngineFlavor},
     configure::{Command, Cores, CpuPriority, Opt},
-    ipc::{ChunkFailed, Pull, Chunk},
+    ipc::{Chunk, ChunkFailed, Pull},
     logger::{Logger, ProgressAt},
     util::RandomizedBackoff,
 };
@@ -361,7 +361,14 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
 
         let (callback, waiter) = oneshot::channel();
 
-        if tx.send(Pull { responses, callback }).await.is_err() {
+        if tx
+            .send(Pull {
+                responses,
+                callback,
+            })
+            .await
+            .is_err()
+        {
             logger.debug(&format!(
                 "Worker {i} was about to send result, but shutting down"
             ));
