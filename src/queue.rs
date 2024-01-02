@@ -631,7 +631,9 @@ impl IncomingBatch {
 
                     // Create chunks with overlap.
                     let mut chunks = Vec::new();
-                    for prev_and_current_chunked in prev_and_current.chunks(Chunk::MAX_POSITIONS - 1) {
+                    for prev_and_current_chunked in
+                        prev_and_current.chunks(Chunk::MAX_POSITIONS - 1)
+                    {
                         let mut chunk_positions = Vec::new();
                         for (prev, current) in prev_and_current_chunked {
                             if !current.skip {

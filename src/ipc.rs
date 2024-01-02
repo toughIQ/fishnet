@@ -21,7 +21,11 @@ impl Chunk {
     pub const MAX_POSITIONS: usize = 6;
 
     pub fn timeout(&self) -> Duration {
-        self.positions.len() as u32 * self.work.timeout_per_position()
+        self.positions
+            .iter()
+            .filter(|pos| pos.position_index.is_some())
+            .count() as u32
+            * self.work.timeout_per_position()
     }
 }
 
