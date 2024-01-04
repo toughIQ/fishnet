@@ -2,6 +2,7 @@ use std::{
     cmp::{max, min},
     collections::{hash_map::Entry, HashMap, VecDeque},
     convert::TryInto,
+    iter::{once, zip},
     num::NonZeroUsize,
     sync::Arc,
     time::{Duration, Instant},
@@ -20,10 +21,13 @@ use tokio::{
 use url::Url;
 
 use crate::{
-    api::{AcquireQuery, AcquireResponseBody, Acquired, AnalysisPart, ApiStub, BatchId, Work},
+    api::{
+        AcquireQuery, AcquireResponseBody, Acquired, AnalysisPart, ApiStub, BatchId, PositionIndex,
+        Work,
+    },
     assets::{EngineFlavor, EvalFlavor},
     configure::{BacklogOpt, Endpoint, MaxBackoff, StatsOpt},
-    ipc::{Position, PositionFailed, PositionId, PositionResponse, Pull},
+    ipc::{Chunk, ChunkFailed, Position, PositionResponse, Pull},
     logger::{short_variant_name, Logger, ProgressAt, QueueStatusBar},
     stats::{NpsRecorder, Stats, StatsRecorder},
     util::{NevermindExt as _, RandomizedBackoff},
@@ -73,10 +77,8 @@ pub struct QueueStub {
 impl QueueStub {
     pub async fn pull(&mut self, pull: Pull) {
         let mut state = self.state.lock().await;
-        let (response, callback) = pull.split();
-        if let Some(response) = response {
-            state.handle_position_response(self.clone(), response);
-        }
+        let (responses, callback) = pull.split();
+        state.handle_position_responses(self, responses);
         if let Err(callback) = state.try_pull(callback) {
             if let Some(ref mut tx) = self.tx {
                 tx.send(QueueMessage::Pull { callback })
@@ -122,7 +124,7 @@ impl QueueStub {
 struct QueueState {
     shutdown_soon: bool,
     cores: NonZeroUsize,
-    incoming: VecDeque<Position>,
+    incoming: VecDeque<Chunk>,
     pending: HashMap<BatchId, PendingBatch>,
     move_submissions: VecDeque<CompletedBatch>,
     stats_recorder: StatsRecorder,
@@ -158,19 +160,19 @@ impl QueueState {
             Entry::Vacant(entry) => {
                 let progress_at = ProgressAt::from(&batch);
 
-                // Reversal only for cosmetics when displaying progress.
-                let mut positions = Vec::with_capacity(batch.positions.len());
-                for pos in batch.positions.into_iter().rev() {
-                    positions.insert(
-                        0,
-                        match pos {
-                            Skip::Present(pos) => {
-                                self.incoming.push_back(pos);
-                                None
+                let mut positions = Vec::new();
+                for chunk in batch.chunks {
+                    for pos in &chunk.positions {
+                        if let Some(position_index) = pos.position_index {
+                            if positions.len() <= position_index.0 {
+                                positions.resize(position_index.0 + 1, Some(Skip::Skip));
                             }
-                            Skip::Skip => Some(Skip::Skip),
-                        },
-                    );
+                            if !pos.skip {
+                                positions[position_index.0] = None;
+                            }
+                        }
+                    }
+                    self.incoming.push_back(chunk);
                 }
 
                 entry.insert(PendingBatch {
@@ -187,22 +189,38 @@ impl QueueState {
         }
     }
 
-    fn handle_position_response(
+    fn handle_position_responses(
         &mut self,
-        queue: QueueStub,
-        res: Result<PositionResponse, PositionFailed>,
+        queue: &QueueStub,
+        responses: Result<Vec<PositionResponse>, ChunkFailed>,
     ) {
-        match res {
-            Ok(res) => {
-                let progress_at = ProgressAt::from(&res);
-                let batch_id = res.work.id();
-                if let Some(pending) = self.pending.get_mut(&batch_id) {
-                    if let Some(pos) = pending.positions.get_mut(res.position_id.0) {
-                        *pos = Some(Skip::Present(res));
+        match responses {
+            Ok(responses) => {
+                let mut progress_at = None;
+                let mut batch_ids = Vec::new();
+                for res in responses {
+                    let Some(position_index) = res.position_index else {
+                        continue;
+                    };
+                    let batch_id = res.work.id();
+                    let Some(pending) = self.pending.get_mut(&batch_id) else {
+                        continue;
+                    };
+                    let Some(pos) = pending.positions.get_mut(position_index.0) else {
+                        continue;
+                    };
+                    progress_at = Some(ProgressAt::from(&res));
+                    *pos = Some(Skip::Present(res));
+                    if !batch_ids.contains(&batch_id) {
+                        batch_ids.push(batch_id);
                     }
                 }
-                self.logger.progress(self.status_bar(), progress_at);
-                self.maybe_finished(queue, batch_id);
+                if let Some(progress_at) = progress_at {
+                    self.logger.progress(self.status_bar(), progress_at);
+                }
+                for batch_id in batch_ids {
+                    self.maybe_finished(queue.clone(), batch_id);
+                }
             }
             Err(failed) => {
                 // Just forget about batches with failed positions,
@@ -214,12 +232,9 @@ impl QueueState {
         }
     }
 
-    fn try_pull(
-        &mut self,
-        callback: oneshot::Sender<Position>,
-    ) -> Result<(), oneshot::Sender<Position>> {
-        if let Some(position) = self.incoming.pop_front() {
-            if let Err(err) = callback.send(position) {
+    fn try_pull(&mut self, callback: oneshot::Sender<Chunk>) -> Result<(), oneshot::Sender<Chunk>> {
+        if let Some(chunk) = self.incoming.pop_front() {
+            if let Err(err) = callback.send(chunk) {
                 self.incoming.push_front(err);
             }
             Ok(())
@@ -285,18 +300,12 @@ impl QueueState {
                 }
                 Err(pending) => {
                     if !pending.work.matrix_wanted() {
-                        // Send partially analysis as progress report.
-                        let progress_report = pending.progress_report();
-                        if progress_report.iter().filter(|p| p.is_some()).count()
-                            % (self.cores.get() * 2)
-                            == 0
-                        {
-                            queue.api.submit_analysis(
-                                pending.work.id(),
-                                pending.flavor.eval_flavor(),
-                                progress_report,
-                            );
-                        }
+                        // Send partial analysis as progress report.
+                        queue.api.submit_analysis(
+                            pending.work.id(),
+                            pending.flavor.eval_flavor(),
+                            pending.progress_report(),
+                        );
                     }
 
                     self.pending.insert(pending.work.id(), pending);
@@ -308,7 +317,7 @@ impl QueueState {
 
 #[derive(Debug)]
 enum QueueMessage {
-    Pull { callback: oneshot::Sender<Position> },
+    Pull { callback: oneshot::Sender<Chunk> },
     MoveSubmitted,
 }
 
@@ -375,7 +384,7 @@ impl QueueActor {
         let context = ProgressAt {
             batch_id: body.work.id(),
             batch_url: body.batch_url(self.api.endpoint()),
-            position_id: None,
+            position_index: None,
         };
 
         match IncomingBatch::from_acquired(self.api.endpoint(), body) {
@@ -505,18 +514,12 @@ enum Skip<T> {
     Skip,
 }
 
-impl<T> Skip<T> {
-    fn is_skipped(&self) -> bool {
-        matches!(self, Skip::Skip)
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct IncomingBatch {
     work: Work,
     flavor: EngineFlavor,
     variant: Variant,
-    positions: Vec<Skip<Position>>,
+    chunks: Vec<Chunk>,
     url: Option<Url>,
 }
 
@@ -562,71 +565,112 @@ impl IncomingBatch {
             url: url.clone(),
             flavor,
             variant: body.variant,
-            positions: match body.work {
+            chunks: match body.work {
                 Work::Move { .. } => {
-                    vec![Skip::Present(Position {
-                        work: body.work,
-                        url,
+                    vec![Chunk {
+                        work: body.work.clone(),
                         flavor,
-                        position_id: PositionId(0),
                         variant: body.variant,
-                        root_fen,
-                        moves: body_moves,
-                    })]
+                        positions: vec![Position {
+                            work: body.work,
+                            url,
+                            skip: false,
+                            position_index: Some(PositionIndex(0)),
+                            root_fen,
+                            moves: body_moves,
+                        }],
+                    }]
                 }
                 Work::Analysis { .. } => {
+                    // Iterate forwards to prepare positions.
                     let mut moves = Vec::new();
-                    let mut positions = vec![Skip::Present(Position {
+                    let num_positions = body_moves.len() + 1;
+                    let mut positions = Vec::with_capacity(num_positions);
+                    positions.push(Position {
                         work: body.work.clone(),
                         url: url.clone().map(|mut url| {
                             url.set_fragment(Some("0"));
                             url
                         }),
-                        flavor,
-                        position_id: PositionId(0),
-                        variant: body.variant,
+                        skip: body.skip_positions.contains(&PositionIndex(0)),
+                        position_index: Some(PositionIndex(0)),
                         root_fen: root_fen.clone(),
                         moves: moves.clone(),
-                    })];
-
+                    });
                     for (i, m) in body_moves.into_iter().enumerate() {
+                        let position_index = PositionIndex(i + 1);
                         moves.push(m);
-                        positions.push(Skip::Present(Position {
+                        positions.push(Position {
                             work: body.work.clone(),
                             url: url.clone().map(|mut url| {
-                                url.set_fragment(Some(&(1 + i).to_string()));
+                                url.set_fragment(Some(&position_index.0.to_string()));
                                 url
                             }),
-                            flavor,
-                            position_id: PositionId(1 + i),
-                            variant: body.variant,
+                            skip: body.skip_positions.contains(&position_index),
+                            position_index: Some(position_index),
                             root_fen: root_fen.clone(),
                             moves: moves.clone(),
-                        }));
+                        });
                     }
 
-                    for skip in body.skip_positions.into_iter() {
-                        if let Some(pos) = positions.get_mut(skip) {
-                            *pos = Skip::Skip;
+                    // Reverse for backwards analysis.
+                    positions.reverse();
+
+                    // Prepare dummy positions, so the respective previous
+                    // position is available when creating chunks.
+                    let prev_and_current: Vec<_> = zip(
+                        once(None).chain(positions.clone().into_iter().map(|pos| {
+                            Some(Position {
+                                position_index: None,
+                                ..pos
+                            })
+                        })),
+                        positions,
+                    )
+                    .collect();
+
+                    // Create chunks with overlap.
+                    let mut chunks = Vec::new();
+                    for prev_and_current_chunked in
+                        prev_and_current.chunks(Chunk::MAX_POSITIONS - 1)
+                    {
+                        let mut chunk_positions = Vec::new();
+                        for (prev, current) in prev_and_current_chunked {
+                            if !current.skip {
+                                if let Some(prev) = prev {
+                                    if prev.skip || chunk_positions.is_empty() {
+                                        chunk_positions.push(prev.clone());
+                                    }
+                                }
+                                chunk_positions.push(current.clone());
+                            }
+                        }
+                        if !chunk_positions.is_empty() {
+                            chunks.push(Chunk {
+                                work: body.work.clone(),
+                                flavor,
+                                variant: body.variant,
+                                positions: chunk_positions,
+                            });
                         }
                     }
 
                     // Edge case: Batch is immediately completed, because all
                     // positions are skipped.
-                    if positions.iter().all(Skip::is_skipped) {
+                    if chunks.is_empty() {
                         let now = Instant::now();
                         return Err(IncomingError::AllSkipped(CompletedBatch {
                             work: body.work,
                             url,
                             flavor,
                             variant: body.variant,
-                            positions: positions.into_iter().map(|_| Skip::Skip).collect(),
+                            positions: vec![Skip::Skip; num_positions],
                             started_at: now,
                             completed_at: now,
                         }));
                     }
 
-                    positions
+                    chunks
                 }
             },
         })
@@ -638,7 +682,7 @@ impl From<&IncomingBatch> for ProgressAt {
         ProgressAt {
             batch_id: batch.work.id(),
             batch_url: batch.url.clone(),
-            position_id: None,
+            position_index: None,
         }
     }
 }

@@ -155,7 +155,7 @@ impl Work {
         }
     }
 
-    pub fn timeout(&self) -> Duration {
+    pub fn timeout_per_position(&self) -> Duration {
         match *self {
             Work::Analysis { timeout, .. } => timeout,
             Work::Move { .. } => Duration::from_secs(2),
@@ -288,6 +288,9 @@ impl From<Centis> for Duration {
     }
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize)]
+pub struct PositionIndex(pub usize);
+
 #[serde_as]
 #[derive(Debug, Deserialize)]
 pub struct AcquireResponseBody {
@@ -303,7 +306,7 @@ pub struct AcquireResponseBody {
     #[serde_as(as = "StringWithSeparator::<SpaceSeparator, Uci>")]
     pub moves: Vec<Uci>,
     #[serde(rename = "skipPositions", default)]
-    pub skip_positions: Vec<usize>,
+    pub skip_positions: Vec<PositionIndex>,
 }
 
 impl AcquireResponseBody {

@@ -5,22 +5,37 @@ use tokio::sync::oneshot;
 use url::Url;
 
 use crate::{
-    api::{AnalysisPart, BatchId, Score, Work},
+    api::{AnalysisPart, BatchId, PositionIndex, Score, Work},
     assets::EngineFlavor,
 };
 
-/// Uniquely identifies a position within a batch.
-#[derive(Debug, Copy, Clone)]
-pub struct PositionId(pub usize);
+#[derive(Debug)]
+pub struct Chunk {
+    pub work: Work,
+    pub variant: Variant,
+    pub flavor: EngineFlavor,
+    pub positions: Vec<Position>,
+}
+
+impl Chunk {
+    pub const MAX_POSITIONS: usize = 6;
+
+    pub fn timeout(&self) -> Duration {
+        self.positions
+            .iter()
+            .filter(|pos| pos.position_index.is_some())
+            .count() as u32
+            * self.work.timeout_per_position()
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Position {
     pub work: Work,
-    pub position_id: PositionId,
-    pub flavor: EngineFlavor,
+    pub position_index: Option<PositionIndex>,
     pub url: Option<Url>,
+    pub skip: bool,
 
-    pub variant: Variant,
     pub root_fen: Fen,
     pub moves: Vec<Uci>,
 }
@@ -28,7 +43,7 @@ pub struct Position {
 #[derive(Debug, Clone)]
 pub struct PositionResponse {
     pub work: Work,
-    pub position_id: PositionId,
+    pub position_index: Option<PositionIndex>,
     pub url: Option<Url>,
 
     pub scores: Matrix<Score>,
@@ -87,29 +102,29 @@ impl<T> Matrix<T> {
 
     pub fn best(&self) -> Option<&T> {
         self.matrix
-            .get(0)
+            .first()
             .and_then(|row| row.last().and_then(|v| v.as_ref()))
     }
 }
 
 #[derive(Debug)]
-pub struct PositionFailed {
+pub struct ChunkFailed {
     pub batch_id: BatchId,
 }
 
 #[derive(Debug)]
 pub struct Pull {
-    pub response: Option<Result<PositionResponse, PositionFailed>>,
-    pub callback: oneshot::Sender<Position>,
+    pub responses: Result<Vec<PositionResponse>, ChunkFailed>,
+    pub callback: oneshot::Sender<Chunk>,
 }
 
 impl Pull {
     pub fn split(
         self,
     ) -> (
-        Option<Result<PositionResponse, PositionFailed>>,
-        oneshot::Sender<Position>,
+        Result<Vec<PositionResponse>, ChunkFailed>,
+        oneshot::Sender<Chunk>,
     ) {
-        (self.response, self.callback)
+        (self.responses, self.callback)
     }
 }
