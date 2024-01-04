@@ -6,6 +6,7 @@ use std::{
     time::Duration,
 };
 
+use shakmaty::uci::Uci;
 use tokio::{
     io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader, BufWriter, Lines},
     process::{ChildStdin, ChildStdout},
@@ -259,7 +260,7 @@ impl StockfishActor {
             )
             .await?;
 
-        let mut responses = Vec::new();
+        let mut responses = Vec::with_capacity(chunk.positions.len());
         for position in chunk.positions {
             responses.push(
                 self.go(stdout, stdin, chunk.flavor.eval_flavor(), position)
@@ -441,13 +442,16 @@ impl StockfishActor {
                                 );
                             }
                             "pv" => {
-                                let mut pv = Vec::new();
-                                for part in &mut parts {
-                                    pv.push(part.parse().map_err(|_| {
-                                        io::Error::new(io::ErrorKind::InvalidData, "invalid pv")
-                                    })?);
-                                }
-                                pvs.set(multipv, depth, pv);
+                                pvs.set(
+                                    multipv,
+                                    depth,
+                                    (&mut parts)
+                                        .map(|part| part.parse::<Uci>())
+                                        .collect::<Result<Vec<_>, _>>()
+                                        .map_err(|_| {
+                                            io::Error::new(io::ErrorKind::InvalidData, "invalid pv")
+                                        })?,
+                                );
                             }
                             _ => (),
                         }
