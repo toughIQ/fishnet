@@ -90,14 +90,17 @@ impl<T> Matrix<T> {
     }
 
     pub fn set(&mut self, multipv: NonZeroU8, depth: u8, v: T) {
-        while self.matrix.len() < usize::from(multipv.get()) {
-            self.matrix.push(Vec::new());
+        let multipv = usize::from(multipv.get());
+        if self.matrix.len() < multipv {
+            self.matrix.resize_with(multipv, Vec::new);
         }
-        let row = &mut self.matrix[usize::from(multipv.get() - 1)];
-        while row.len() <= usize::from(depth) {
-            row.push(None);
+        let row = &mut self.matrix[multipv - 1];
+
+        let depth = usize::from(depth);
+        if row.len() <= depth {
+            row.resize_with(depth + 1, || None);
         }
-        row[usize::from(depth)] = Some(v);
+        row[depth] = Some(v);
     }
 
     pub fn best(&self) -> Option<&T> {
