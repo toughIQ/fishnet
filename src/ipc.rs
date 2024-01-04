@@ -7,6 +7,7 @@ use url::Url;
 use crate::{
     api::{AnalysisPart, BatchId, PositionIndex, Score, Work},
     assets::EngineFlavor,
+    util::grow_with_and_get_mut,
 };
 
 #[derive(Debug)]
@@ -90,17 +91,8 @@ impl<T> Matrix<T> {
     }
 
     pub fn set(&mut self, multipv: NonZeroU8, depth: u8, v: T) {
-        let multipv = usize::from(multipv.get());
-        if self.matrix.len() < multipv {
-            self.matrix.resize_with(multipv, Vec::new);
-        }
-        let row = &mut self.matrix[multipv - 1];
-
-        let depth = usize::from(depth);
-        if row.len() <= depth {
-            row.resize_with(depth + 1, || None);
-        }
-        row[depth] = Some(v);
+        let row = grow_with_and_get_mut(&mut self.matrix, usize::from(multipv.get() - 1), Vec::new);
+        *grow_with_and_get_mut(row, usize::from(depth), || None) = Some(v);
     }
 
     pub fn best(&self) -> Option<&T> {

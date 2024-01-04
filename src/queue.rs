@@ -30,7 +30,7 @@ use crate::{
     ipc::{Chunk, ChunkFailed, Position, PositionResponse, Pull},
     logger::{short_variant_name, Logger, ProgressAt, QueueStatusBar},
     stats::{NpsRecorder, Stats, StatsRecorder},
-    util::{NevermindExt as _, RandomizedBackoff},
+    util::{grow_with_and_get_mut, NevermindExt as _, RandomizedBackoff},
 };
 
 pub fn channel(
@@ -164,12 +164,9 @@ impl QueueState {
                 for chunk in batch.chunks {
                     for pos in &chunk.positions {
                         if let Some(position_index) = pos.position_index {
-                            if positions.len() <= position_index.0 {
-                                positions.resize(position_index.0 + 1, Some(Skip::Skip));
-                            }
-                            if !pos.skip {
-                                positions[position_index.0] = None;
-                            }
+                            *grow_with_and_get_mut(&mut positions, position_index.0, || {
+                                Some(Skip::Skip)
+                            }) = pos.skip.then(|| Skip::Skip);
                         }
                     }
                     self.incoming.push_back(chunk);
