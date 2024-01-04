@@ -203,12 +203,13 @@ impl QueueState {
                         continue;
                     };
                     let batch_id = res.work.id();
-                    let Some(pending) = self.pending.get_mut(&batch_id) else {
-                        continue;
-                    };
-                    let Some(pos) = pending.positions.get_mut(position_index.0) else {
-                        continue;
-                    };
+                    let pos = self
+                        .pending
+                        .get_mut(&batch_id)
+                        .expect("pending batch")
+                        .positions
+                        .get_mut(position_index.0)
+                        .expect("valid position index");
                     progress_at = Some(ProgressAt::from(&res));
                     *pos = Some(Skip::Present(res));
                     if !batch_ids.contains(&batch_id) {
