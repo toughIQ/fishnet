@@ -160,7 +160,7 @@ impl QueueState {
             Entry::Vacant(entry) => {
                 let progress_at = ProgressAt::from(&batch);
 
-                let mut positions = Vec::new();
+                let mut positions = Vec::with_capacity(batch.chunks.len() * Chunk::MAX_POSITIONS);
                 for chunk in batch.chunks {
                     for pos in &chunk.positions {
                         if let Some(position_index) = pos.position_index {
@@ -634,7 +634,7 @@ impl IncomingBatch {
                     for prev_and_current_chunked in
                         prev_and_current.chunks(Chunk::MAX_POSITIONS - 1)
                     {
-                        let mut chunk_positions = Vec::new();
+                        let mut chunk_positions = Vec::with_capacity(Chunk::MAX_POSITIONS);
                         for (prev, current) in prev_and_current_chunked {
                             if !current.skip {
                                 if let Some(prev) = prev {
