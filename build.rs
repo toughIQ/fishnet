@@ -339,7 +339,9 @@ impl Target {
             "$(MAKE) strip"
         );
 
-        archive.append_path(Path::new(src_dir).join(exe)).unwrap();
+        let exe_path = Path::new(src_dir).join(exe);
+        archive.append_path(&exe_path).unwrap();
+        fs::remove_file(&exe_path).unwrap();
 
         assert!(
             Command::new(make)
