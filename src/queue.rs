@@ -167,7 +167,7 @@ impl QueueState {
                         if let Some(position_index) = pos.position_index {
                             *grow_with_and_get_mut(&mut positions, position_index.0, || {
                                 Some(Skip::Skip)
-                            }) = pos.skip.then(|| Skip::Skip);
+                            }) = pos.skip.then_some(Skip::Skip);
                         }
                     }
                     self.incoming.push_back(chunk);

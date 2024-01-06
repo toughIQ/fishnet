@@ -89,6 +89,7 @@ macro_rules! has_aarch64_builder_feature {
     }};
 }
 
+#[allow(clippy::nonminimal_bool, clippy::eq_op)]
 fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
     // Note: The target arch of the build script is the architecture of the
     // builder and decides if pgo is possible. It is not necessarily the same

@@ -45,7 +45,7 @@ pub trait NevermindExt: Sized {
 
 impl<T, E> NevermindExt for Result<T, E> {}
 
-pub fn grow_with_and_get_mut<'a, T, F>(vec: &'a mut Vec<T>, index: usize, f: F) -> &'a mut T
+pub fn grow_with_and_get_mut<T, F>(vec: &mut Vec<T>, index: usize, f: F) -> &mut T
 where
     F: FnMut() -> T,
 {
