@@ -1,4 +1,4 @@
-use std::{fmt, io, io::Write as _};
+use std::{fmt, io, io::Write as _, time::Duration};
 
 use futures_util::StreamExt as _;
 use reqwest::Client;
@@ -6,6 +6,7 @@ use self_replace::self_replace;
 use semver::Version;
 use serde::Deserialize;
 use tempfile::NamedTempFile;
+use tokio::time::{error::Elapsed, timeout};
 
 use crate::logger::Logger;
 
@@ -30,19 +31,25 @@ pub async fn auto_update(
         return Ok(UpdateSuccess::UpToDate(current));
     }
 
-    // Download.
+    // Request download.
     logger.fishnet_info("Downloading v{latest} ...");
     let mut temp_exe = NamedTempFile::with_prefix("fishnet-auto-update")?;
-    let mut download = client
-        .get(format!(
-            "https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/{}",
-            latest.key
-        ))
-        .send()
-        .await?
-        .error_for_status()?
-        .bytes_stream();
-    while let Some(part) = download.next().await {
+    let mut download = timeout(
+        Duration::from_secs(30),
+        client
+            .get(format!(
+                "https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/{}",
+                latest.key
+            ))
+            .timeout(Duration::from_secs(15 * 60)) // Override default meant for small requests
+            .send(),
+    )
+    .await??
+    .error_for_status()?
+    .bytes_stream();
+
+    // Download.
+    while let Some(part) = timeout(Duration::from_secs(30), download.next()).await? {
         let part = part?;
         temp_exe.write_all(&part)?;
     }
@@ -113,6 +120,7 @@ pub enum UpdateSuccess {
 pub enum UpdateError {
     NoReleases,
     Network(reqwest::Error),
+    Timeout,
     Xml(quick_xml::DeError),
     Io(io::Error),
 }
@@ -125,6 +133,7 @@ impl fmt::Display for UpdateError {
                 env!("FISHNET_TARGET")
             )),
             UpdateError::Network(err) => write!(f, "{err}"),
+            UpdateError::Timeout => f.write_str("timeout"),
             UpdateError::Xml(err) => write!(f, "unexpected response from aws: {err}"),
             UpdateError::Io(err) => write!(f, "{err}"),
         }
@@ -146,5 +155,11 @@ impl From<quick_xml::DeError> for UpdateError {
 impl From<io::Error> for UpdateError {
     fn from(err: io::Error) -> UpdateError {
         UpdateError::Io(err)
+    }
+}
+
+impl From<Elapsed> for UpdateError {
+    fn from(_err: Elapsed) -> UpdateError {
+        UpdateError::Timeout
     }
 }

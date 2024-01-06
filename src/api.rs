@@ -11,7 +11,7 @@ use serde_with::{
 use shakmaty::{fen::Fen, uci::Uci, variant::Variant};
 use tokio::{
     sync::{mpsc, oneshot},
-    time,
+    time::sleep,
 };
 use url::Url;
 
@@ -516,12 +516,12 @@ impl ApiActor {
                 self.logger.error(&format!(
                     "Too many requests. Suspending requests for {backoff:?}."
                 ));
-                time::sleep(backoff).await;
+                sleep(backoff).await;
             } else {
                 let backoff = self.error_backoff.next();
                 self.logger
                     .error(&format!("{err}. Backing off {backoff:?}."));
-                time::sleep(backoff).await;
+                sleep(backoff).await;
             }
         } else {
             self.error_backoff.reset();

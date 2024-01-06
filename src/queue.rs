@@ -16,8 +16,7 @@ use shakmaty::{
 };
 use tokio::{
     sync::{mpsc, oneshot, Mutex, Notify},
-    time,
-    time::Instant,
+    time::{sleep, Instant},
 };
 use url::Url;
 
@@ -467,7 +466,7 @@ impl QueueActor {
                         tokio::select! {
                             _ = callback.closed() => break,
                             _ = self.interrupt.notified() => continue,
-                            _ = time::sleep(wait) => continue,
+                            _ = sleep(wait) => continue,
                         }
                     }
 
@@ -483,7 +482,7 @@ impl QueueActor {
                             tokio::select! {
                                 _ = callback.closed() => break,
                                 _ = self.interrupt.notified() => (),
-                                _ = time::sleep(backoff) => (),
+                                _ = sleep(backoff) => (),
                             }
                         }
                         Some(Acquired::Rejected) => {

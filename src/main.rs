@@ -28,7 +28,7 @@ use thread_priority::{set_current_thread_priority, ThreadPriority};
 use tokio::{
     signal,
     sync::{mpsc, oneshot},
-    time,
+    time::{sleep, sleep_until},
 };
 
 use crate::{
@@ -248,7 +248,7 @@ async fn run(opt: Opt, client: &Client, logger: &Logger) {
                     break;
                 }
             }
-            _ = time::sleep(Duration::from_secs(120)) => (),
+            _ = sleep(Duration::from_secs(120)) => (),
         }
     }
 
@@ -298,7 +298,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                     }
                     tokio::select! {
                         _ = tx.closed() => break,
-                        _ = time::sleep(engine_backoff.next()) => (),
+                        _ = sleep(engine_backoff.next()) => (),
                     }
 
                     // Start engine and spawn actor.
@@ -317,7 +317,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                     join_handle.await.expect("join");
                     break;
                 }
-                _ = time::sleep_until(chunk.deadline) => {
+                _ = sleep_until(chunk.deadline) => {
                     logger.warn(&match flavor {
                         EngineFlavor::Official => format!("Official Stockfish timed out in worker {i}. If this happens frequently it is better to stop and defer to clients with better hardware. Context: {context}"),
                         EngineFlavor::MultiVariant => format!("Fairy-Stockfish timed out in worker {i}. Context: {context}"),
