@@ -240,3 +240,13 @@ fn create_file(path: &Path, mode: u32) -> io::Result<File> {
 fn create_file(path: &Path, _mode: u32) -> io::Result<File> {
     File::options().create_new(true).write(true).open(path)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_prepare_assets() {
+        Assets::prepare(Cpu::detect()).expect("assets");
+    }
+}

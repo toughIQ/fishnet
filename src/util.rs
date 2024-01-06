@@ -53,3 +53,16 @@ where
     }
     &mut vec[index]
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_grow_with_and_get_mut() {
+        let mut vec = Vec::new();
+        *grow_with_and_get_mut(&mut vec, 2, || None) = Some(2);
+        *grow_with_and_get_mut(&mut vec, 0, || None) = Some(0);
+        assert_eq!(vec, &[Some(0), None, Some(2)])
+    }
+}
