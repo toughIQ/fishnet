@@ -1,10 +1,7 @@
-use std::{env, fmt, num::NonZeroU8, str::FromStr, sync::Arc, time::Duration};
+use std::{env, fmt, num::NonZeroU8, str::FromStr, time::Duration};
 
 use arrayvec::ArrayString;
-use reqwest::{
-    header::{HeaderValue, AUTHORIZATION},
-    StatusCode,
-};
+use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_repr::Deserialize_repr as DeserializeRepr;
 use serde_with::{
@@ -25,19 +22,24 @@ use crate::{
     util::{NevermindExt as _, RandomizedBackoff},
 };
 
-pub fn channel(endpoint: Endpoint, key: Option<Key>, logger: Logger) -> (ApiStub, ApiActor) {
+pub fn channel(
+    endpoint: Endpoint,
+    key: Option<Key>,
+    client: Client,
+    logger: Logger,
+) -> (ApiStub, ApiActor) {
     let (tx, rx) = mpsc::unbounded_channel();
     (
         ApiStub {
             tx,
             endpoint: endpoint.clone(),
         },
-        ApiActor::new(rx, endpoint, key, logger),
+        ApiActor::new(rx, endpoint, key, client, logger),
     )
 }
 
-pub fn spawn(endpoint: Endpoint, key: Option<Key>, logger: Logger) -> ApiStub {
-    let (stub, actor) = channel(endpoint, key, logger);
+pub fn spawn(endpoint: Endpoint, key: Option<Key>, client: Client, logger: Logger) -> ApiStub {
+    let (stub, actor) = channel(endpoint, key, client, logger);
     tokio::spawn(actor.run());
     stub
 }
@@ -474,7 +476,7 @@ pub struct ApiActor {
     rx: mpsc::UnboundedReceiver<ApiMessage>,
     endpoint: Endpoint,
     key: Option<Key>,
-    client: reqwest::Client,
+    client: Client,
     error_backoff: RandomizedBackoff,
     logger: Logger,
 }
@@ -484,52 +486,13 @@ impl ApiActor {
         rx: mpsc::UnboundedReceiver<ApiMessage>,
         endpoint: Endpoint,
         key: Option<Key>,
+        client: Client,
         logger: Logger,
     ) -> ApiActor {
-        // Build TLS backend that supports SSLKEYLOGFILE.
-        let mut root_store = rustls::RootCertStore::empty();
-        root_store.add_trust_anchors(webpki_roots::TLS_SERVER_ROOTS.iter().map(|ta| {
-            rustls::OwnedTrustAnchor::from_subject_spki_name_constraints(
-                ta.subject,
-                ta.spki,
-                ta.name_constraints,
-            )
-        }));
-        let mut tls = rustls::ClientConfig::builder()
-            .with_safe_defaults()
-            .with_root_certificates(root_store)
-            .with_no_client_auth();
-        tls.alpn_protocols = vec!["h2".into(), "http/1.1".into()];
-        tls.key_log = Arc::new(rustls::KeyLogFile::new());
-
         ApiActor {
             rx,
             endpoint,
-            client: reqwest::Client::builder()
-                .default_headers(
-                    key.iter()
-                        .map(|Key(k)| {
-                            (AUTHORIZATION, {
-                                let mut value = HeaderValue::from_str(&format!("Bearer {k}"))
-                                    .expect("bearer authorization");
-                                value.set_sensitive(true);
-                                value
-                            })
-                        })
-                        .collect(),
-                )
-                .user_agent(format!(
-                    "{}-{}-{}/{}",
-                    env!("CARGO_PKG_NAME"),
-                    env::consts::OS,
-                    env::consts::ARCH,
-                    env!("CARGO_PKG_VERSION")
-                ))
-                .timeout(Duration::from_secs(30))
-                .pool_idle_timeout(Duration::from_secs(25))
-                .use_preconfigured_tls(tls)
-                .build()
-                .expect("client"),
+            client,
             key,
             error_backoff: RandomizedBackoff::default(),
             logger,
@@ -571,6 +534,7 @@ impl ApiActor {
         let res = self
             .client
             .post(&url)
+            .bearer_auth(self.key.as_ref().map_or("", |k| &k.0))
             .json(&VoidRequestBody {
                 fishnet: Fishnet::authenticated(self.key.clone()),
             })
@@ -591,7 +555,12 @@ impl ApiActor {
         match msg {
             ApiMessage::CheckKey { callback } => {
                 let url = format!("{}/key", self.endpoint);
-                let res = self.client.get(&url).send().await?;
+                let res = self
+                    .client
+                    .get(&url)
+                    .bearer_auth(self.key.as_ref().map_or("", |k| &k.0))
+                    .send()
+                    .await?;
                 match res.status() {
                     StatusCode::NO_CONTENT | StatusCode::OK => {
                         callback.send(Ok(())).nevermind("callback dropped");
@@ -653,6 +622,7 @@ impl ApiActor {
                 let res = self
                     .client
                     .post(&url)
+                    .bearer_auth(self.key.as_ref().map_or("", |k| &k.0))
                     .query(&query)
                     .json(&VoidRequestBody {
                         fishnet: Fishnet::authenticated(self.key.clone()),
@@ -700,6 +670,7 @@ impl ApiActor {
                 let res = self
                     .client
                     .post(&url)
+                    .bearer_auth(self.key.as_ref().map_or("", |k| &k.0))
                     .query(&SubmitQuery {
                         stop: true,
                         slow: false,
@@ -729,6 +700,7 @@ impl ApiActor {
                 let res = self
                     .client
                     .post(&url)
+                    .bearer_auth(self.key.as_ref().map_or("", |k| &k.0))
                     .json(&MoveRequestBody {
                         fishnet: Fishnet::authenticated(self.key.clone()),
                         m: BestMove {

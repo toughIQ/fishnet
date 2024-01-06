@@ -22,6 +22,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use reqwest::Client;
 use shell_escape::escape;
 use thread_priority::{set_current_thread_priority, ThreadPriority};
 use tokio::{
@@ -41,14 +42,16 @@ use crate::{
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    let opt = configure::parse_and_configure().await;
+    let client = http_client();
+    let opt = configure::parse_and_configure(&client).await;
     let logger = Logger::new(opt.verbose, opt.command.map_or(false, Command::is_systemd));
 
     if opt.auto_update {
         let current_exe = env::current_exe().expect("current exe");
         match auto_update(
             !opt.command.map_or(false, Command::is_systemd),
-            logger.clone(),
+            &client,
+            &logger,
         )
         .await
         {
@@ -64,7 +67,7 @@ async fn main() {
     }
 
     match opt.command {
-        Some(Command::Run) | None => run(opt, &logger).await,
+        Some(Command::Run) | None => run(opt, &client, &logger).await,
         Some(Command::Systemd) => systemd::systemd_system(opt),
         Some(Command::SystemdUser) => systemd::systemd_user(opt),
         Some(Command::Configure) => (),
@@ -72,7 +75,7 @@ async fn main() {
     }
 }
 
-async fn run(opt: Opt, logger: &Logger) {
+async fn run(opt: Opt, client: &Client, logger: &Logger) {
     logger.headline("Checking configuration ...");
 
     let endpoint = opt.endpoint();
@@ -122,7 +125,8 @@ async fn run(opt: Opt, logger: &Logger) {
 
     // Spawn API actor.
     let api = {
-        let (api, api_actor) = api::channel(endpoint.clone(), opt.key, logger.clone());
+        let (api, api_actor) =
+            api::channel(endpoint.clone(), opt.key, client.clone(), logger.clone());
         join_handles.push(tokio::spawn(api_actor.run()));
         api
     };
@@ -186,7 +190,7 @@ async fn run(opt: Opt, logger: &Logger) {
         {
             up_to_date = now;
             let current_exe = env::current_exe().expect("current exe");
-            match auto_update(false, logger.clone()).await {
+            match auto_update(false, client, logger).await {
                 Err(err) => logger.error(&format!("Failed to update in the background: {err}")),
                 Ok(UpdateSuccess::UpToDate(version)) => {
                     logger.fishnet_info(&format!("Fishnet v{version} is up to date"));
@@ -424,4 +428,37 @@ fn exec(command: &mut process::Command) -> io::Error {
         Ok(_) => process::exit(0),
         Err(err) => return err,
     }
+}
+
+fn http_client() -> Client {
+    // Build TLS backend that supports SSLKEYLOGFILE.
+    let mut root_store = rustls::RootCertStore::empty();
+    root_store.add_trust_anchors(webpki_roots::TLS_SERVER_ROOTS.iter().map(|ta| {
+        rustls::OwnedTrustAnchor::from_subject_spki_name_constraints(
+            ta.subject,
+            ta.spki,
+            ta.name_constraints,
+        )
+    }));
+    let mut tls = rustls::ClientConfig::builder()
+        .with_safe_defaults()
+        .with_root_certificates(root_store)
+        .with_no_client_auth();
+    tls.alpn_protocols = vec!["h2".into(), "http/1.1".into()];
+    tls.key_log = Arc::new(rustls::KeyLogFile::new());
+
+    // Configure client.
+    Client::builder()
+        .user_agent(format!(
+            "{}-{}-{}/{}",
+            env!("CARGO_PKG_NAME"),
+            env::consts::OS,
+            env::consts::ARCH,
+            env!("CARGO_PKG_VERSION")
+        ))
+        .timeout(Duration::from_secs(30))
+        .pool_idle_timeout(Duration::from_secs(25))
+        .use_preconfigured_tls(tls)
+        .build()
+        .expect("client")
 }

@@ -11,6 +11,7 @@ use std::{
 
 use clap::{builder::PathBufValueParser, ArgAction, Parser, ValueEnum};
 use configparser::ini::Ini;
+use reqwest::Client;
 use url::Url;
 
 use crate::{api, logger::Logger};
@@ -389,7 +390,7 @@ fn intro() {
     println!(r#"#               \________/      Distributed Stockfish analysis for lichess.org"#);
 }
 
-pub async fn parse_and_configure() -> Opt {
+pub async fn parse_and_configure(client: &Client) -> Opt {
     let mut opt = Opt::parse();
 
     // Show intro and configure logger.
@@ -483,8 +484,12 @@ pub async fn parse_and_configure() -> Opt {
                 let key = match Key::from_str(key) {
                     Ok(key) if !network => Ok(key),
                     Ok(key) => {
-                        let mut api =
-                            api::spawn(endpoint.clone(), Some(key.clone()), logger.clone());
+                        let mut api = api::spawn(
+                            endpoint.clone(),
+                            Some(key.clone()),
+                            client.clone(),
+                            logger.clone(),
+                        );
                         match api.check_key().await {
                             Some(Ok(())) => Ok(key),
                             Some(Err(err)) => Err(err),

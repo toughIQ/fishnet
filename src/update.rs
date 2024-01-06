@@ -9,25 +9,28 @@ use tempfile::NamedTempFile;
 
 use crate::logger::Logger;
 
-pub async fn auto_update(verbose: bool, logger: Logger) -> Result<UpdateSuccess, UpdateError> {
-    let client = Client::new();
+pub async fn auto_update(
+    verbose: bool,
+    client: &Client,
+    logger: &Logger,
+) -> Result<UpdateSuccess, UpdateError> {
     if verbose {
         logger.headline("Updating ...");
     }
 
-    // Find relevant updates
+    // Find relevant updates.
     logger.fishnet_info("Checking for updates (--auto-update) ...");
     let current = Version::parse(env!("CARGO_PKG_VERSION")).expect("valid package version");
-    let latest = latest_release(&client).await?;
+    let latest = latest_release(client).await?;
     logger.debug(&format!(
         "Current release is v{}, latest is v{}",
         current, latest.version
     ));
     if latest.version <= current {
-        //return Ok(UpdateSuccess::UpToDate(current));
+        return Ok(UpdateSuccess::UpToDate(current));
     }
 
-    // Download
+    // Download.
     logger.fishnet_info("Downloading v{latest} ...");
     let mut temp_exe = NamedTempFile::with_prefix("fishnet-auto-update")?;
     let mut download = client
@@ -45,7 +48,7 @@ pub async fn auto_update(verbose: bool, logger: Logger) -> Result<UpdateSuccess,
     }
     temp_exe.flush()?;
 
-    // Replace
+    // Replace current executable.
     self_replace(temp_exe)?;
     Ok(UpdateSuccess::Updated(latest.version))
 }
@@ -84,14 +87,14 @@ struct Content {
 impl Content {
     fn release(self) -> Option<Release> {
         let (version, filename) = self.key.split_once('/')?;
-        //if !filename.contains(concat!("-", env!("FISHNET_TARGET"))) {
-        //    return None;
-        //}
+        if !filename.contains(concat!("-", env!("FISHNET_TARGET"))) {
+            return None;
+        }
         let version = version.strip_prefix('v')?;
-        Some(dbg!(Release {
+        Some(Release {
             version: version.parse().ok()?,
             key: self.key,
-        }))
+        })
     }
 }
 
