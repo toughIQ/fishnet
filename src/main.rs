@@ -9,6 +9,7 @@ mod queue;
 mod stats;
 mod stockfish;
 mod systemd;
+mod update;
 mod util;
 
 use std::{
