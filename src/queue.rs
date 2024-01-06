@@ -5,7 +5,7 @@ use std::{
     iter::{once, zip},
     num::NonZeroUsize,
     sync::Arc,
-    time::{Duration, Instant},
+    time::Duration,
 };
 
 use shakmaty::{
@@ -17,6 +17,7 @@ use shakmaty::{
 use tokio::{
     sync::{mpsc, oneshot, Mutex, Notify},
     time,
+    time::Instant,
 };
 use url::Url;
 
@@ -566,6 +567,7 @@ impl IncomingBatch {
                 Work::Move { .. } => {
                     vec![Chunk {
                         work: body.work.clone(),
+                        deadline: Instant::now() + body.work.timeout_per_ply(),
                         flavor,
                         variant: body.variant,
                         positions: vec![Position {
@@ -582,6 +584,8 @@ impl IncomingBatch {
                     // Iterate forwards to prepare positions.
                     let mut moves = Vec::new();
                     let num_positions = body_moves.len() + 1;
+                    let deadline =
+                        Instant::now() + body.work.timeout_per_ply() * num_positions as u32;
                     let mut positions = Vec::with_capacity(num_positions);
                     positions.push(Position {
                         work: body.work.clone(),
@@ -645,6 +649,7 @@ impl IncomingBatch {
                         if !chunk_positions.is_empty() {
                             chunks.push(Chunk {
                                 work: body.work.clone(),
+                                deadline,
                                 flavor,
                                 variant: body.variant,
                                 positions: chunk_positions,

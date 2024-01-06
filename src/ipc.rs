@@ -1,7 +1,7 @@
 use std::{num::NonZeroU8, time::Duration};
 
 use shakmaty::{fen::Fen, uci::Uci, variant::Variant};
-use tokio::sync::oneshot;
+use tokio::{sync::oneshot, time::Instant};
 use url::Url;
 
 use crate::{
@@ -13,6 +13,7 @@ use crate::{
 #[derive(Debug)]
 pub struct Chunk {
     pub work: Work,
+    pub deadline: Instant,
     pub variant: Variant,
     pub flavor: EngineFlavor,
     pub positions: Vec<Position>,
@@ -20,14 +21,6 @@ pub struct Chunk {
 
 impl Chunk {
     pub const MAX_POSITIONS: usize = 6;
-
-    pub fn timeout(&self) -> Duration {
-        self.positions
-            .iter()
-            .filter(|pos| pos.position_index.is_some())
-            .count() as u32
-            * self.work.timeout_per_position()
-    }
 }
 
 #[derive(Debug, Clone)]

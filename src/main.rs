@@ -12,7 +12,6 @@ mod systemd;
 mod util;
 
 use std::{
-    cmp::min,
     env, io,
     io::IsTerminal as _,
     path::PathBuf,
@@ -273,9 +272,6 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
     };
     let mut engine_backoff = RandomizedBackoff::default();
 
-    let default_budget = Duration::from_secs(30);
-    let mut budget = default_budget;
-
     loop {
         let responses = if let Some(chunk) = chunk.take() {
             // Ensure engine process is ready.
@@ -301,19 +297,14 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                         _ = time::sleep(engine_backoff.next()) => (),
                     }
 
-                    // Reset budget, start engine and spawn actor.
-                    budget = default_budget;
+                    // Start engine and spawn actor.
                     let (sf, sf_actor) =
                         stockfish::channel(assets.stockfish.get(flavor).clone(), logger.clone());
                     let join_handle = tokio::spawn(sf_actor.run());
                     (sf, join_handle)
                 };
 
-            // Provide time budget.
-            budget = min(default_budget, budget) + chunk.timeout();
-
             // Analyse or play.
-            let timer = Instant::now();
             let batch_id = chunk.work.id();
             let res = tokio::select! {
                 _ = tx.closed() => {
@@ -321,6 +312,15 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                     drop(sf);
                     join_handle.await.expect("join");
                     break;
+                }
+                _ = time::sleep_until(chunk.deadline) => {
+                    logger.warn(&match flavor {
+                        EngineFlavor::Official => format!("Official Stockfish timed out in worker {i}. If this happens frequently it is better to stop and defer to clients with better hardware. Context: {context}"),
+                        EngineFlavor::MultiVariant => format!("Fairy-Stockfish timed out in worker {i}. Context: {context}"),
+                    });
+                    drop(sf);
+                    join_handle.await.expect("join");
+                    Err(ChunkFailed { batch_id })
                 }
                 res = sf.go_multiple(chunk) => {
                     match res {
@@ -337,22 +337,7 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
                         },
                     }
                 }
-                _ = time::sleep(budget) => {
-                    logger.warn(&match flavor {
-                        EngineFlavor::Official => format!("Official Stockfish timed out in worker {i}. If this happens frequently it is better to stop and defer to clients with better hardware. Context: {context}"),
-                        EngineFlavor::MultiVariant => format!("Fairy-Stockfish timed out in worker {i}. Context: {context}"),
-                    });
-                    drop(sf);
-                    join_handle.await.expect("join");
-                    Err(ChunkFailed { batch_id })
-                }
             };
-
-            // Update time budget.
-            budget = budget.checked_sub(timer.elapsed()).unwrap_or_default();
-            if budget < default_budget {
-                logger.debug(&format!("Low engine timeout budget: {budget:?}"));
-            }
 
             res
         } else {
