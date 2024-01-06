@@ -42,7 +42,7 @@ use crate::{
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    let client = http_client();
+    let client = configure_client();
     let opt = configure::parse_and_configure(&client).await;
     let logger = Logger::new(opt.verbose, opt.command.map_or(false, Command::is_systemd));
 
@@ -430,7 +430,7 @@ fn exec(command: &mut process::Command) -> io::Error {
     }
 }
 
-fn http_client() -> Client {
+fn configure_client() -> Client {
     // Build TLS backend that supports SSLKEYLOGFILE.
     let mut root_store = rustls::RootCertStore::empty();
     root_store.add_trust_anchors(webpki_roots::TLS_SERVER_ROOTS.iter().map(|ta| {

@@ -578,7 +578,12 @@ impl ApiActor {
                             self.endpoint,
                             self.key.as_ref().map_or("", |k| &k.0)
                         );
-                        let res = self.client.get(&url).send().await?;
+                        let res = self
+                            .client
+                            .get(&url)
+                            .bearer_auth(self.key.as_ref().map_or("", |k| &k.0))
+                            .send()
+                            .await?;
                         match res.status() {
                             StatusCode::NOT_FOUND => callback
                                 .send(Err(KeyError::AccessDenied))
@@ -601,7 +606,12 @@ impl ApiActor {
             }
             ApiMessage::Status { callback } => {
                 let url = format!("{}/status", self.endpoint);
-                let res = self.client.get(&url).send().await?;
+                let res = self
+                    .client
+                    .get(&url)
+                    .bearer_auth(self.key.as_ref().map_or("", |k| &k.0))
+                    .send()
+                    .await?;
                 match res.status() {
                     StatusCode::OK => callback
                         .send(res.json::<StatusResponseBody>().await?.analysis)
