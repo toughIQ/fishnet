@@ -22,7 +22,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-use self_update::backends::s3::{EndPoint, Update};
 use shell_escape::escape;
 use thread_priority::{set_current_thread_priority, ThreadPriority};
 use tokio::{
@@ -36,6 +35,7 @@ use crate::{
     configure::{Command, Cores, CpuPriority, Opt},
     ipc::{Chunk, ChunkFailed, Pull},
     logger::{Logger, ProgressAt},
+    update::{auto_update, UpdateSuccess},
     util::{dot_thousands, RandomizedBackoff},
 };
 
@@ -53,11 +53,11 @@ async fn main() {
         .await
         {
             Err(err) => logger.error(&format!("Failed to update: {err}")),
-            Ok(self_update::Status::UpToDate(version)) => {
-                logger.fishnet_info(&format!("Fishnet {version} is up to date"));
+            Ok(UpdateSuccess::UpToDate(version)) => {
+                logger.fishnet_info(&format!("Fishnet v{version} is up to date"));
             }
-            Ok(self_update::Status::Updated(version)) => {
-                logger.fishnet_info(&format!("Fishnet updated to {version}"));
+            Ok(UpdateSuccess::Updated(version)) => {
+                logger.fishnet_info(&format!("Fishnet updated to v{version}"));
                 restart_process(current_exe, &logger);
             }
         }
@@ -188,12 +188,12 @@ async fn run(opt: Opt, logger: &Logger) {
             let current_exe = env::current_exe().expect("current exe");
             match auto_update(false, logger.clone()).await {
                 Err(err) => logger.error(&format!("Failed to update in the background: {err}")),
-                Ok(self_update::Status::UpToDate(version)) => {
-                    logger.fishnet_info(&format!("Fishnet {version} is up to date"));
+                Ok(UpdateSuccess::UpToDate(version)) => {
+                    logger.fishnet_info(&format!("Fishnet v{version} is up to date"));
                 }
-                Ok(self_update::Status::Updated(version)) => {
+                Ok(UpdateSuccess::Updated(version)) => {
                     logger
-                        .fishnet_info(&format!("Fishnet updated to {version}. Will restart soon"));
+                        .fishnet_info(&format!("Fishnet updated to v{version}. Will restart soon"));
                     restart = Some(current_exe);
                     shutdown_soon = true;
                     queue.shutdown_soon().await;
@@ -424,30 +424,4 @@ fn exec(command: &mut process::Command) -> io::Error {
         Ok(_) => process::exit(0),
         Err(err) => return err,
     }
-}
-
-async fn auto_update(
-    verbose: bool,
-    logger: Logger,
-) -> Result<self_update::Status, self_update::errors::Error> {
-    tokio::task::spawn_blocking(move || {
-        if verbose {
-            logger.headline("Updating ...");
-        }
-        logger.fishnet_info("Checking for updates (--auto-update) ...");
-        Update::configure()
-            .bucket_name("fishnet-releases")
-            .end_point(EndPoint::S3DualStack)
-            .region("eu-west-3")
-            .bin_name("fishnet")
-            .show_output(verbose)
-            .show_download_progress(verbose && io::stdout().is_terminal())
-            .current_version(env!("CARGO_PKG_VERSION"))
-            .no_confirm(true)
-            .build()
-            .expect("self_update config")
-            .update()
-    })
-    .await
-    .expect("spawn blocking update")
 }

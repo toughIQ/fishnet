@@ -8,6 +8,11 @@ use xz2::write::XzEncoder;
 const EVAL_FILE: &str = "nn-5af11540bbfe.nnue";
 
 fn main() {
+    println!(
+        "cargo:rustc-env=FISHNET_TARGET={}",
+        env::var("TARGET").unwrap()
+    );
+
     hooks();
 
     let mut archive = ar::Builder::new(XzEncoder::new(

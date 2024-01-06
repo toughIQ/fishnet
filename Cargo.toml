@@ -31,9 +31,8 @@ bitflags = "2"
 clap = { version = "4", features = ["derive", "deprecated", "wrap_help"] }
 configparser = "3"
 fastrand = "2"
-reqwest = { version = "=0.11.23", features = ["json", "rustls-tls-manual-roots"], default-features = false }
+reqwest = { version = "=0.11.23", features = ["json", "rustls-tls-manual-roots", "stream"], default-features = false }
 rustls = "0.21" # will fail at runtime if mismatch with reqwest
-self_update = { version = "0.38", features = ["rustls"], default-features = false }
 serde = "1"
 serde_json = "1"
 serde_with = "3"
@@ -48,7 +47,10 @@ serde_repr = "0.1"
 webpki-roots = "0.25"
 xz2 = { version = "0.1", features = ["static"] }
 ar = "0.9"
-quick-xml = { version = "0.31.0", features = ["serialize"] }
+quick-xml = { version = "0.31", features = ["serialize"] }
+semver = "1"
+futures-util = "0.3"
+self-replace = "1"
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
 raw-cpuid = "11"
