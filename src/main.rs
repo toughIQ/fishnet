@@ -23,7 +23,6 @@ use std::{
 
 use self_update::backends::s3::{EndPoint, Update};
 use shell_escape::escape;
-use thousands::Separable as _;
 use thread_priority::{set_current_thread_priority, ThreadPriority};
 use tokio::{
     signal,
@@ -36,7 +35,7 @@ use crate::{
     configure::{Command, Cores, CpuPriority, Opt},
     ipc::{Chunk, ChunkFailed, Pull},
     logger::{Logger, ProgressAt},
-    util::RandomizedBackoff,
+    util::{dot_thousands, RandomizedBackoff},
 };
 
 #[tokio::main(flavor = "current_thread")]
@@ -209,9 +208,9 @@ async fn run(opt: Opt, logger: &Logger) {
                 "fishnet/{}: {} (nnue), {} batches, {} positions, {} total nodes",
                 env!("CARGO_PKG_VERSION"),
                 nnue_nps,
-                stats.total_batches.separate_with_dots(),
-                stats.total_positions.separate_with_dots(),
-                stats.total_nodes.separate_with_dots()
+                dot_thousands(stats.total_batches),
+                dot_thousands(stats.total_positions),
+                dot_thousands(stats.total_nodes),
             ));
         }
 

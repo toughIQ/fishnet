@@ -46,7 +46,6 @@ tokio = { version = "1", features = ["rt", "macros", "sync", "time", "signal", "
 url = "2"
 serde_repr = "0.1"
 webpki-roots = "0.25"
-thousands = "0.2"
 xz2 = { version = "0.1", features = ["static"] }
 ar = "0.9"
 
