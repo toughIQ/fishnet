@@ -18,6 +18,7 @@ use url::Url;
 use crate::{
     assets::EvalFlavor,
     configure::{Endpoint, Key, KeyError},
+    ipc::Chunk,
     logger::Logger,
     util::{NevermindExt as _, RandomizedBackoff},
 };
@@ -212,10 +213,11 @@ pub struct NodeLimit {
 
 impl NodeLimit {
     pub fn get(&self, flavor: EvalFlavor) -> u64 {
-        match flavor {
+        (match flavor {
             EvalFlavor::Hce => self.classical,
             EvalFlavor::Nnue => self.sf16,
-        }
+        }) / (Chunk::MAX_POSITIONS as u64)
+            * (Chunk::MAX_POSITIONS as u64 - 1)
     }
 }
 
