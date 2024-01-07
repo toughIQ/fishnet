@@ -32,7 +32,7 @@ pub async fn auto_update(
     }
 
     // Request download.
-    logger.fishnet_info("Downloading v{latest} ...");
+    logger.fishnet_info(&format!("Downloading v{} ...", latest.version));
     let mut temp_exe = NamedTempFile::with_prefix("fishnet-auto-update")?;
     let mut download = timeout(
         Duration::from_secs(30),
@@ -136,7 +136,9 @@ pub enum UpdateError {
 impl fmt::Display for UpdateError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            UpdateError::NoReleases => write!(f, "auto update not supported for {}", effective_target()),
+            UpdateError::NoReleases => {
+                write!(f, "auto update not supported for {}", effective_target())
+            }
             UpdateError::Network(err) => write!(f, "{err}"),
             UpdateError::Timeout => f.write_str("download timed out"),
             UpdateError::Xml(err) => write!(f, "unexpected response from aws: {err}"),
