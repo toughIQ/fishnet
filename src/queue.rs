@@ -273,7 +273,7 @@ impl QueueState {
                             extra.join(", ")
                         ),
                         None => format!(
-                            "{} {} finished ({})",
+                            "{} batch {} finished ({})",
                             self.status_bar(),
                             batch,
                             extra.join(", ")
