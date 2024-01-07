@@ -296,6 +296,17 @@ impl Target {
             "Directory {src_dir:?} does not exist. Try: git submodule update --init",
         );
 
+        assert!(
+            Command::new(&make)
+                .current_dir(src_dir)
+                .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
+                .arg("clean")
+                .status()
+                .unwrap()
+                .success(),
+            "$(MAKE) clean"
+        );
+
         if flavor == Flavor::Official
             && !Command::new(&make)
                 .current_dir(src_dir)
@@ -348,17 +359,6 @@ impl Target {
         let exe_path = Path::new(src_dir).join(exe);
         archive.append_path(&exe_path).unwrap();
         fs::remove_file(&exe_path).unwrap();
-
-        assert!(
-            Command::new(make)
-                .current_dir(src_dir)
-                .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
-                .arg("clean")
-                .status()
-                .unwrap()
-                .success(),
-            "$(MAKE) clean"
-        );
     }
 
     fn build_official<W: Write>(&self, archive: &mut ar::Builder<W>) {
