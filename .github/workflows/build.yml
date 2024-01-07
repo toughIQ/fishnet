@@ -133,8 +133,10 @@ jobs:
         with:
           name: fishnet-aarch64-apple-darwin
           path: fishnet-aarch64-apple-darwin
-  release:
+  github_release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     needs:
       - linux
       - windows-x86-64
@@ -145,76 +147,36 @@ jobs:
       - run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
         id: get_version
       - uses: actions/download-artifact@v4
-      - run: |
-          mkdir upload
-          mv fishnet-x86_64-unknown-linux-musl/fishnet-x86_64-unknown-linux-musl   upload/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-unknown-linux-musl
-          mv fishnet-x86_64-pc-windows-gnu/fishnet-x86_64-pc-windows-gnu.exe       upload/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-pc-windows-gnu.exe
-          mv fishnet-x86_64-apple-darwin/fishnet-x86_64-apple-darwin               upload/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-apple-darwin
-          mv fishnet-aarch64-unknown-linux-musl/fishnet-aarch64-unknown-linux-musl upload/fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-unknown-linux-musl
-          mv fishnet-aarch64-apple-darwin/fishnet-aarch64-apple-darwin             upload/fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-apple-darwin
-          sha256sum upload/*
+      - run: sha256sum fishnet-*
+      - uses: softprops/action-gh-release@v1
+        with:
+          name: fishnet ${{ steps.get_version.outputs.VERSION }}
+          body: |
+            Downloads:
+
+            * [fishnet-x86_64-unknown-linux-musl](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-x86_64-unknown-linux-musl)
+            * [fishnet-x86_64-pc-windows-gnu.exe](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-x86_64-pc-windows-gnu.exe)
+            * [fishnet-x86_64-apple-darwin](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-x86_64-apple-darwin)
+            * [fishnet-aarch64-unknown-linux-musl](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-aarch64-unknown-linux-musl)
+            * [fishnet-aarch64-apple-darwin](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-aarch64-apple-darwin)
+          generate_release_notes: true
+          draft: true
+          files: fishnet-*
+          fail_on_unmatched_files: true
+  s3_release:
+    runs-on: ubuntu-latest
+    environment:
+      name: s3
+    needs: github_release
+    steps:
+      - run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+        id: get_version
+      - uses: actions/download-artifact@v4
+      - run: sha256sum fishnet-*
       - uses: shallwefootball/s3-upload-action@bcd7c2408245fd6cd19b5512a473b1a7a8b48a35
         with:
           aws_key_id: ${{ secrets.AWS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_bucket: fishnet-releases
-          source_dir: upload
+          source_dir: .
           destination_dir: ${{ steps.get_version.outputs.VERSION }}
-        id: upload_s3
-      - uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.get_version.outputs.VERSION }}
-          release_name: fishnet ${{ steps.get_version.outputs.VERSION }}
-          draft: true
-          prerelease: false
-          body: |
-            Downloads:
-
-            * [fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-unknown-linux-musl](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-unknown-linux-musl)
-            * [fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-pc-windows-gnu.exe](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-pc-windows-gnu.exe)
-            * [fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-apple-darwin](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-apple-darwin)
-            * [fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-unknown-linux-musl](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-unknown-linux-musl)
-            * [fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-apple-darwin](https://fishnet-releases.s3.dualstack.eu-west-3.amazonaws.com/${{ steps.get_version.outputs.VERSION }}/fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-apple-darwin)
-        id: create_release
-      - uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: upload/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-unknown-linux-musl
-          asset_name: fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-unknown-linux-musl
-          asset_content_type: application/octet-stream
-      - uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: upload/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-pc-windows-gnu.exe
-          asset_name: fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-pc-windows-gnu.exe
-          asset_content_type: application/octet-stream
-      - uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: upload/fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-apple-darwin
-          asset_name: fishnet-${{ steps.get_version.outputs.VERSION }}-x86_64-apple-darwin
-          asset_content_type: application/octet-stream
-      - uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: upload/fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-unknown-linux-musl
-          asset_name: fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-unknown-linux-musl
-          asset_content_type: application/octet-stream
-      - uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: upload/fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-apple-darwin
-          asset_name: fishnet-${{ steps.get_version.outputs.VERSION }}-aarch64-apple-darwin
-          asset_content_type: application/octet-stream
