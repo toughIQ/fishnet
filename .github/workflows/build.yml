@@ -26,11 +26,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha
           load: true
-      - run: docker cp "$(docker create ${{ steps.docker_build_amd64.outputs.imageid }}):/fishnet" fishnet-x86_64-unknown-linux-musl
-      - uses: actions/upload-artifact@v4
-        with:
-          name: fishnet-x86_64-unknown-linux-musl
-          path: fishnet-x86_64-unknown-linux-musl
       - uses: docker/build-push-action@v5
         id: docker_build_arm64
         with:
@@ -39,11 +34,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha
           load: true
-      - run: docker cp "$(docker create ${{ steps.docker_build_arm64.outputs.imageid }}):/fishnet" fishnet-aarch64-unknown-linux-musl
-      - uses: actions/upload-artifact@v4
-        with:
-          name: fishnet-aarch64-unknown-linux-musl
-          path: fishnet-aarch64-unknown-linux-musl
       - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -70,6 +60,16 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
         if: github.event_name == 'push'
+      - run: docker cp "$(docker create ${{ steps.docker_build_amd64.outputs.imageid }}):/fishnet" fishnet-x86_64-unknown-linux-musl
+      - run: docker cp "$(docker create ${{ steps.docker_build_arm64.outputs.imageid }}):/fishnet" fishnet-aarch64-unknown-linux-musl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fishnet-x86_64-unknown-linux-musl
+          path: fishnet-x86_64-unknown-linux-musl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fishnet-aarch64-unknown-linux-musl
+          path: fishnet-aarch64-unknown-linux-musl
   windows-x86-64:
     runs-on: windows-2019
     defaults:
