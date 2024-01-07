@@ -79,6 +79,14 @@ async fn latest_release(client: &Client) -> Result<Release, UpdateError> {
         .ok_or(UpdateError::NoReleases)
 }
 
+fn effective_target() -> &'static str {
+    match env!("FISHNET_TARGET") {
+        "x86_64-unknown-linux-gnu" => "x86_64-unknown-linux-musl",
+        "aarch64-unknown-linux-gnu" => "aarch64-unknown-linux-musl",
+        other => other,
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 struct ListBucket {
@@ -94,7 +102,7 @@ struct Content {
 impl Content {
     fn release(self) -> Option<Release> {
         let (version, filename) = self.key.split_once('/')?;
-        if !filename.contains(concat!("-", env!("FISHNET_TARGET"))) {
+        if !filename.contains(effective_target()) {
             return None;
         }
         let version = version.strip_prefix('v')?;
@@ -128,12 +136,9 @@ pub enum UpdateError {
 impl fmt::Display for UpdateError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            UpdateError::NoReleases => f.write_str(concat!(
-                "auto update not supported for ",
-                env!("FISHNET_TARGET")
-            )),
+            UpdateError::NoReleases => write!(f, "auto update not supported for {}", effective_target()),
             UpdateError::Network(err) => write!(f, "{err}"),
-            UpdateError::Timeout => f.write_str("timeout"),
+            UpdateError::Timeout => f.write_str("download timed out"),
             UpdateError::Xml(err) => write!(f, "unexpected response from aws: {err}"),
             UpdateError::Io(err) => write!(f, "{err}"),
         }
