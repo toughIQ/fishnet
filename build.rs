@@ -43,7 +43,6 @@ fn hooks() {
     println!("cargo:rerun-if-env-changed=LDFLAGS");
     println!("cargo:rerun-if-env-changed=MAKE");
     println!("cargo:rerun-if-env-changed=SDE_PATH");
-    println!("cargo:rerun-if-env-changed=WINE_PATH");
 
     println!("cargo:rerun-if-changed=Stockfish/src/Makefile");
     for entry in glob("Stockfish/src/**/*.cpp").unwrap() {
@@ -108,8 +107,7 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
 
     match env::var("CARGO_CFG_TARGET_ARCH").unwrap().as_str() {
         "x86_64" => {
-            let emulator = env::var("WINE_PATH")
-                .or_else(|_| env::var("SDE_PATH"))
+            let sde = env::var("SDE_PATH")
                 .ok()
                 .filter(|_| cfg!(target_arch = "x86_64"));
 
@@ -118,7 +116,7 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
                 native: has_x86_64_builder_feature!("avx512dq")
                     && has_x86_64_builder_feature!("avx512vl")
                     && has_x86_64_builder_feature!("avx512vnni"),
-                emulator: emulator.clone(),
+                sde: sde.clone(),
             }
             .build_both(archive);
 
@@ -133,7 +131,7 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
                 arch: "x86-64-avx512",
                 native: has_x86_64_builder_feature!("avx512f")
                     && has_x86_64_builder_feature!("avx512bw"),
-                emulator: emulator.clone(),
+                sde: sde.clone(),
             }
             .build_both(archive);
 
@@ -144,7 +142,7 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
             Target {
                 arch: "x86-64-bmi2",
                 native: has_x86_64_builder_feature!("bmi2"),
-                emulator: emulator.clone(),
+                sde: sde.clone(),
             }
             .build_both(archive);
 
@@ -155,7 +153,7 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
             Target {
                 arch: "x86-64-avx2",
                 native: has_x86_64_builder_feature!("avx2"),
-                emulator: emulator.clone(),
+                sde: sde.clone(),
             }
             .build_both(archive);
 
@@ -167,7 +165,7 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
                 arch: "x86-64-sse41-popcnt",
                 native: has_x86_64_builder_feature!("sse4.1")
                     && has_x86_64_builder_feature!("popcnt"),
-                emulator: emulator.clone(),
+                sde: sde.clone(),
             }
             .build_both(archive);
 
@@ -178,7 +176,7 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
             Target {
                 arch: "x86-64",
                 native: cfg!(target_arch = "x86_64"),
-                emulator,
+                sde,
             }
             .build_both(archive);
         }
@@ -189,21 +187,21 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
                 Target {
                     arch: "apple-silicon",
                     native,
-                    emulator: None,
+                    sde: None,
                 }
                 .build_both(archive);
             } else {
                 Target {
                     arch: "armv8-dotprod",
                     native: native && has_aarch64_builder_feature!("dotprod"),
-                    emulator: None,
+                    sde: None,
                 }
                 .build_official(archive);
 
                 Target {
                     arch: "armv8",
                     native,
-                    emulator: None,
+                    sde: None,
                 }
                 .build_multi_variant(archive);
 
@@ -214,7 +212,7 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
                 Target {
                     arch: "armv8",
                     native,
-                    emulator: None,
+                    sde: None,
                 }
                 .build_official(archive);
             }
@@ -228,7 +226,7 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
 struct Target {
     arch: &'static str,
     native: bool,
-    emulator: Option<String>,
+    sde: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -248,8 +246,8 @@ impl Target {
         let release = env::var("PROFILE").unwrap() == "release";
         let windows = env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "windows";
         let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-        let emulator = self.emulator.as_ref().filter(|_| !self.native);
-        let pgo = release && (self.native || emulator.is_some());
+        let sde = self.sde.as_ref().filter(|_| !self.native);
+        let pgo = release && (self.native || sde.is_some());
 
         let exe = format!(
             "{}-{}{}",
@@ -344,8 +342,8 @@ impl Target {
                 )
                 .env_remove("SDE_PATH")
                 .env_remove("WINE_PATH")
-                .args(emulator.map(|e| format!("WINE_PATH={e}")))
-                .args(emulator.map(|e| format!("SDE_PATH={e}")))
+                .args(sde.map(|e| format!("WINE_PATH={e} --")))
+                .args(sde.map(|e| format!("SDE_PATH={e}")))
                 .arg("-B")
                 .arg(format!("COMP={comp}"))
                 .arg(format!("CXX={cxx}"))
