@@ -5,7 +5,8 @@ use std::{env, fs, fs::File, io::Write, path::Path, process::Command};
 use glob::glob;
 use xz2::write::XzEncoder;
 
-const EVAL_FILE: &str = "nn-5af11540bbfe.nnue";
+const EVAL_FILE: &str = "nn-baff1edbea57.nnue";
+const EVAL_FILE_SMALL: &str = "nn-baff1ede1f90.nnue";
 
 fn main() {
     println!(
@@ -21,6 +22,7 @@ fn main() {
     ));
     stockfish_build(&mut archive);
     stockfish_eval_file(EVAL_FILE, &mut archive);
+    stockfish_eval_file(EVAL_FILE_SMALL, &mut archive);
     archive.into_inner().unwrap().finish().unwrap();
 
     // Resource compilation may fail when toolchain does not match target,
@@ -317,8 +319,11 @@ impl Target {
                 .unwrap()
                 .success()
         {
-            fs::remove_file(Path::new(src_dir).join(EVAL_FILE)).unwrap();
-            println!("cargo:warning=Deleted corrupted network file {EVAL_FILE}");
+            let _ = fs::remove_file(Path::new(src_dir).join(EVAL_FILE));
+            let _ = fs::remove_file(Path::new(src_dir).join(EVAL_FILE_SMALL));
+            println!(
+                "cargo:warning=Deleted corrupted network file {EVAL_FILE} or {EVAL_FILE_SMALL}"
+            );
         }
 
         let mut build_command = Command::new(&make);

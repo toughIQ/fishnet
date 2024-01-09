@@ -128,6 +128,7 @@ impl StockfishActor {
         let mut command = Command::new(&self.exe);
         set_new_process_group(&mut command);
         let mut child = tokio::process::Command::from(command)
+            .current_dir(self.exe.parent().expect("absolute path"))
             .stdout(Stdio::piped())
             .stdin(Stdio::piped())
             .kill_on_drop(true)
@@ -237,16 +238,25 @@ impl StockfishActor {
         stdin.write_all(b"ucinewgame\n").await?;
 
         // Set basic options.
-        stdin
-            .write_all(
-                format!(
-                    "setoption name Use NNUE value {}\n",
-                    chunk.flavor.eval_flavor().is_nnue()
-                )
-                .as_bytes(),
-            )
-            .await?;
         if chunk.flavor == EngineFlavor::MultiVariant {
+            stdin
+                .write_all(
+                    format!(
+                        "setoption name Use NNUE value {}\n",
+                        chunk.flavor.eval_flavor().is_nnue()
+                    )
+                    .as_bytes(),
+                )
+                .await?;
+            stdin
+                .write_all(
+                    format!(
+                        "setoption name UCI_AnalyseMode value {}\n",
+                        matches!(chunk.work, Work::Analysis { .. })
+                    )
+                    .as_bytes(),
+                )
+                .await?;
             stdin
                 .write_all(
                     format!("setoption name UCI_Variant value {}\n", chunk.variant.uci())
@@ -259,7 +269,20 @@ impl StockfishActor {
                 format!("setoption name MultiPV value {}\n", chunk.work.multipv()).as_bytes(),
             )
             .await?;
+        stdin
+            .write_all(
+                format!(
+                    "setoption name Skill Level value {}\n",
+                    match chunk.work {
+                        Work::Analysis { .. } => 20,
+                        Work::Move { level, .. } => level.skill_level(),
+                    }
+                )
+                .as_bytes(),
+            )
+            .await?;
 
+        // Collect results for all positions of the chunk.
         let mut responses = Vec::with_capacity(chunk.positions.len());
         for position in chunk.positions {
             responses.push(
@@ -291,16 +314,6 @@ impl StockfishActor {
         // Go.
         let go = match &position.work {
             Work::Move { level, clock, .. } => {
-                stdin
-                    .write_all(b"setoption name UCI_AnalyseMode value false\n")
-                    .await?;
-                stdin
-                    .write_all(
-                        format!("setoption name Skill Level value {}\n", level.skill_level())
-                            .as_bytes(),
-                    )
-                    .await?;
-
                 let mut go = vec![
                     "go".to_owned(),
                     "movetime".to_owned(),
@@ -325,13 +338,6 @@ impl StockfishActor {
                 go
             }
             Work::Analysis { nodes, depth, .. } => {
-                stdin
-                    .write_all(b"setoption name UCI_AnalyseMode value true\n")
-                    .await?;
-                stdin
-                    .write_all(b"setoption name Skill Level value 20\n")
-                    .await?;
-
                 let mut go = vec![
                     "go".to_owned(),
                     "nodes".to_owned(),
