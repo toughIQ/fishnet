@@ -43,6 +43,7 @@ fn hooks() {
     println!("cargo:rerun-if-env-changed=LDFLAGS");
     println!("cargo:rerun-if-env-changed=MAKE");
     println!("cargo:rerun-if-env-changed=SDE_PATH");
+    println!("cargo:rerun-if-env-changed=WINE_PATH");
 
     println!("cargo:rerun-if-changed=Stockfish/src/Makefile");
     for entry in glob("Stockfish/src/**/*.cpp").unwrap() {
@@ -107,14 +108,17 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
 
     match env::var("CARGO_CFG_TARGET_ARCH").unwrap().as_str() {
         "x86_64" => {
-            let sde = cfg!(target_arch = "x86_64");
+            let emulator = env::var("WINE_PATH")
+                .or_else(|_| env::var("SDE_PATH"))
+                .ok()
+                .filter(|_| cfg!(target_arch = "x86_64"));
 
             Target {
                 arch: "x86-64-vnni256",
                 native: has_x86_64_builder_feature!("avx512dq")
                     && has_x86_64_builder_feature!("avx512vl")
                     && has_x86_64_builder_feature!("avx512vnni"),
-                sde,
+                emulator: emulator.clone(),
             }
             .build_both(archive);
 
@@ -129,7 +133,7 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
                 arch: "x86-64-avx512",
                 native: has_x86_64_builder_feature!("avx512f")
                     && has_x86_64_builder_feature!("avx512bw"),
-                sde,
+                emulator: emulator.clone(),
             }
             .build_both(archive);
 
@@ -140,7 +144,7 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
             Target {
                 arch: "x86-64-bmi2",
                 native: has_x86_64_builder_feature!("bmi2"),
-                sde,
+                emulator: emulator.clone(),
             }
             .build_both(archive);
 
@@ -151,7 +155,7 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
             Target {
                 arch: "x86-64-avx2",
                 native: has_x86_64_builder_feature!("avx2"),
-                sde,
+                emulator: emulator.clone(),
             }
             .build_both(archive);
 
@@ -163,7 +167,7 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
                 arch: "x86-64-sse41-popcnt",
                 native: has_x86_64_builder_feature!("sse4.1")
                     && has_x86_64_builder_feature!("popcnt"),
-                sde,
+                emulator: emulator.clone(),
             }
             .build_both(archive);
 
@@ -174,7 +178,7 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
             Target {
                 arch: "x86-64",
                 native: cfg!(target_arch = "x86_64"),
-                sde,
+                emulator,
             }
             .build_both(archive);
         }
@@ -185,21 +189,21 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
                 Target {
                     arch: "apple-silicon",
                     native,
-                    sde: false,
+                    emulator: None,
                 }
                 .build_both(archive);
             } else {
                 Target {
                     arch: "armv8-dotprod",
                     native: native && has_aarch64_builder_feature!("dotprod"),
-                    sde: false,
+                    emulator: None,
                 }
                 .build_official(archive);
 
                 Target {
                     arch: "armv8",
                     native,
-                    sde: false,
+                    emulator: None,
                 }
                 .build_multi_variant(archive);
 
@@ -210,7 +214,7 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
                 Target {
                     arch: "armv8",
                     native,
-                    sde: false,
+                    emulator: None,
                 }
                 .build_official(archive);
             }
@@ -224,7 +228,7 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
 struct Target {
     arch: &'static str,
     native: bool,
-    sde: bool,
+    emulator: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -244,7 +248,8 @@ impl Target {
         let release = env::var("PROFILE").unwrap() == "release";
         let windows = env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "windows";
         let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-        let pgo = release && (self.native || (self.sde && env::var("SDE_PATH").is_ok()));
+        let emulator = self.emulator.as_ref().filter(|_| !self.native);
+        let pgo = release && (self.native || emulator.is_some());
 
         let exe = format!(
             "{}-{}{}",
@@ -326,28 +331,32 @@ impl Target {
             );
         }
 
-        let mut build_command = Command::new(&make);
-        build_command
-            .current_dir(src_dir)
-            .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
-            .env(
-                "CXXFLAGS",
-                format!(
-                    "{} -DNNUE_EMBEDDING_OFF",
-                    env::var("CXXFLAGS").unwrap_or_default()
-                ),
-            )
-            .arg("-B")
-            .arg(format!("COMP={comp}"))
-            .arg(format!("CXX={cxx}"))
-            .arg(format!("ARCH={}", self.arch))
-            .arg(format!("EXE={exe}"))
-            .arg(if pgo { "profile-build" } else { "build" });
-        if !pgo || self.native {
-            // Avoid SDE overhead if not required.
-            build_command.env_remove("SDE_PATH");
-        }
-        assert!(build_command.status().unwrap().success(), "$(MAKE) build");
+        assert!(
+            Command::new(&make)
+                .current_dir(src_dir)
+                .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
+                .env(
+                    "CXXFLAGS",
+                    format!(
+                        "{} -DNNUE_EMBEDDING_OFF",
+                        env::var("CXXFLAGS").unwrap_or_default()
+                    ),
+                )
+                .env_remove("SDE_PATH")
+                .env_remove("WINE_PATH")
+                .args(emulator.map(|e| format!("WINE_PATH={e}")))
+                .args(emulator.map(|e| format!("SDE_PATH={e}")))
+                .arg("-B")
+                .arg(format!("COMP={comp}"))
+                .arg(format!("CXX={cxx}"))
+                .arg(format!("ARCH={}", self.arch))
+                .arg(format!("EXE={exe}"))
+                .arg(if pgo { "profile-build" } else { "build" })
+                .status()
+                .unwrap()
+                .success(),
+            "$(MAKE) build"
+        );
 
         assert!(
             Command::new(&make)
