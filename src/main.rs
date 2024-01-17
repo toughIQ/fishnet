@@ -28,6 +28,7 @@ use thread_priority::{set_current_thread_priority, ThreadPriority};
 use tokio::{
     signal,
     sync::{mpsc, oneshot},
+    task::JoinSet,
     time::{sleep, sleep_until},
 };
 
@@ -121,15 +122,11 @@ async fn run(opt: Opt, client: &Client, logger: &Logger) {
     let mut sig_int = signal::windows::ctrl_c().expect("install handler for ctrl+c");
 
     // To wait for workers and API actor before shutdown.
-    let mut join_handles = Vec::new();
+    let mut join_set = JoinSet::new();
 
     // Spawn API actor.
-    let api = {
-        let (api, api_actor) =
-            api::channel(endpoint.clone(), opt.key, client.clone(), logger.clone());
-        join_handles.push(tokio::spawn(api_actor.run()));
-        api
-    };
+    let (api, api_actor) = api::channel(endpoint.clone(), opt.key, client.clone(), logger.clone());
+    join_set.spawn(api_actor.run());
 
     let to_stop = if io::stdout().is_terminal() {
         "CTRL-C"
@@ -139,18 +136,15 @@ async fn run(opt: Opt, client: &Client, logger: &Logger) {
     logger.headline(&format!("Running ({to_stop} to stop) ..."));
 
     // Spawn queue actor.
-    let mut queue = {
-        let (queue, queue_actor) = queue::channel(
-            opt.stats,
-            opt.backlog,
-            cores,
-            api,
-            opt.max_backoff.unwrap_or_default(),
-            logger.clone(),
-        );
-        join_handles.push(tokio::spawn(queue_actor.run()));
-        queue
-    };
+    let (mut queue, queue_actor) = queue::channel(
+        opt.stats,
+        opt.backlog,
+        cores,
+        api,
+        opt.max_backoff.unwrap_or_default(),
+        logger.clone(),
+    );
+    join_set.spawn(queue_actor.run());
 
     // Spawn workers. Workers handle engine processes and send their results
     // to tx, thereby requesting more work.
@@ -161,7 +155,7 @@ async fn run(opt: Opt, client: &Client, logger: &Logger) {
             let assets = assets.clone();
             let tx = tx.clone();
             let logger = logger.clone();
-            join_handles.push(tokio::spawn(worker(i, assets, tx, logger)));
+            join_set.spawn(worker(i, assets, tx, logger));
         }
         rx
     };
@@ -256,8 +250,8 @@ async fn run(opt: Opt, client: &Client, logger: &Logger) {
     queue.shutdown().await;
 
     // Wait for all workers.
-    for join_handle in join_handles.into_iter() {
-        join_handle.await.expect("join");
+    while let Some(res) = join_set.join_next().await {
+        res.expect("join");
     }
 
     // Restart.
