@@ -236,40 +236,40 @@ pub enum SkillLevel {
 
 impl SkillLevel {
     pub fn time(self) -> Duration {
-        use SkillLevel::*;
+        use SkillLevel as s;
         Duration::from_millis(match self {
-            One => 50,
-            Two => 100,
-            Three => 150,
-            Four => 200,
-            Five => 300,
-            Six => 400,
-            Seven => 500,
-            Eight => 1000,
+            s::One => 50,
+            s::Two => 100,
+            s::Three => 150,
+            s::Four => 200,
+            s::Five => 300,
+            s::Six => 400,
+            s::Seven => 500,
+            s::Eight => 1000,
         })
     }
 
     pub fn skill_level(self) -> i32 {
-        use SkillLevel::*;
+        use SkillLevel as s;
         match self {
-            One => -9,
-            Two => -5,
-            Three => -1,
-            Four => 3,
-            Five => 7,
-            Six => 11,
-            Seven => 16,
-            Eight => 20,
+            s::One => -9,
+            s::Two => -5,
+            s::Three => -1,
+            s::Four => 3,
+            s::Five => 7,
+            s::Six => 11,
+            s::Seven => 16,
+            s::Eight => 20,
         }
     }
 
     pub fn depth(self) -> u8 {
-        use SkillLevel::*;
+        use SkillLevel as s;
         match self {
-            One | Two | Three | Four | Five => 5,
-            Six => 8,
-            Seven => 13,
-            Eight => 22,
+            s::One | s::Two | s::Three | s::Four | s::Five => 5,
+            s::Six => 8,
+            s::Seven => 13,
+            s::Eight => 22,
         }
     }
 }
