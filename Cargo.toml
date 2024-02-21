@@ -31,9 +31,9 @@ bitflags = "2"
 clap = { version = "4", features = ["derive", "deprecated", "wrap_help"] }
 configparser = "3"
 fastrand = "2"
-reqwest = { version = "=0.11.23", features = ["json", "rustls-tls-manual-roots", "stream"], default-features = false }
-rustls = "0.21" # will fail at runtime if mismatch with reqwest
-serde = "1"
+reqwest = { git = "https://github.com/seanmonstar/reqwest.git", branch = "hyper-v1", features = ["json", "rustls-tls-manual-roots", "stream"], default-features = false }
+rustls = "0.22" # will fail at runtime if mismatch with reqwest
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_with = "3"
 home = "0.5"
@@ -44,7 +44,7 @@ thread-priority = "0.15"
 tokio = { version = "1", features = ["rt", "macros", "sync", "time", "signal", "process", "io-util"], default-features = false }
 url = "2"
 serde_repr = "0.1"
-webpki-roots = "0.25"
+webpki-roots = "0.26"
 xz2 = { version = "0.1", features = ["static"] }
 ar = "0.9"
 quick-xml = { version = "0.31", features = ["serialize"] }
