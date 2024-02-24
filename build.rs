@@ -5,7 +5,7 @@ use std::{env, fs, fs::File, io::Write, path::Path, process::Command};
 use glob::glob;
 use xz2::write::XzEncoder;
 
-const EVAL_FILE: &str = "nn-baff1edbea57.nnue";
+const EVAL_FILE: &str = "nn-b1a57edbea57.nnue";
 const EVAL_FILE_SMALL: &str = "nn-baff1ede1f90.nnue";
 
 fn main() {
