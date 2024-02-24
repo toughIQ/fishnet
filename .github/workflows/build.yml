@@ -147,6 +147,8 @@ jobs:
       - run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
         id: get_version
       - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
       - run: sha256sum fishnet-*
       - uses: softprops/action-gh-release@v1
         with:
@@ -172,6 +174,8 @@ jobs:
       - run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
         id: get_version
       - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
       - run: sha256sum fishnet-*
       - uses: shallwefootball/s3-upload-action@bcd7c2408245fd6cd19b5512a473b1a7a8b48a35
         with:
