@@ -31,7 +31,7 @@ bitflags = "2"
 clap = { version = "4", features = ["derive", "deprecated", "wrap_help"] }
 configparser = "3"
 fastrand = "2"
-reqwest = { git = "https://github.com/seanmonstar/reqwest.git", branch = "hyper-v1", features = ["json", "rustls-tls-manual-roots", "stream"], default-features = false }
+reqwest = { git = "https://github.com/seanmonstar/reqwest.git", branch = "master", features = ["json", "rustls-tls-manual-roots", "stream"], default-features = false }
 rustls = "0.22" # will fail at runtime if mismatch with reqwest
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -40,7 +40,7 @@ home = "0.5"
 shakmaty = { version = "0.26", features = ["variant"] }
 shell-escape = "0.1"
 tempfile = "3"
-thread-priority = "0.15"
+thread-priority = "0.16"
 tokio = { version = "1", features = ["rt", "macros", "sync", "time", "signal", "process", "io-util"], default-features = false }
 url = "2"
 serde_repr = "0.1"
