@@ -361,10 +361,10 @@ impl QueueActor {
                 let system_wait = system_backlog
                     .checked_sub(status.system.oldest)
                     .unwrap_or_default();
-                self.logger.debug(&format!("User wait: {:?} due to {:?} for oldest {:?}, system wait: {:?} due to {:?} for oldest {:?}",
-                       user_wait, user_backlog, status.user.oldest,
-                       system_wait, system_backlog, status.system.oldest));
                 let slow = user_wait >= system_wait + sec;
+                self.logger.debug(&format!("User wait: {:?} due to {:?} for oldest {:?}, system wait: {:?} due to {:?} for oldest {:?} -> {}",
+                       user_wait, user_backlog, status.user.oldest,
+                       system_wait, system_backlog, status.system.oldest, if slow { "system" } else { "user" }));
                 (min(user_wait, system_wait), AcquireQuery { slow })
             } else {
                 self.logger
