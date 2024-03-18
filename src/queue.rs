@@ -178,7 +178,8 @@ impl QueueState {
                     variant: batch.variant,
                     url: batch.url,
                     positions,
-                    started_at: Instant::now(),
+                    total_nodes: 0,
+                    total_cpu_time: Duration::ZERO,
                 });
 
                 self.logger.progress(self.status_bar(), progress_at);
@@ -196,11 +197,13 @@ impl QueueState {
                 let mut progress_at = None;
                 let mut batch_ids = Vec::new();
                 for res in responses {
-                    let Some(position_index) = res.position_index else {
-                        continue;
-                    };
                     let batch_id = res.work.id();
                     let Some(pending) = self.pending.get_mut(&batch_id) else {
+                        continue;
+                    };
+                    pending.total_nodes += res.nodes;
+                    pending.total_cpu_time += res.time;
+                    let Some(position_index) = res.position_index else {
                         continue;
                     };
                     let Some(pos) = pending.positions.get_mut(position_index.0) else {
@@ -258,10 +261,10 @@ impl QueueState {
                             };
                             self.stats_recorder.record_batch(
                                 completed.total_positions(),
-                                completed.total_nodes(),
+                                completed.total_nodes,
                                 nnue_nps,
                             );
-                            format!("{} knps", nps / 1000)
+                            format!("{} knps/core", nps / 1000)
                         }
                         None => "? nps".to_owned(),
                     });
@@ -335,7 +338,6 @@ impl QueueActor {
     }
 
     pub async fn backlog_wait_time(&mut self) -> (Duration, AcquireQuery) {
-        let sec = Duration::from_secs(1);
         let min_user_backlog = {
             let state = self.state.lock().await;
             state.stats_recorder.min_user_backlog()
@@ -353,7 +355,7 @@ impl QueueActor {
             .map(Duration::from)
             .unwrap_or_default();
 
-        if user_backlog >= sec || system_backlog >= sec {
+        if user_backlog >= Duration::from_secs(1) || system_backlog >= Duration::from_secs(1) {
             if let Some(status) = self.api.status().await {
                 let user_wait = user_backlog
                     .checked_sub(status.user.oldest)
@@ -361,7 +363,7 @@ impl QueueActor {
                 let system_wait = system_backlog
                     .checked_sub(status.system.oldest)
                     .unwrap_or_default();
-                let slow = user_wait >= system_wait + sec;
+                let slow = user_wait >= system_wait + Duration::from_secs(1);
                 self.logger.debug(&format!("User wait: {:?} due to {:?} for oldest {:?}, system wait: {:?} due to {:?} for oldest {:?} -> {}",
                        user_wait, user_backlog, status.user.oldest,
                        system_wait, system_backlog, status.system.oldest, if slow { "system" } else { "user" }));
@@ -369,11 +371,11 @@ impl QueueActor {
             } else {
                 self.logger
                     .debug("Queue status not available. Will not delay acquire.");
-                let slow = user_backlog >= system_backlog + sec;
-                (Duration::default(), AcquireQuery { slow })
+                let slow = user_backlog >= system_backlog + Duration::from_secs(1);
+                (Duration::ZERO, AcquireQuery { slow })
             }
         } else {
-            (Duration::default(), AcquireQuery { slow: false })
+            (Duration::ZERO, AcquireQuery { slow: false })
         }
     }
 
@@ -659,15 +661,14 @@ impl IncomingBatch {
                     // Edge case: Batch is immediately completed, because all
                     // positions are skipped.
                     if chunks.is_empty() {
-                        let now = Instant::now();
                         return Err(IncomingError::AllSkipped(CompletedBatch {
                             work: body.work,
                             url,
                             flavor,
                             variant: body.variant,
                             positions: vec![Skip::Skip; num_positions],
-                            started_at: now,
-                            completed_at: now,
+                            total_nodes: 0,
+                            total_cpu_time: Duration::ZERO,
                         }));
                     }
 
@@ -715,7 +716,8 @@ struct PendingBatch {
     flavor: EngineFlavor,
     variant: Variant,
     positions: Vec<Option<Skip<PositionResponse>>>,
-    started_at: Instant,
+    total_nodes: u64,
+    total_cpu_time: Duration,
 }
 
 impl PendingBatch {
@@ -728,8 +730,8 @@ impl PendingBatch {
                 flavor: self.flavor,
                 variant: self.variant,
                 positions,
-                started_at: self.started_at,
-                completed_at: Instant::now(),
+                total_nodes: self.total_nodes,
+                total_cpu_time: self.total_cpu_time,
             }),
             None => Err(self),
         }
@@ -760,8 +762,8 @@ pub struct CompletedBatch {
     flavor: EngineFlavor,
     variant: Variant,
     positions: Vec<Skip<PositionResponse>>,
-    started_at: Instant,
-    completed_at: Instant,
+    total_nodes: u64,
+    total_cpu_time: Duration,
 }
 
 impl CompletedBatch {
@@ -795,20 +797,9 @@ impl CompletedBatch {
             .sum()
     }
 
-    fn total_nodes(&self) -> u64 {
-        self.positions
-            .iter()
-            .map(|p| match p {
-                Skip::Skip => 0,
-                Skip::Present(pos) => pos.nodes,
-            })
-            .sum()
-    }
-
     fn nps(&self) -> Option<u32> {
-        self.completed_at
-            .checked_duration_since(self.started_at)
-            .and_then(|time| (u128::from(self.total_nodes()) * 1000).checked_div(time.as_millis()))
+        (u128::from(self.total_nodes) * 1000)
+            .checked_div(self.total_cpu_time.as_millis())
             .and_then(|nps| nps.try_into().ok())
     }
 }

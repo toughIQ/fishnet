@@ -21,6 +21,7 @@ pub struct StatsRecorder {
     pub stats: Stats,
     pub nnue_nps: NpsRecorder,
     store: Option<(PathBuf, File)>,
+    cores: NonZeroUsize,
 }
 
 #[derive(Default, Clone, Serialize, Deserialize)]
@@ -59,13 +60,14 @@ impl Stats {
 
 impl StatsRecorder {
     pub fn new(opt: StatsOpt, cores: NonZeroUsize) -> StatsRecorder {
-        let nnue_nps = NpsRecorder::new(cores);
+        let nnue_nps = NpsRecorder::new();
 
         if opt.no_stats_file {
             return StatsRecorder {
                 stats: Stats::default(),
                 store: None,
                 nnue_nps,
+                cores,
             };
         }
 
@@ -77,6 +79,7 @@ impl StatsRecorder {
                 stats: Stats::default(),
                 store: None,
                 nnue_nps,
+                cores,
             };
         };
 
@@ -113,6 +116,7 @@ impl StatsRecorder {
             stats,
             store,
             nnue_nps,
+            cores,
         }
     }
 
@@ -133,18 +137,17 @@ impl StatsRecorder {
     }
 
     pub fn min_user_backlog(&self) -> Duration {
-        // The average batch has 60 positions, analysed with 1_500_000 nodes
-        // each. Top end clients take no longer than 60 seconds.
-        let best_batch_seconds = 60;
+        // Estimate how long this client would take for the next batch of
+        // 60 positions at 1_450_000 nodes each.
+        let estimated_batch_seconds = u64::from(min(
+            7 * 60, // deadline
+            60 * 1_450_000 / self.cores.get() as u32 / max(1, self.nnue_nps.nps),
+        ));
 
-        // Estimate how long this client would take for the next batch,
-        // capped at timeout.
-        let estimated_batch_seconds =
-            u64::from(min(6 * 60, 60 * 1_500_000 / max(1, self.nnue_nps.nps)));
-
-        // Its worth joining if queue wait time + estimated time < top client
-        // time on empty queue.
-        Duration::from_secs(estimated_batch_seconds.saturating_sub(best_batch_seconds))
+        // Top end clients take no longer than 35 seconds. Its worth joining if
+        // queue wait time + estimated time < top client time on empty queue.
+        let top_batch_seconds = 35;
+        Duration::from_secs(estimated_batch_seconds.saturating_sub(top_batch_seconds))
     }
 }
 
@@ -155,9 +158,9 @@ pub struct NpsRecorder {
 }
 
 impl NpsRecorder {
-    fn new(cores: NonZeroUsize) -> NpsRecorder {
+    fn new() -> NpsRecorder {
         NpsRecorder {
-            nps: 400_000 * cores.get() as u32, // start with a low estimate
+            nps: 300_000, // start with a low estimate
             uncertainty: 1.0,
         }
     }
