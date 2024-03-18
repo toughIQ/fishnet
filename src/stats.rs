@@ -175,13 +175,13 @@ impl NpsRecorder {
 impl fmt::Display for NpsRecorder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} knps/core", self.nps / 1000)?;
-        if self.uncertainty > 0.7 {
-            write!(f, "?")?;
+        if self.uncertainty > 0.1 {
+            write!(f, " ?")?;
         }
         if self.uncertainty > 0.4 {
             write!(f, "?")?;
         }
-        if self.uncertainty > 0.1 {
+        if self.uncertainty > 0.7 {
             write!(f, "?")?;
         }
         Ok(())
