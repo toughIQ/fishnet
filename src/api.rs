@@ -207,17 +207,22 @@ impl fmt::Display for BatchId {
 
 #[derive(Debug, Copy, Clone, Deserialize)]
 pub struct NodeLimit {
-    classical: u64,
-    sf16: u64,
+    classical: u32,
+    sf16: u32,
 }
 
 impl NodeLimit {
     pub fn get(&self, flavor: EvalFlavor) -> u64 {
-        (match flavor {
+        // Adjust for nodes spent on overlap of chunks: Worst case is
+        // Chunk::MAX_POSITIONS positions split into one chunk of
+        // Chunk::MAX_POSITIONS - 1 real positions and one chunk of 1
+        // real position and 1 overlap position, such that
+        // Chunk::MAX_POSITIONS + 1 positions are analysed.
+        u64::from(match flavor {
             EvalFlavor::Hce => self.classical,
             EvalFlavor::Nnue => self.sf16,
-        }) / (Chunk::MAX_POSITIONS as u64)
-            * (Chunk::MAX_POSITIONS as u64 - 1)
+        }) * (Chunk::MAX_POSITIONS as u64)
+            / (Chunk::MAX_POSITIONS as u64 + 1)
     }
 }
 
