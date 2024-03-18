@@ -204,7 +204,7 @@ async fn run(opt: Opt, client: &Client, logger: &Logger) {
             summarized = now;
             let (stats, nnue_nps) = queue.stats().await;
             logger.fishnet_info(&format!(
-                "fishnet/{}: {} (nnue), {} batches, {} positions, {} total nodes",
+                "v{}: {} (nnue), {} batches, {} positions, {} total nodes",
                 env!("CARGO_PKG_VERSION"),
                 nnue_nps,
                 dot_thousands(stats.total_batches),
