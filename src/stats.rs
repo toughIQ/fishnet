@@ -160,7 +160,7 @@ pub struct NpsRecorder {
 impl NpsRecorder {
     fn new() -> NpsRecorder {
         NpsRecorder {
-            nps: 300_000, // start with a low estimate
+            nps: 400_000, // start with an optimistic estimate
             uncertainty: 1.0,
         }
     }
