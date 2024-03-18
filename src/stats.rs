@@ -145,7 +145,7 @@ impl StatsRecorder {
         ));
 
         // Top end clients take no longer than 35 seconds. Its worth joining if
-        // queue wait time + estimated time < top client time on empty queue.
+        // estimated time < top client time on empty queue + queue wait time.
         let top_batch_seconds = 35;
         Duration::from_secs(estimated_batch_seconds.saturating_sub(top_batch_seconds))
     }
