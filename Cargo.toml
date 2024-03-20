@@ -31,7 +31,7 @@ bitflags = "2"
 clap = { version = "4", features = ["derive", "deprecated", "wrap_help"] }
 configparser = "3"
 fastrand = "2"
-reqwest = { git = "https://github.com/seanmonstar/reqwest.git", branch = "master", features = ["json", "rustls-tls-manual-roots", "stream"], default-features = false }
+reqwest = { version = "0.12", features = ["json", "rustls-tls-manual-roots", "stream", "http2"], default-features = false }
 rustls = "0.22" # will fail at runtime if mismatch with reqwest
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
