@@ -126,7 +126,7 @@ struct QueueState {
     cores: NonZeroUsize,
     incoming: VecDeque<Chunk>,
     pending: HashMap<BatchId, PendingBatch>,
-    move_submissions: VecDeque<CompletedBatch>,
+    move_submissions: VecDeque<MoveSubmission>,
     stats_recorder: StatsRecorder,
     logger: Logger,
 }
@@ -291,9 +291,12 @@ impl QueueState {
                                 completed.into_analysis(),
                             );
                         }
-                        Work::Move { .. } => {
+                        Work::Move { id, .. } => {
                             self.logger.debug(&log);
-                            self.move_submissions.push_back(completed);
+                            self.move_submissions.push_back(MoveSubmission {
+                                batch_id: id,
+                                best_move: completed.into_best_move(),
+                            });
                             queue.move_submitted();
                         }
                     }
@@ -313,6 +316,12 @@ impl QueueState {
             }
         }
     }
+}
+
+#[derive(Debug)]
+struct MoveSubmission {
+    batch_id: BatchId,
+    best_move: Option<Uci>,
 }
 
 #[derive(Debug)]
@@ -380,11 +389,13 @@ impl QueueActor {
     }
 
     async fn handle_acquired_response_body(&mut self, body: AcquireResponseBody) {
+        let batch_id = body.work.id();
         let context = ProgressAt {
-            batch_id: body.work.id(),
+            batch_id,
             batch_url: body.batch_url(self.api.endpoint()),
             position_index: None,
         };
+        let is_move = body.work.is_move();
 
         match IncomingBatch::from_acquired(self.api.endpoint(), body) {
             Ok(incoming) => {
@@ -399,6 +410,15 @@ impl QueueActor {
                     completed.flavor.eval_flavor(),
                     completed.into_analysis(),
                 );
+            }
+            Err(err) if is_move => {
+                self.logger
+                    .warn(&format!("Invalid move request {context}: {err:?}"));
+                let mut state = self.state.lock().await;
+                state.move_submissions.push_back(MoveSubmission {
+                    batch_id,
+                    best_move: None,
+                });
             }
             Err(err) => {
                 self.logger
@@ -424,7 +444,7 @@ impl QueueActor {
             if let Some(completed) = next {
                 if let Some(Acquired::Accepted(body)) = self
                     .api
-                    .submit_move_and_acquire(completed.work.id(), completed.into_best_move())
+                    .submit_move_and_acquire(completed.batch_id, completed.best_move)
                     .await
                 {
                     self.handle_acquired_response_body(body).await;

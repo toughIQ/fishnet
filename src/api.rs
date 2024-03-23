@@ -169,6 +169,10 @@ impl Work {
         matches!(self, Work::Analysis { .. })
     }
 
+    pub fn is_move(&self) -> bool {
+        matches!(self, Work::Move { .. })
+    }
+
     pub fn multipv(&self) -> NonZeroU8 {
         match *self {
             Work::Analysis { multipv, .. } => multipv,
