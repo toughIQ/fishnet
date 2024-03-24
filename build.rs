@@ -369,7 +369,7 @@ impl Target {
         );
 
         let exe_path = Path::new(src_dir).join(exe);
-        archive.append_path(&exe_path).unwrap();
+        append_file(archive, &exe_path);
         fs::remove_file(&exe_path).unwrap();
     }
 
@@ -393,7 +393,29 @@ impl Target {
 }
 
 fn stockfish_eval_file<W: Write>(name: &str, archive: &mut ar::Builder<W>) {
-    archive
-        .append_path(Path::new("Stockfish").join("src").join(name))
-        .unwrap();
+    append_file(archive, Path::new("Stockfish").join("src").join(name));
+}
+
+fn append_file<W: Write, P: AsRef<Path>>(archive: &mut ar::Builder<W>, path: P) {
+    let file = File::open(&path).unwrap();
+    let metadata = file.metadata().unwrap();
+
+    let mut header = ar::Header::new(
+        path.as_ref()
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .as_bytes()
+            .to_vec(),
+        metadata.len(),
+    );
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        header.set_mode(metadata.mode());
+    }
+
+    archive.append(&header, file).unwrap();
 }
