@@ -578,10 +578,27 @@ pub async fn parse_and_configure(client: &Client) -> Opt {
                     .read_line(&mut write)
                     .expect("read confirmation from stdin");
 
-                if let Ok(Toggle::Yes | Toggle::Default) = Toggle::from_str(&write) {
-                    let contents = ini.writes();
-                    fs::write(opt.conf(), contents).expect("write config");
-                    break;
+                match Toggle::from_str(&write) {
+                    Ok(Toggle::Yes | Toggle::Default) => {
+                        let contents = ini.writes();
+                        fs::write(opt.conf(), contents).expect("write config");
+                        break;
+                    }
+                    Ok(Toggle::No) => {
+                        let contents = ini.writes();
+                        eprint!(
+                            "Writing to {:?} is necessary to continue. Exiting.\n",
+                            opt.conf()
+                        );
+                        eprint!("Here is the fishnet.ini contents if you need them:\n");
+                        eprint!("-----------------------------------------------------\n");
+                        eprint!("{}", contents);
+                        eprint!("-----------------------------------------------------\n");
+                        std::process::exit(0);
+                    }
+                    Err(_) => {
+                        continue;
+                    }
                 }
             }
 
