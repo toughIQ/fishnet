@@ -2,6 +2,8 @@ use std::{
     cmp::{max, min},
     collections::{hash_map::Entry, HashMap, VecDeque},
     convert::TryInto,
+    error::Error,
+    fmt,
     iter::{once, zip},
     num::NonZeroUsize,
     sync::Arc,
@@ -413,7 +415,7 @@ impl QueueActor {
             }
             Err(err) if is_move => {
                 self.logger
-                    .warn(&format!("Invalid move request {context}: {err:?}"));
+                    .warn(&format!("Invalid move request {context}: {err}"));
                 let mut state = self.state.lock().await;
                 state.move_submissions.push_back(MoveSubmission {
                     batch_id,
@@ -422,7 +424,7 @@ impl QueueActor {
             }
             Err(err) => {
                 self.logger
-                    .warn(&format!("Ignoring invalid batch {context}: {err:?}"));
+                    .warn(&format!("Ignoring invalid batch {context}: {err}"));
             }
         }
     }
@@ -715,6 +717,18 @@ enum IncomingError {
     Position(PositionError<VariantPosition>),
     IllegalUci(IllegalUciError),
     AllSkipped(CompletedBatch),
+}
+
+impl Error for IncomingError {}
+
+impl fmt::Display for IncomingError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            IncomingError::Position(err) => err.fmt(f),
+            IncomingError::IllegalUci(err) => err.fmt(f),
+            IncomingError::AllSkipped(_) => f.write_str("all positions skipped"),
+        }
+    }
 }
 
 impl From<PositionError<VariantPosition>> for IncomingError {
