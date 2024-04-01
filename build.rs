@@ -393,7 +393,11 @@ impl Target {
 }
 
 fn stockfish_eval_file<W: Write>(name: &str, archive: &mut ar::Builder<W>) {
-    append_file(archive, Path::new("Stockfish").join("src").join(name), 0o644);
+    append_file(
+        archive,
+        Path::new("Stockfish").join("src").join(name),
+        0o644,
+    );
 }
 
 fn append_file<W: Write, P: AsRef<Path>>(archive: &mut ar::Builder<W>, path: P, mode: u32) {

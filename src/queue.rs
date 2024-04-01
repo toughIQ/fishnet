@@ -1,7 +1,6 @@
 use std::{
     cmp::{max, min},
     collections::{hash_map::Entry, HashMap, VecDeque},
-    convert::TryInto,
     error::Error,
     fmt,
     iter::{once, zip},

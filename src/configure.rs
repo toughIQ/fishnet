@@ -586,14 +586,14 @@ pub async fn parse_and_configure(client: &Client) -> Opt {
                     }
                     Ok(Toggle::No) => {
                         let contents = ini.writes();
-                        eprint!(
-                            "Writing to {:?} is necessary to continue. Exiting.\n",
+                        eprintln!(
+                            "Writing to {:?} is necessary to continue. Exiting.",
                             opt.conf()
                         );
-                        eprint!("Here is the fishnet.ini contents if you need them:\n");
-                        eprint!("-----------------------------------------------------\n");
-                        eprint!("{}", contents);
-                        eprint!("-----------------------------------------------------\n");
+                        eprintln!("Here is the fishnet.ini contents if you need them:");
+                        eprintln!("-----------------------------------------------------");
+                        eprintln!("{}", contents);
+                        eprintln!("-----------------------------------------------------");
                         std::process::exit(0);
                     }
                     Err(_) => {

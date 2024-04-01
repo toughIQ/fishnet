@@ -87,6 +87,7 @@ impl StatsRecorder {
             .read(true)
             .write(true)
             .create(true)
+            .truncate(false)
             .open(&path)
         {
             Ok(mut file) => (
