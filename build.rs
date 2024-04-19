@@ -3,7 +3,7 @@
 use std::{env, fs, fs::File, io::Write, path::Path, process::Command};
 
 use glob::glob;
-use xz2::write::XzEncoder;
+use zstd::stream::write::Encoder as ZstdEncoder;
 
 const EVAL_FILE: &str = "nn-b1a57edbea57.nnue";
 const EVAL_FILE_SMALL: &str = "nn-baff1ede1f90.nnue";
@@ -16,10 +16,13 @@ fn main() {
 
     hooks();
 
-    let mut archive = ar::Builder::new(XzEncoder::new(
-        File::create(Path::new(&env::var("OUT_DIR").unwrap()).join("assets.ar.xz")).unwrap(),
-        6,
-    ));
+    let mut archive = ar::Builder::new(
+        ZstdEncoder::new(
+            File::create(Path::new(&env::var("OUT_DIR").unwrap()).join("assets.ar.xz")).unwrap(),
+            6,
+        )
+        .unwrap(),
+    );
     stockfish_build(&mut archive);
     stockfish_eval_file(EVAL_FILE, &mut archive);
     stockfish_eval_file(EVAL_FILE_SMALL, &mut archive);
