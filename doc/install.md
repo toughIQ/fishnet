@@ -34,6 +34,8 @@ Per default, runs with `n-1` cores, alternatively, specify the number of cores t
 docker run -it --name fishnet -e KEY=abcdef -e CORES=n niklasf/fishnet:2
 ```
 
+For the full list of configurable environment variables, see [docker-entrypoint.sh](/docker-entrypoint.sh).
+
 To update, since we named the image `fishnet`:
 
 ```sh
