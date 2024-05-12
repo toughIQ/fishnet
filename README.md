@@ -106,6 +106,13 @@ If even that fails, Lichess will reassign the batches after a timeout.
 No, Stockfish is a classical alpha-beta engine. The neural network evaluation
 of Stockfish NNUE works efficiently on CPUs.
 
+### Why do I need a key?
+
+The key allows us to trace provided analysis back to your Lichess account.
+You can use a single key to run multiple instances.
+
+You do not need to request a key (nor our permission) to run private instances.
+
 ### Is fishnet secure?
 
 To the best of our knowledge. All engine input is carefully validated.
