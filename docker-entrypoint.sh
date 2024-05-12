@@ -2,13 +2,7 @@
 
 args=("--no-conf")
 
-if [ -n "$STATS_FILE" ]; then
-    # $STATS_FILE implies $ENABLE_STATS
-    args+=("--stats-file" "$STATS_FILE")
-elif [ -z "$ENABLE_STATS" ]; then
-    args+=("--no-stats-file")
-fi
-
+if [ -n "$STATS_FILE" ]; then args+=("--stats-file" "$STATS_FILE"); else args+=("--no-stats-file"); fi
 if [ -n "$KEY" ]; then args+=("--key" "$KEY"); fi
 if [ -n "$KEY_FILE" ]; then args+=("--key-file" "$KEY_FILE"); fi
 if [ -n "$CORES" ]; then args+=("--cores" "$CORES"); fi
