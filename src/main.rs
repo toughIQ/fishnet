@@ -427,7 +427,7 @@ fn exec(command: &mut process::Command) -> io::Error {
 fn configure_client() -> Client {
     // Build TLS backend that supports SSLKEYLOGFILE.
     let mut tls = rustls::ClientConfig::builder_with_provider(Arc::new(
-        rustls::crypto::aws_lc_rs::default_provider(),
+        rustls::crypto::ring::default_provider(),
     ))
     .with_safe_default_protocol_versions()
     .expect("default tls versions supported")
