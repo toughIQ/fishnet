@@ -115,7 +115,7 @@ jobs:
           name: fishnet-x86_64-pc-windows-gnu
           path: signed
   macos-x86-64:
-    runs-on: macos-12
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
         with:
