@@ -115,7 +115,7 @@ jobs:
           name: fishnet-x86_64-pc-windows-gnu
           path: signed
   macos-x86-64:
-    runs-on: macos-11
+    runs-on: macos-12
     steps:
       - uses: actions/checkout@v4
         with:
@@ -129,7 +129,7 @@ jobs:
           name: fishnet-x86_64-apple-darwin
           path: fishnet-x86_64-apple-darwin
   macos-aarch64:
-    runs-on: macos-11.0
+    runs-on: macos-12
     env:
       CXXFLAGS: -target arm64-apple-macos11
     steps:
