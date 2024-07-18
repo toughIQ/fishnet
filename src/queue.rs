@@ -11,7 +11,7 @@ use std::{
 
 use shakmaty::{
     fen::Fen,
-    uci::{IllegalUciError, Uci},
+    uci::{IllegalUciMoveError, UciMove},
     variant::{Variant, VariantPosition},
     CastlingMode, EnPassantMode, Position as _, PositionError,
 };
@@ -322,7 +322,7 @@ impl QueueState {
 #[derive(Debug)]
 struct MoveSubmission {
     batch_id: BatchId,
-    best_move: Option<Uci>,
+    best_move: Option<UciMove>,
 }
 
 #[derive(Debug)]
@@ -714,7 +714,7 @@ impl From<&IncomingBatch> for ProgressAt {
 #[derive(Debug)]
 enum IncomingError {
     Position(PositionError<VariantPosition>),
-    IllegalUci(IllegalUciError),
+    IllegalUciMove(IllegalUciMoveError),
     AllSkipped(CompletedBatch),
 }
 
@@ -724,7 +724,7 @@ impl fmt::Display for IncomingError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             IncomingError::Position(err) => err.fmt(f),
-            IncomingError::IllegalUci(err) => err.fmt(f),
+            IncomingError::IllegalUciMove(err) => err.fmt(f),
             IncomingError::AllSkipped(_) => f.write_str("all positions skipped"),
         }
     }
@@ -736,9 +736,9 @@ impl From<PositionError<VariantPosition>> for IncomingError {
     }
 }
 
-impl From<IllegalUciError> for IncomingError {
-    fn from(err: IllegalUciError) -> IncomingError {
-        IncomingError::IllegalUci(err)
+impl From<IllegalUciMoveError> for IncomingError {
+    fn from(err: IllegalUciMoveError) -> IncomingError {
+        IncomingError::IllegalUciMove(err)
     }
 }
 
@@ -813,7 +813,7 @@ impl CompletedBatch {
             .collect()
     }
 
-    fn into_best_move(self) -> Option<Uci> {
+    fn into_best_move(self) -> Option<UciMove> {
         self.positions.into_iter().next().and_then(|p| match p {
             Skip::Skip => None,
             Skip::Present(pos) => pos.best_move,

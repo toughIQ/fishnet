@@ -6,7 +6,7 @@ use std::{
     time::Duration,
 };
 
-use shakmaty::uci::Uci;
+use shakmaty::uci::UciMove;
 use tokio::{
     io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader, BufWriter, Lines},
     process::{ChildStdin, ChildStdout},
@@ -452,7 +452,7 @@ impl StockfishActor {
                                     multipv,
                                     depth,
                                     (&mut parts)
-                                        .map(|part| part.parse::<Uci>())
+                                        .map(|part| part.parse::<UciMove>())
                                         .collect::<Result<Vec<_>, _>>()
                                         .map_err(|_| {
                                             io::Error::new(io::ErrorKind::InvalidData, "invalid pv")

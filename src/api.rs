@@ -8,7 +8,7 @@ use serde_with::{
     formats::SpaceSeparator, serde_as, DisplayFromStr, DurationMilliSeconds, DurationSeconds,
     NoneAsEmptyString, StringWithSeparator,
 };
-use shakmaty::{fen::Fen, uci::Uci, variant::Variant};
+use shakmaty::{fen::Fen, uci::UciMove, variant::Variant};
 use tokio::{
     sync::{mpsc, oneshot},
     time::sleep,
@@ -67,7 +67,7 @@ enum ApiMessage {
     },
     SubmitMove {
         batch_id: BatchId,
-        best_move: Option<Uci>,
+        best_move: Option<UciMove>,
         callback: oneshot::Sender<Acquired>,
     },
 }
@@ -315,8 +315,8 @@ pub struct AcquireResponseBody {
     #[serde_as(as = "DisplayFromStr")]
     #[serde(default)]
     pub variant: Variant,
-    #[serde_as(as = "StringWithSeparator::<SpaceSeparator, Uci>")]
-    pub moves: Vec<Uci>,
+    #[serde_as(as = "StringWithSeparator::<SpaceSeparator, UciMove>")]
+    pub moves: Vec<UciMove>,
     #[serde(rename = "skipPositions", default)]
     pub skip_positions: Vec<PositionIndex>,
 }
@@ -359,7 +359,7 @@ struct MoveRequestBody {
 struct BestMove {
     #[serde_as(as = "Option<DisplayFromStr>")]
     #[serde(rename = "bestmove")]
-    best_move: Option<Uci>,
+    best_move: Option<UciMove>,
 }
 
 #[serde_as]
@@ -370,9 +370,9 @@ pub enum AnalysisPart {
         skipped: bool,
     },
     Best {
-        #[serde_as(as = "StringWithSeparator::<SpaceSeparator, Uci>")]
+        #[serde_as(as = "StringWithSeparator::<SpaceSeparator, UciMove>")]
         #[serde(skip_serializing_if = "Vec::is_empty")]
-        pv: Vec<Uci>,
+        pv: Vec<UciMove>,
         score: Score,
         depth: u8,
         nodes: u64,
@@ -382,7 +382,7 @@ pub enum AnalysisPart {
     },
     Matrix {
         #[serde_as(as = "Vec<Vec<Option<Vec<DisplayFromStr>>>>")]
-        pv: Vec<Vec<Option<Vec<Uci>>>>,
+        pv: Vec<Vec<Option<Vec<UciMove>>>>,
         score: Vec<Vec<Option<Score>>>,
         depth: u8,
         nodes: u64,
@@ -468,7 +468,7 @@ impl ApiStub {
     pub async fn submit_move_and_acquire(
         &mut self,
         batch_id: BatchId,
-        best_move: Option<Uci>,
+        best_move: Option<UciMove>,
     ) -> Option<Acquired> {
         let (req, res) = oneshot::channel();
         self.tx
@@ -745,7 +745,7 @@ impl ApiActor {
                     status => {
                         self.logger.warn(&format!(
                             "Unexpected status submitting move {} for batch {}: {}",
-                            best_move.unwrap_or(Uci::Null),
+                            best_move.unwrap_or(UciMove::Null),
                             batch_id,
                             status
                         ));

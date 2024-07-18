@@ -1,6 +1,6 @@
 use std::{num::NonZeroU8, time::Duration};
 
-use shakmaty::{fen::Fen, uci::Uci, variant::Variant};
+use shakmaty::{fen::Fen, uci::UciMove, variant::Variant};
 use tokio::{sync::oneshot, time::Instant};
 use url::Url;
 
@@ -31,7 +31,7 @@ pub struct Position {
     pub skip: bool,
 
     pub root_fen: Fen,
-    pub moves: Vec<Uci>,
+    pub moves: Vec<UciMove>,
 }
 
 #[derive(Debug, Clone)]
@@ -41,8 +41,8 @@ pub struct PositionResponse {
     pub url: Option<Url>,
 
     pub scores: Matrix<Score>,
-    pub pvs: Matrix<Vec<Uci>>,
-    pub best_move: Option<Uci>,
+    pub pvs: Matrix<Vec<UciMove>>,
+    pub best_move: Option<UciMove>,
     pub depth: u8,
     pub nodes: u64,
     pub time: Duration,
