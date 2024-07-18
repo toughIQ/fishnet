@@ -75,7 +75,8 @@ async fn latest_release(client: &Client) -> Result<Release, UpdateError> {
         .contents
         .into_iter()
         .flat_map(Content::release)
-        .max()
+        .filter(|release| release.key.contains(effective_target()))
+        .max_by_key(|release| release.version.clone())
         .ok_or(UpdateError::NoReleases)
 }
 
@@ -93,7 +94,7 @@ struct ListBucket {
     contents: Vec<Content>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 struct Content {
     key: String,
@@ -101,10 +102,7 @@ struct Content {
 
 impl Content {
     fn release(self) -> Option<Release> {
-        let (version, filename) = self.key.split_once('/')?;
-        if !filename.contains(effective_target()) {
-            return None;
-        }
+        let (version, _filename) = self.key.split_once('/')?;
         let version = version.strip_prefix('v')?;
         Some(Release {
             version: version.parse().ok()?,
@@ -113,7 +111,7 @@ impl Content {
     }
 }
 
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Clone)]
 struct Release {
     version: Version,
     key: String,
@@ -168,5 +166,35 @@ impl From<io::Error> for UpdateError {
 impl From<Elapsed> for UpdateError {
     fn from(_err: Elapsed) -> UpdateError {
         UpdateError::Timeout
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_list_bucket() {
+        let sample = r#"
+            <?xml version="1.0" encoding="UTF-8"?>
+            <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+              <Name>fishnet-releases</Name>
+              <Prefix/>
+              <KeyCount>74</KeyCount>
+              <MaxKeys>1000</MaxKeys>
+              <IsTruncated>false</IsTruncated>
+              <Contents>
+                <Key>v2.6.10/fishnet-v2.6.10-aarch64-apple-darwin</Key>
+                <LastModified>2023-05-01T16:27:52.000Z</LastModified>
+                <ETag>"f7ed5e695e421adbf153ee35a4d46fca-6"</ETag>
+                <Size>30471464</Size>
+                <StorageClass>STANDARD</StorageClass>
+              </Contents>
+            </ListBucketResult>"#;
+
+        let bucket: ListBucket = quick_xml::de::from_str(sample).unwrap();
+        let release = bucket.contents[0].clone().release().unwrap();
+        assert_eq!(release.version, Version::new(2, 6, 10));
+        assert_eq!(release.key, "v2.6.10/fishnet-v2.6.10-aarch64-apple-darwin");
     }
 }
