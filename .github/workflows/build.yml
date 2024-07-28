@@ -111,6 +111,7 @@ jobs:
           wait-for-completion: true
           wait-for-completion-timeout-in-seconds: 7200
           output-artifact-directory: signed
+      - run: mv signed/fishnet-x86_64-pc-windows-gnu-unsigned.exe signed/fishnet-x86_64-pc-windows-gnu.exe
       - uses: actions/upload-artifact@v4
         with:
           name: fishnet-x86_64-pc-windows-gnu
