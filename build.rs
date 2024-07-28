@@ -5,8 +5,8 @@ use std::{env, fs, fs::File, io::Write, path::Path, process::Command};
 use glob::glob;
 use zstd::stream::write::Encoder as ZstdEncoder;
 
-const EVAL_FILE: &str = "nn-ae6a388e4a1a.nnue";
-const EVAL_FILE_SMALL: &str = "nn-baff1ede1f90.nnue";
+const EVAL_FILE: &str = "nn-31337bea577c.nnue";
+const EVAL_FILE_SMALL: &str = "nn-37f18f62d772.nnue";
 
 fn main() {
     println!(
