@@ -2,7 +2,7 @@ use std::{
     io, mem,
     num::NonZeroU8,
     path::PathBuf,
-    process::{Command, Stdio},
+    process::Stdio,
     time::Duration,
 };
 
@@ -12,6 +12,7 @@ use tokio::{
     process::{ChildStdin, ChildStdout},
     sync::{mpsc, oneshot},
 };
+use tokio::process::Command;
 
 use crate::{
     api::{Score, Work},
@@ -100,20 +101,22 @@ impl From<io::Error> for EngineError {
     }
 }
 
-#[cfg(unix)]
-fn set_new_process_group(command: &mut Command) {
-    // Stop SIGINT from propagating to child process.
-    use std::os::unix::process::CommandExt as _;
-    command.process_group(0);
-}
+fn new_process_group(command: &mut Command) -> &mut Command {
+    #[cfg(unix)]
+    {
+        // Stop SIGINT from propagating to child process.
+        command.process_group(0);
+    }
 
-#[cfg(windows)]
-fn set_new_process_group(command: &mut Command) {
-    // Stop CTRL+C from propagating to child process:
-    // https://docs.microsoft.com/en-us/windows/win32/procthread/process-creation-flags
-    use std::os::windows::process::CommandExt as _;
-    let create_new_process_group = 0x0000_0200;
-    command.creation_flags(create_new_process_group);
+    #[cfg(windows)]
+    {
+        // Stop CTRL+C from propagating to child process:
+        // https://docs.microsoft.com/en-us/windows/win32/procthread/process-creation-flags
+        let create_new_process_group = 0x0000_0200;
+        command.creation_flags(create_new_process_group);
+    }
+
+    command
 }
 
 impl StockfishActor {
@@ -125,9 +128,7 @@ impl StockfishActor {
     }
 
     async fn run_inner(mut self) -> Result<(), EngineError> {
-        let mut command = Command::new(&self.exe);
-        set_new_process_group(&mut command);
-        let mut child = tokio::process::Command::from(command)
+        let mut child = new_process_group(&mut Command::new(&self.exe))
             .current_dir(self.exe.parent().expect("absolute path"))
             .stdout(Stdio::piped())
             .stdin(Stdio::piped())
