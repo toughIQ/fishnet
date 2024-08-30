@@ -1,18 +1,11 @@
-use std::{
-    io, mem,
-    num::NonZeroU8,
-    path::PathBuf,
-    process::Stdio,
-    time::Duration,
-};
+use std::{io, mem, num::NonZeroU8, path::PathBuf, process::Stdio, time::Duration};
 
 use shakmaty::uci::UciMove;
 use tokio::{
     io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader, BufWriter, Lines},
-    process::{ChildStdin, ChildStdout},
+    process::{ChildStdin, ChildStdout, Command},
     sync::{mpsc, oneshot},
 };
-use tokio::process::Command;
 
 use crate::{
     api::{Score, Work},
