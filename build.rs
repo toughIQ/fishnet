@@ -5,7 +5,7 @@ use std::{env, fs, fs::File, io::Write, path::Path, process::Command};
 use glob::glob;
 use zstd::stream::write::Encoder as ZstdEncoder;
 
-const EVAL_FILE: &str = "nn-31337bea577c.nnue";
+const EVAL_FILE: &str = "nn-1111cefa1111.nnue";
 const EVAL_FILE_SMALL: &str = "nn-37f18f62d772.nnue";
 
 fn main() {
