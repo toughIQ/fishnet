@@ -72,6 +72,8 @@ jobs:
           path: fishnet-aarch64-unknown-linux-musl
   windows-x86-64:
     runs-on: windows-2019
+    outputs:
+      artifact-id: ${{ steps.upload-unsigned-artifact.outputs.artifact-id }}
     defaults:
       run:
         shell: msys2 {0}
@@ -146,7 +148,7 @@ jobs:
           organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
           project-slug: 'fishnet'
           signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
-          github-artifact-id: ${{ needs.windows-x86-64.upload-unsigned-artifact.outputs.artifact-id }}
+          github-artifact-id: ${{ needs.windows-x86-64.outputs.artifact-id }}
           wait-for-completion: true
           wait-for-completion-timeout-in-seconds: 7200
           output-artifact-directory: signed
