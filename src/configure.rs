@@ -582,27 +582,21 @@ pub async fn parse_and_configure(client: &Client) -> Opt {
                     Ok(Toggle::Yes | Toggle::Default) => {
                         let contents = ini.writes();
                         fs::write(opt.conf(), contents).expect("write config");
+                        eprintln!();
                         break;
                     }
                     Ok(Toggle::No) => {
                         let contents = ini.writes();
-                        eprintln!(
-                            "Writing to {:?} is necessary to continue. Exiting.",
-                            opt.conf()
-                        );
-                        eprintln!("Here is the fishnet.ini contents if you need them:");
-                        eprintln!("-----------------------------------------------------");
-                        eprintln!("{}", contents);
-                        eprintln!("-----------------------------------------------------");
-                        std::process::exit(0);
+                        eprintln!();
+                        eprintln!("Here is the unsaved fishnet.ini config if you need it:");
+                        eprintln!("---\n{}\n---", contents.trim());
+                        break;
                     }
                     Err(_) => {
                         continue;
                     }
                 }
             }
-
-            eprintln!();
         }
 
         // Merge config file into command line arguments.
