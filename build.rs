@@ -18,7 +18,7 @@ fn main() {
 
     let mut archive = ar::Builder::new(
         ZstdEncoder::new(
-            File::create(Path::new(&env::var("OUT_DIR").unwrap()).join("assets.ar.xz")).unwrap(),
+            File::create(Path::new(&env::var("OUT_DIR").unwrap()).join("assets.ar.zst")).unwrap(),
             6,
         )
         .unwrap(),
