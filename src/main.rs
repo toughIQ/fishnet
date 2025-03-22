@@ -45,12 +45,12 @@ use crate::{
 async fn main() {
     let client = configure_client();
     let opt = configure::parse_and_configure(&client).await;
-    let logger = Logger::new(opt.verbose, opt.command.map_or(false, Command::is_systemd));
+    let logger = Logger::new(opt.verbose, opt.command.is_some_and(Command::is_systemd));
 
     if opt.auto_update {
         let current_exe = env::current_exe().expect("current exe");
         match auto_update(
-            !opt.command.map_or(false, Command::is_systemd),
+            !opt.command.is_some_and(Command::is_systemd),
             &client,
             &logger,
         )

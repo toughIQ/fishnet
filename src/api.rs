@@ -515,7 +515,7 @@ impl ApiActor {
 
     async fn handle_message(&mut self, msg: ApiMessage) {
         if let Err(err) = self.handle_message_inner(msg).await {
-            if err.status().map_or(false, |s| s.is_success()) {
+            if err.status().is_some_and(|s| s.is_success()) {
                 self.error_backoff.reset();
             } else if err.status() == Some(StatusCode::TOO_MANY_REQUESTS) {
                 let backoff = Duration::from_secs(60) + self.error_backoff.next();

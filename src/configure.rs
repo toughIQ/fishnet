@@ -394,7 +394,7 @@ pub async fn parse_and_configure(client: &Client) -> Opt {
     let mut opt = Opt::parse();
 
     // Show intro and configure logger.
-    let is_systemd = opt.command.map_or(false, Command::is_systemd);
+    let is_systemd = opt.command.is_some_and(Command::is_systemd);
     let logger = Logger::new(opt.verbose, is_systemd);
     if !is_systemd {
         intro();
