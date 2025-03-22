@@ -310,7 +310,6 @@ pub struct AcquireResponseBody {
     #[serde_as(as = "NoneAsEmptyString")]
     #[serde(default)]
     pub game_id: Option<String>,
-    #[serde_as(as = "DisplayFromStr")]
     pub position: Fen,
     #[serde_as(as = "DisplayFromStr")]
     #[serde(default)]
@@ -354,10 +353,8 @@ struct MoveRequestBody {
     m: BestMove,
 }
 
-#[serde_as]
 #[derive(Debug, Serialize)]
 struct BestMove {
-    #[serde_as(as = "Option<DisplayFromStr>")]
     #[serde(rename = "bestmove")]
     best_move: Option<UciMove>,
 }
@@ -381,7 +378,6 @@ pub enum AnalysisPart {
         nps: Option<u32>,
     },
     Matrix {
-        #[serde_as(as = "Vec<Vec<Option<Vec<DisplayFromStr>>>>")]
         pv: Vec<Vec<Option<Vec<UciMove>>>>,
         score: Vec<Vec<Option<Score>>>,
         depth: u8,
