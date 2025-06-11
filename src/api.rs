@@ -719,9 +719,7 @@ impl ApiActor {
                     .bearer_auth(self.key.as_ref().map_or("", |k| &k.0))
                     .json(&MoveRequestBody {
                         fishnet: Fishnet::authenticated(self.key.clone()),
-                        m: BestMove {
-                            best_move: best_move.clone(),
-                        },
+                        m: BestMove { best_move },
                     })
                     .send()
                     .await?;

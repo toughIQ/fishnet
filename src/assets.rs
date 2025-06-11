@@ -66,10 +66,10 @@ impl Cpu {
                 let cpuid = raw_cpuid::CpuId::new();
                 cpuid
                     .get_vendor_info()
-                    .map_or(true, |v| v.as_str() != "AuthenticAMD")
+                    .is_none_or(|v| v.as_str() != "AuthenticAMD")
                     || cpuid
                         .get_feature_info()
-                        .map_or(false, |f| f.family_id() >= 0x19)
+                        .is_some_and(|f| f.family_id() >= 0x19)
             },
         );
         cpu.set(
