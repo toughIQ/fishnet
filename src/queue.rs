@@ -567,7 +567,7 @@ impl IncomingBatch {
             Err(pos) => (EngineFlavor::MultiVariant, pos.ignore_too_much_material()?),
         };
 
-        let root_fen = Fen(root_pos.clone().into_setup(EnPassantMode::Legal));
+        let root_fen = Fen::from_position(&root_pos, EnPassantMode::Legal);
 
         let body_moves = {
             let mut moves = Vec::with_capacity(body.moves.len());
@@ -575,7 +575,7 @@ impl IncomingBatch {
             for uci in body.moves {
                 let m = uci.to_move(&pos)?;
                 moves.push(m.to_uci(CastlingMode::Chess960));
-                pos.play_unchecked(&m);
+                pos.play_unchecked(m);
             }
             moves
         };
