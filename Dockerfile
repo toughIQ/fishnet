@@ -1,4 +1,4 @@
-FROM docker.io/niklasf/fishnet-builder:8 AS builder
+FROM docker.io/niklasf/fishnet-builder:9 AS builder
 WORKDIR /fishnet
 COPY . .
 RUN cargo auditable build --release -vv
