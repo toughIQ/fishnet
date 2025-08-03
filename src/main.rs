@@ -93,8 +93,9 @@ async fn run(opt: Opt, client: &Client, logger: &Logger) {
 
     let assets = Assets::prepare(cpu).expect("prepared bundled stockfish");
     logger.info(&format!(
-        "Engine: {} (for GPLv3, run: {} license)",
-        assets.sf_name,
+        "Engines: {}, {} (for GPLv3, run: {} license)",
+        assets.stockfish.official.name,
+        assets.stockfish.multi_variant.name,
         escape(
             env::args_os()
                 .next()
@@ -275,32 +276,33 @@ async fn worker(i: usize, assets: Arc<Assets>, tx: mpsc::Sender<Pull>, logger: L
             // Ensure engine process is ready.
             let flavor = chunk.flavor;
             let context = ProgressAt::from(&chunk);
-            let (mut sf, join_handle) =
-                if let Some((sf, join_handle)) = engine.get_mut(flavor).take() {
-                    (sf, join_handle)
+            let (mut sf, join_handle) = if let Some((sf, join_handle)) =
+                engine.get_mut(flavor).take()
+            {
+                (sf, join_handle)
+            } else {
+                // Backoff before starting engine.
+                let backoff = engine_backoff.next();
+                if backoff >= Duration::from_secs(5) {
+                    logger.info(&format!(
+                        "Waiting {backoff:?} before attempting to start engine"
+                    ));
                 } else {
-                    // Backoff before starting engine.
-                    let backoff = engine_backoff.next();
-                    if backoff >= Duration::from_secs(5) {
-                        logger.info(&format!(
-                            "Waiting {backoff:?} before attempting to start engine"
-                        ));
-                    } else {
-                        logger.debug(&format!(
-                            "Waiting {backoff:?} before attempting to start engine"
-                        ));
-                    }
-                    tokio::select! {
-                        _ = tx.closed() => break,
-                        _ = sleep(engine_backoff.next()) => (),
-                    }
+                    logger.debug(&format!(
+                        "Waiting {backoff:?} before attempting to start engine"
+                    ));
+                }
+                tokio::select! {
+                    _ = tx.closed() => break,
+                    _ = sleep(engine_backoff.next()) => (),
+                }
 
-                    // Start engine and spawn actor.
-                    let (sf, sf_actor) =
-                        stockfish::channel(assets.stockfish.get(flavor).clone(), logger.clone());
-                    let join_handle = tokio::spawn(sf_actor.run());
-                    (sf, join_handle)
-                };
+                // Start engine and spawn actor.
+                let (sf, sf_actor) =
+                    stockfish::channel(assets.stockfish.get(flavor).path.clone(), logger.clone());
+                let join_handle = tokio::spawn(sf_actor.run());
+                (sf, join_handle)
+            };
 
             // Analyse or play.
             let batch_id = chunk.work.id();

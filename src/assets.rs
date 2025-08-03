@@ -25,9 +25,10 @@ bitflags! {
         const FAST_BMI2 = 1 << 4;
         const AVX512    = 1 << 5;
         const VNNI512   = 1 << 6;
+        const AVX512ICL   = 1 << 7;
 
         // aarch64
-        const DOTPROD = 1 << 7;
+        const DOTPROD = 1 << 8;
 
         const SF_SSE2         = Cpu::SSE2.bits();
         const SF_SSE41_POPCNT = Cpu::SSE41.bits() | Cpu::POPCNT.bits();
@@ -35,6 +36,7 @@ bitflags! {
         const SF_BMI2         = Cpu::SF_AVX2.bits() | Cpu::FAST_BMI2.bits();
         const SF_AVX512       = Cpu::SF_BMI2.bits() | Cpu::AVX512.bits();
         const SF_VNNI256      = Cpu::SF_AVX512.bits() | Cpu::VNNI512.bits(); // 256 bit operands
+        const SF_AVX512ICL    = Cpu::AVX512ICL.bits();
         const SF_NEON_DOTPROD = Cpu::DOTPROD.bits();
     }
 }
@@ -84,6 +86,23 @@ impl Cpu {
                 && is_x86_feature_detected!("avx512bw")
                 && is_x86_feature_detected!("avx512vl"),
         );
+        cpu.set(
+            Cpu::AVX512ICL,
+            is_x86_feature_detected!("avx512f")
+                && is_x86_feature_detected!("avx512cd")
+                && is_x86_feature_detected!("avx512vl")
+                && is_x86_feature_detected!("avx512dq")
+                && is_x86_feature_detected!("avx512bw")
+                && is_x86_feature_detected!("avx512ifma")
+                && is_x86_feature_detected!("avx512vbmi")
+                && is_x86_feature_detected!("avx512vbmi2")
+                && is_x86_feature_detected!("avx512vpopcntdq")
+                && is_x86_feature_detected!("avx512bitalg")
+                && is_x86_feature_detected!("avx512vnni")
+                && is_x86_feature_detected!("vpclmulqdq")
+                && is_x86_feature_detected!("gfni")
+                && is_x86_feature_detected!("vaes"),
+        );
         cpu
     }
 
@@ -105,6 +124,8 @@ impl Cpu {
     pub fn requirements(filename: &str) -> Cpu {
         if filename.contains("-armv8-dotprod") {
             Cpu::SF_NEON_DOTPROD
+        } else if filename.contains("-x86-64-avx512icl") {
+            Cpu::SF_AVX512ICL
         } else if filename.contains("-x86-64-vnni256") {
             Cpu::SF_VNNI256
         } else if filename.contains("-x86-64-avx512") {
@@ -179,16 +200,20 @@ impl EvalFlavor {
 }
 
 #[derive(Debug)]
+pub struct Stockfish {
+    pub name: String,
+    pub path: PathBuf,
+}
+
+#[derive(Debug)]
 pub struct Assets {
-    pub sf_name: String,
-    pub stockfish: ByEngineFlavor<PathBuf>,
+    pub stockfish: ByEngineFlavor<Stockfish>,
     _dir: TempDir, // Will be deleted when dropped
 }
 
 impl Assets {
     pub fn prepare(cpu: Cpu) -> io::Result<Assets> {
-        let mut sf_name = None;
-        let mut stockfish = ByEngineFlavor::<Option<PathBuf>>::default();
+        let mut stockfish = ByEngineFlavor::<Option<Stockfish>>::default();
         let dir = tempfile::Builder::new().prefix("fishnet-").tempdir()?;
 
         let mut archive = Archive::new(ZstdDecoder::new(ASSETS_AR_ZST)?);
@@ -198,15 +223,20 @@ impl Assets {
             let target_path = dir.path().join(filename); // Trusted
             if filename.starts_with("stockfish-") {
                 if stockfish.official.is_none() && cpu.contains(Cpu::requirements(filename)) {
-                    sf_name = Some(filename.to_owned());
-                    stockfish.official = Some(target_path.clone());
+                    stockfish.official = Some(Stockfish {
+                        name: filename.to_owned(),
+                        path: target_path.clone(),
+                    });
                 } else {
                     continue;
                 }
             }
             if filename.starts_with("fairy-stockfish-") {
                 if stockfish.multi_variant.is_none() && cpu.contains(Cpu::requirements(filename)) {
-                    stockfish.multi_variant = Some(target_path.clone());
+                    stockfish.multi_variant = Some(Stockfish {
+                        name: filename.to_owned(),
+                        path: target_path.clone(),
+                    });
                 } else {
                     continue;
                 }
@@ -216,7 +246,6 @@ impl Assets {
         }
 
         Ok(Assets {
-            sf_name: sf_name.expect("compatible stockfish"),
             stockfish: ByEngineFlavor {
                 official: stockfish.official.expect("compatible stockfish"),
                 multi_variant: stockfish

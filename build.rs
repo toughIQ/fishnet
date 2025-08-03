@@ -67,7 +67,7 @@ fn hooks() {
 }
 
 fn has_target_feature(feature: &str) -> bool {
-    env::var("CARGO_CFG_TARGET_FEATURE")
+    dbg!(env::var("CARGO_CFG_TARGET_FEATURE"))
         .unwrap()
         .split(',')
         .any(|f| f == feature)
@@ -115,6 +115,26 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
                 .filter(|_| cfg!(target_arch = "x86_64"));
 
             Target {
+                arch: "x86-64-avx512icl",
+                native: has_x86_64_builder_feature!("avx512f")
+                    && has_x86_64_builder_feature!("avx512cd")
+                    && has_x86_64_builder_feature!("avx512vl")
+                    && has_x86_64_builder_feature!("avx512dq")
+                    && has_x86_64_builder_feature!("avx512bw")
+                    && has_x86_64_builder_feature!("avx512ifma")
+                    && has_x86_64_builder_feature!("avx512vbmi")
+                    && has_x86_64_builder_feature!("avx512vbmi2")
+                    && has_x86_64_builder_feature!("avx512vpopcntdq")
+                    && has_x86_64_builder_feature!("avx512bitalg")
+                    && has_x86_64_builder_feature!("avx512vnni")
+                    && has_x86_64_builder_feature!("vpclmulqdq")
+                    && has_x86_64_builder_feature!("gfni")
+                    && has_x86_64_builder_feature!("vaes"),
+                sde: sde.clone(),
+            }
+            .build_official(archive);
+
+            let vnni256 = Target {
                 arch: "x86-64-vnni256",
                 native: has_x86_64_builder_feature!("avx512vnni")
                     && has_x86_64_builder_feature!("avx512dq")
@@ -122,8 +142,26 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
                     && has_x86_64_builder_feature!("avx512bw")
                     && has_x86_64_builder_feature!("avx512vl"),
                 sde: sde.clone(),
+            };
+            vnni256.build_multi_variant(archive);
+            if has_target_feature("avx512f")
+                && has_target_feature("avx512cd")
+                && has_target_feature("avx512vl")
+                && has_target_feature("avx512dq")
+                && has_target_feature("avx512bw")
+                && has_target_feature("avx512ifma")
+                && has_target_feature("avx512vbmi")
+                && has_target_feature("avx512vbmi2")
+                && has_target_feature("avx512vpopcntdq")
+                && has_target_feature("avx512bitalg")
+                && has_target_feature("avx512vnni")
+                && has_target_feature("vpclmulqdq")
+                && has_target_feature("gfni")
+                && has_target_feature("vaes")
+            {
+                return;
             }
-            .build_both(archive);
+            vnni256.build_official(archive);
 
             if has_target_feature("avx512vnni")
                 && has_target_feature("avx512dq")
