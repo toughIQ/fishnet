@@ -67,7 +67,7 @@ fn hooks() {
 }
 
 fn has_target_feature(feature: &str) -> bool {
-    dbg!(env::var("CARGO_CFG_TARGET_FEATURE"))
+    env::var("CARGO_CFG_TARGET_FEATURE")
         .unwrap()
         .split(',')
         .any(|f| f == feature)

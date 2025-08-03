@@ -25,7 +25,7 @@ bitflags! {
         const FAST_BMI2 = 1 << 4;
         const AVX512    = 1 << 5;
         const VNNI512   = 1 << 6;
-        const AVX512ICL   = 1 << 7;
+        const AVX512ICL = 1 << 7;
 
         // aarch64
         const DOTPROD = 1 << 8;
