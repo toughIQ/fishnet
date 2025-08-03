@@ -71,7 +71,7 @@ jobs:
           name: fishnet-aarch64-unknown-linux-musl
           path: fishnet-aarch64-unknown-linux-musl
   windows-x86-64:
-    runs-on: windows-2019
+    runs-on: windows-2022
     outputs:
       artifact-id: ${{ steps.upload-unsigned-artifact.outputs.artifact-id }}
     defaults:
