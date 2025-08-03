@@ -116,16 +116,20 @@ fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
 
             Target {
                 arch: "x86-64-vnni256",
-                native: has_x86_64_builder_feature!("avx512dq")
-                    && has_x86_64_builder_feature!("avx512vl")
-                    && has_x86_64_builder_feature!("avx512vnni"),
+                native: has_x86_64_builder_feature!("avx512vnni")
+                    && has_x86_64_builder_feature!("avx512dq")
+                    && has_x86_64_builder_feature!("avx512f")
+                    && has_x86_64_builder_feature!("avx512bw")
+                    && has_x86_64_builder_feature!("avx512vl"),
                 sde: sde.clone(),
             }
             .build_both(archive);
 
-            if has_target_feature("avx512dq")
+            if has_target_feature("avx512vnni")
+                && has_target_feature("avx512dq")
+                && has_target_feature("avx512f")
+                && has_target_feature("avx512bw")
                 && has_target_feature("avx512vl")
-                && has_target_feature("avx512vnni")
             {
                 return;
             }

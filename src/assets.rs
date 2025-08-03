@@ -78,9 +78,11 @@ impl Cpu {
         );
         cpu.set(
             Cpu::VNNI512,
-            is_x86_feature_detected!("avx512dq")
-                && is_x86_feature_detected!("avx512vl")
-                && is_x86_feature_detected!("avx512vnni"),
+            is_x86_feature_detected!("avx512vnni")
+                && is_x86_feature_detected!("avx512dq")
+                && is_x86_feature_detected!("avx512f")
+                && is_x86_feature_detected!("avx512bw")
+                && is_x86_feature_detected!("avx512vl"),
         );
         cpu
     }
