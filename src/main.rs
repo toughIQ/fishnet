@@ -24,7 +24,7 @@ use std::{
 
 use reqwest::Client;
 use shell_escape::escape;
-use thread_priority::{set_current_thread_priority, ThreadPriority};
+use thread_priority::{ThreadPriority, set_current_thread_priority};
 use tokio::{
     signal,
     sync::{mpsc, oneshot},
@@ -37,8 +37,8 @@ use crate::{
     configure::{Command, Cores, CpuPriority, Opt},
     ipc::{Chunk, ChunkFailed, Pull},
     logger::{Logger, ProgressAt},
-    update::{auto_update, UpdateSuccess},
-    util::{dot_thousands, RandomizedBackoff},
+    update::{UpdateSuccess, auto_update},
+    util::{RandomizedBackoff, dot_thousands},
 };
 
 #[tokio::main(flavor = "current_thread")]

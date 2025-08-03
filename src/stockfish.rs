@@ -433,7 +433,7 @@ impl StockfishActor {
                                             return Err(io::Error::new(
                                                 io::ErrorKind::InvalidData,
                                                 "expected cp or mate",
-                                            ))
+                                            ));
                                         }
                                     }
                                     .ok_or_else(|| {

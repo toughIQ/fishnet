@@ -9,7 +9,7 @@ authors = ["Niklas Fiekas <niklas.fiekas@backscattering.de>"]
 categories = ["command-line-utilities", "games"]
 keywords = ["chess", "lichess"]
 rust-version = "1.85.1"
-edition = "2021"
+edition = "2024"
 exclude = [
     "Stockfish/**/*.o",
     "Stockfish/**/*.s",

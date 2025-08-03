@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-use clap::{builder::PathBufValueParser, ArgAction, Parser, ValueEnum};
+use clap::{ArgAction, Parser, ValueEnum, builder::PathBufValueParser};
 use configparser::ini::Ini;
 use reqwest::Client;
 use url::Url;
@@ -459,7 +459,9 @@ pub async fn parse_and_configure(client: &Client) -> Opt {
                     eprint!("Personal fishnet key (append ! to force, probably not required): ");
                     false
                 } else {
-                    eprint!("Personal fishnet key (append ! to force, https://lichess.org/get-fishnet): ");
+                    eprint!(
+                        "Personal fishnet key (append ! to force, https://lichess.org/get-fishnet): "
+                    );
                     true
                 };
 

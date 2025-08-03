@@ -5,8 +5,8 @@ use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_repr::Deserialize_repr as DeserializeRepr;
 use serde_with::{
-    formats::SpaceSeparator, serde_as, DisplayFromStr, DurationMilliSeconds, DurationSeconds,
-    NoneAsEmptyString, StringWithSeparator,
+    DisplayFromStr, DurationMilliSeconds, DurationSeconds, NoneAsEmptyString, StringWithSeparator,
+    formats::SpaceSeparator, serde_as,
 };
 use shakmaty::{fen::Fen, uci::UciMove, variant::Variant};
 use tokio::{

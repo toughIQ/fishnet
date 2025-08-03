@@ -1,6 +1,6 @@
 use std::{
     cmp::{max, min},
-    collections::{hash_map::Entry, HashMap, VecDeque},
+    collections::{HashMap, VecDeque, hash_map::Entry},
     error::Error,
     fmt,
     iter::{once, zip},
@@ -10,14 +10,14 @@ use std::{
 };
 
 use shakmaty::{
+    CastlingMode, EnPassantMode, Position as _, PositionError,
     fen::Fen,
     uci::{IllegalUciMoveError, UciMove},
     variant::{Variant, VariantPosition},
-    CastlingMode, EnPassantMode, Position as _, PositionError,
 };
 use tokio::{
-    sync::{mpsc, oneshot, Mutex, Notify},
-    time::{sleep, Instant},
+    sync::{Mutex, Notify, mpsc, oneshot},
+    time::{Instant, sleep},
 };
 use url::Url;
 
@@ -29,9 +29,9 @@ use crate::{
     assets::{EngineFlavor, EvalFlavor},
     configure::{BacklogOpt, Endpoint, MaxBackoff, StatsOpt},
     ipc::{Chunk, ChunkFailed, Position, PositionResponse, Pull},
-    logger::{short_variant_name, Logger, ProgressAt, QueueStatusBar},
+    logger::{Logger, ProgressAt, QueueStatusBar, short_variant_name},
     stats::{NpsRecorder, Stats, StatsRecorder},
-    util::{grow_with_and_get_mut, NevermindExt as _, RandomizedBackoff},
+    util::{NevermindExt as _, RandomizedBackoff, grow_with_and_get_mut},
 };
 
 pub fn channel(

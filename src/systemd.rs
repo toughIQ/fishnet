@@ -115,14 +115,16 @@ impl Invocation {
 }
 
 fn exec_start(invocation: Invocation, opt: &Opt) -> String {
-    let mut builder = vec![escape(
-        invocation
-            .exe()
-            .to_str()
-            .expect("printable exe path")
-            .into(),
-    )
-    .into_owned()];
+    let mut builder = vec![
+        escape(
+            invocation
+                .exe()
+                .to_str()
+                .expect("printable exe path")
+                .into(),
+        )
+        .into_owned(),
+    ];
 
     if opt.verbose.level > 0 {
         builder.push(format!("-{}", "v".repeat(usize::from(opt.verbose.level))));
