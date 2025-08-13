@@ -82,6 +82,27 @@ impl Stdout {
     }
 }
 
+struct Stdin {
+    inner: BufWriter<ChildStdin>,
+}
+
+impl Stdin {
+    fn new(inner: ChildStdin) -> Stdin {
+        Stdin {
+            inner: BufWriter::new(inner),
+        }
+    }
+
+    async fn write_line(&mut self, line: &str) -> io::Result<()> {
+        self.inner.write_all(line.as_bytes()).await?;
+        self.inner.write_all(b"\n").await
+    }
+
+    async fn flush(&mut self) -> io::Result<()> {
+        self.inner.flush().await
+    }
+}
+
 #[derive(Debug)]
 enum EngineError {
     IoError(io::Error),
@@ -135,7 +156,7 @@ impl StockfishActor {
                 .take()
                 .ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "stdout closed"))?,
         );
-        let mut stdin = BufWriter::new(
+        let mut stdin = Stdin::new(
             child
                 .stdin
                 .take()
@@ -171,7 +192,7 @@ impl StockfishActor {
     async fn handle_message(
         &mut self,
         stdout: &mut Stdout,
-        stdin: &mut BufWriter<ChildStdin>,
+        stdin: &mut Stdin,
         msg: StockfishMessage,
     ) -> Result<(), EngineError> {
         match msg {
@@ -190,16 +211,12 @@ impl StockfishActor {
         }
     }
 
-    async fn init(
-        &mut self,
-        stdout: &mut Stdout,
-        stdin: &mut BufWriter<ChildStdin>,
-    ) -> io::Result<()> {
+    async fn init(&mut self, stdout: &mut Stdout, stdin: &mut Stdin) -> io::Result<()> {
         if !mem::replace(&mut self.initialized, true) {
             stdin
-                .write_all(b"setoption name UCI_Chess960 value true\n")
+                .write_line("setoption name UCI_Chess960 value true")
                 .await?;
-            stdin.write_all(b"isready\n").await?;
+            stdin.write_line("isready").await?;
             stdin.flush().await?;
 
             loop {
@@ -222,58 +239,50 @@ impl StockfishActor {
     async fn go_multiple(
         &mut self,
         stdout: &mut Stdout,
-        stdin: &mut BufWriter<ChildStdin>,
+        stdin: &mut Stdin,
         chunk: Chunk,
     ) -> io::Result<Vec<PositionResponse>> {
         // Set global options (once).
         self.init(stdout, stdin).await?;
 
         // Clear hash.
-        stdin.write_all(b"ucinewgame\n").await?;
+        stdin.write_line("ucinewgame").await?;
 
         // Set basic options.
         if chunk.flavor == EngineFlavor::MultiVariant {
             stdin
-                .write_all(
-                    format!(
-                        "setoption name Use NNUE value {}\n",
-                        chunk.flavor.eval_flavor().is_nnue()
-                    )
-                    .as_bytes(),
-                )
+                .write_line(&format!(
+                    "setoption name Use NNUE value {}",
+                    chunk.flavor.eval_flavor().is_nnue()
+                ))
                 .await?;
             stdin
-                .write_all(
-                    format!(
-                        "setoption name UCI_AnalyseMode value {}\n",
-                        matches!(chunk.work, Work::Analysis { .. })
-                    )
-                    .as_bytes(),
-                )
+                .write_line(&format!(
+                    "setoption name UCI_AnalyseMode value {}",
+                    matches!(chunk.work, Work::Analysis { .. })
+                ))
                 .await?;
             stdin
-                .write_all(
-                    format!("setoption name UCI_Variant value {}\n", chunk.variant.uci())
-                        .as_bytes(),
-                )
+                .write_line(&format!(
+                    "setoption name UCI_Variant value {}",
+                    chunk.variant.uci()
+                ))
                 .await?;
         }
         stdin
-            .write_all(
-                format!("setoption name MultiPV value {}\n", chunk.work.multipv()).as_bytes(),
-            )
+            .write_line(&format!(
+                "setoption name MultiPV value {}",
+                chunk.work.multipv()
+            ))
             .await?;
         stdin
-            .write_all(
-                format!(
-                    "setoption name Skill Level value {}\n",
-                    match chunk.work {
-                        Work::Analysis { .. } => 20,
-                        Work::Move { level, .. } => level.skill_level(),
-                    }
-                )
-                .as_bytes(),
-            )
+            .write_line(&format!(
+                "setoption name Skill Level value {}",
+                match chunk.work {
+                    Work::Analysis { .. } => 20,
+                    Work::Move { level, .. } => level.skill_level(),
+                }
+            ))
             .await?;
 
         // Collect results for all positions of the chunk.
@@ -290,7 +299,7 @@ impl StockfishActor {
     async fn go(
         &mut self,
         stdout: &mut Stdout,
-        stdin: &mut BufWriter<ChildStdin>,
+        stdin: &mut Stdin,
         eval_flavor: EvalFlavor,
         position: Position,
     ) -> io::Result<PositionResponse> {
@@ -302,7 +311,10 @@ impl StockfishActor {
             .collect::<Vec<_>>()
             .join(" ");
         stdin
-            .write_all(format!("position fen {} moves {}\n", position.root_fen, moves).as_bytes())
+            .write_line(&format!(
+                "position fen {} moves {}",
+                position.root_fen, moves
+            ))
             .await?;
 
         // Go.
@@ -345,8 +357,7 @@ impl StockfishActor {
                 go
             }
         };
-        stdin.write_all(go.join(" ").as_bytes()).await?;
-        stdin.write_all(b"\n").await?;
+        stdin.write_line(&go.join(" ")).await?;
         stdin.flush().await?;
 
         // Process response.
