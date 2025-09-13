@@ -72,6 +72,8 @@ jobs:
           path: fishnet-aarch64-unknown-linux-musl
   windows-x86-64:
     runs-on: windows-2022
+    permissions:
+      contents: read
     outputs:
       artifact-id: ${{ steps.upload-unsigned-artifact.outputs.artifact-id }}
     defaults:
@@ -105,6 +107,8 @@ jobs:
           path: fishnet-x86_64-pc-windows-gnu-unsigned.exe
   macos-x86-64:
     runs-on: macos-13
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v5
         with:
@@ -119,6 +123,8 @@ jobs:
           path: fishnet-x86_64-apple-darwin
   macos-aarch64:
     runs-on: macos-13
+    permissions:
+      contents: read
     env:
       CXXFLAGS: -target arm64-apple-macos11
     steps:
@@ -137,6 +143,8 @@ jobs:
           path: fishnet-aarch64-apple-darwin
   windows-x86-64_signed:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     environment:
       name: ${{ startsWith(github.ref, 'refs/tags/v') && 'signpath_release' || 'signpath_test' }}
     needs:
@@ -191,6 +199,8 @@ jobs:
           fail_on_unmatched_files: true
   s3_release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     environment:
       name: s3
     needs: github_release
