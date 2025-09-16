@@ -1,4 +1,4 @@
-use std::{env, fmt, num::NonZeroU8, str::FromStr, time::Duration};
+use std::{env, error::Error, fmt, fmt::Write, num::NonZeroU8, str::FromStr, time::Duration};
 
 use arrayvec::ArrayString;
 use reqwest::{Client, StatusCode};
@@ -525,8 +525,11 @@ impl ApiActor {
                 sleep(backoff).await;
             } else {
                 let backoff = self.error_backoff.next();
-                self.logger
-                    .error(&format!("{err}. Backing off {backoff:?}."));
+                self.logger.error(&format!(
+                    "{}. Backing off {:?}.",
+                    error_report(&err),
+                    backoff
+                ));
                 sleep(backoff).await;
             }
         } else {
@@ -751,4 +754,13 @@ impl ApiActor {
 
         Ok(())
     }
+}
+
+fn error_report(mut err: &dyn Error) -> String {
+    let mut report = format!("{}", err);
+    while let Some(src) = err.source() {
+        write!(report, " -> {}", src).expect("write error message");
+        err = src;
+    }
+    report
 }
