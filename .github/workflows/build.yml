@@ -149,6 +149,7 @@ jobs:
       name: ${{ startsWith(github.ref, 'refs/tags/v') && 'signpath_release' || 'signpath_test' }}
     needs:
       - windows-x86-64
+    if: github.event_name == 'push'
     steps:
       - uses: signpath/github-action-submit-signing-request@v1
         with:
