@@ -35,7 +35,7 @@ bitflags! {
         const SF_AVX2         = Cpu::SF_SSE41_POPCNT.bits() | Cpu::AVX2.bits();
         const SF_BMI2         = Cpu::SF_AVX2.bits() | Cpu::FAST_BMI2.bits();
         const SF_AVX512       = Cpu::SF_BMI2.bits() | Cpu::AVX512.bits();
-        const SF_VNNI256      = Cpu::SF_AVX512.bits() | Cpu::VNNI512.bits(); // 256 bit operands
+        const SF_VNNI512      = Cpu::SF_AVX512.bits() | Cpu::VNNI512.bits();
         const SF_AVX512ICL    = Cpu::AVX512ICL.bits();
         const SF_NEON_DOTPROD = Cpu::DOTPROD.bits();
     }
@@ -126,8 +126,8 @@ impl Cpu {
             Cpu::SF_NEON_DOTPROD
         } else if filename.contains("-x86-64-avx512icl") {
             Cpu::SF_AVX512ICL
-        } else if filename.contains("-x86-64-vnni256") {
-            Cpu::SF_VNNI256
+        } else if filename.contains("-x86-64-vnni512") {
+            Cpu::SF_VNNI512
         } else if filename.contains("-x86-64-avx512") {
             Cpu::SF_AVX512
         } else if filename.contains("-x86-64-bmi2") {
