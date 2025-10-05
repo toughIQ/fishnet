@@ -1,12 +1,24 @@
 #![forbid(unsafe_code)]
 
-use std::{env, fs, fs::File, io::Write, path::Path, process::Command};
+use std::{
+    env,
+    fs::{self, File},
+    io::Write,
+    path::{Path, PathBuf},
+    process::Command,
+    sync::LazyLock,
+};
 
 use glob::glob;
 use zstd::stream::write::Encoder as ZstdEncoder;
 
 const EVAL_FILE: &str = "nn-1c0000000000.nnue";
 const EVAL_FILE_SMALL: &str = "nn-37f18f62d772.nnue";
+
+static OUT_PATH: LazyLock<PathBuf> = LazyLock::new(|| PathBuf::from(&env::var("OUT_DIR").unwrap()));
+static STOCKFISH_OUT_PATH: LazyLock<PathBuf> = LazyLock::new(|| OUT_PATH.join("Stockfish"));
+static FAIRY_STOCKFISH_OUT_PATH: LazyLock<PathBuf> =
+    LazyLock::new(|| OUT_PATH.join("Fairy-Stockfish"));
 
 fn main() {
     println!(
@@ -16,17 +28,22 @@ fn main() {
 
     hooks();
 
+    // Copy submodule folders to OUT_DIR because their Makefiles create files,
+    // which would make the build non-idempotent.
+    copy_submodule_folder(Path::new("Stockfish"), &STOCKFISH_OUT_PATH);
+    copy_submodule_folder(Path::new("Fairy-Stockfish"), &FAIRY_STOCKFISH_OUT_PATH);
+
     let mut archive = ar::Builder::new(
-        ZstdEncoder::new(
-            File::create(Path::new(&env::var("OUT_DIR").unwrap()).join("assets.ar.zst")).unwrap(),
-            6,
-        )
-        .unwrap(),
+        ZstdEncoder::new(File::create(OUT_PATH.join("assets.ar.zst")).unwrap(), 6).unwrap(),
     );
     stockfish_build(&mut archive);
     stockfish_eval_file(EVAL_FILE, &mut archive);
     stockfish_eval_file(EVAL_FILE_SMALL, &mut archive);
     archive.into_inner().unwrap().finish().unwrap();
+
+    // Clean up copied source trees to save space in target directory
+    fs::remove_dir_all(&*STOCKFISH_OUT_PATH).unwrap();
+    fs::remove_dir_all(&*FAIRY_STOCKFISH_OUT_PATH).unwrap();
 
     // Resource compilation may fail when toolchain does not match target,
     // e.g. windows-msvc toolchain with windows-gnu target.
@@ -284,7 +301,7 @@ impl Target {
     fn build<W: Write>(
         &self,
         flavor: Flavor,
-        src_dir: &'static str,
+        src_path: &Path,
         name: &'static str,
         archive: &mut ar::Builder<W>,
     ) {
@@ -342,13 +359,8 @@ impl Target {
         );
 
         assert!(
-            Path::new(src_dir).is_dir(),
-            "Directory {src_dir:?} does not exist. Try: git submodule update --init",
-        );
-
-        assert!(
             Command::new(&make)
-                .current_dir(src_dir)
+                .current_dir(src_path)
                 .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
                 .arg("clean")
                 .status()
@@ -359,7 +371,7 @@ impl Target {
 
         if flavor == Flavor::Official
             && !Command::new(&make)
-                .current_dir(src_dir)
+                .current_dir(src_path)
                 .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
                 .arg("-B")
                 .arg("net")
@@ -367,8 +379,8 @@ impl Target {
                 .unwrap()
                 .success()
         {
-            let _ = fs::remove_file(Path::new(src_dir).join(EVAL_FILE));
-            let _ = fs::remove_file(Path::new(src_dir).join(EVAL_FILE_SMALL));
+            let _ = fs::remove_file(src_path.join(EVAL_FILE));
+            let _ = fs::remove_file(src_path.join(EVAL_FILE_SMALL));
             println!(
                 "cargo:warning=Deleted corrupted network file {EVAL_FILE} or {EVAL_FILE_SMALL}"
             );
@@ -376,7 +388,7 @@ impl Target {
 
         assert!(
             Command::new(&make)
-                .current_dir(src_dir)
+                .current_dir(src_path)
                 .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
                 .env(
                     "CXXFLAGS",
@@ -403,7 +415,7 @@ impl Target {
 
         assert!(
             Command::new(&make)
-                .current_dir(src_dir)
+                .current_dir(src_path)
                 .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
                 .arg(format!("EXE={exe}"))
                 .arg("strip")
@@ -413,19 +425,24 @@ impl Target {
             "$(MAKE) strip"
         );
 
-        let exe_path = Path::new(src_dir).join(exe);
+        let exe_path = Path::new(src_path).join(exe);
         append_file(archive, &exe_path, 0o755);
         fs::remove_file(&exe_path).unwrap();
     }
 
     fn build_official<W: Write>(&self, archive: &mut ar::Builder<W>) {
-        self.build(Flavor::Official, "Stockfish/src", "stockfish", archive);
+        self.build(
+            Flavor::Official,
+            &STOCKFISH_OUT_PATH.join("src"),
+            "stockfish",
+            archive,
+        );
     }
 
     fn build_multi_variant<W: Write>(&self, archive: &mut ar::Builder<W>) {
         self.build(
             Flavor::MultiVariant,
-            "Fairy-Stockfish/src",
+            &FAIRY_STOCKFISH_OUT_PATH.join("src"),
             "fairy-stockfish",
             archive,
         );
@@ -438,11 +455,7 @@ impl Target {
 }
 
 fn stockfish_eval_file<W: Write>(name: &str, archive: &mut ar::Builder<W>) {
-    append_file(
-        archive,
-        Path::new("Stockfish").join("src").join(name),
-        0o644,
-    );
+    append_file(archive, STOCKFISH_OUT_PATH.join("src").join(name), 0o644);
 }
 
 fn append_file<W: Write, P: AsRef<Path>>(archive: &mut ar::Builder<W>, path: P, mode: u32) {
@@ -460,4 +473,21 @@ fn append_file<W: Write, P: AsRef<Path>>(archive: &mut ar::Builder<W>, path: P, 
     );
     header.set_mode(mode);
     archive.append(&header, file).unwrap();
+}
+
+fn copy_submodule_folder(src: &Path, dst: &Path) {
+    assert!(
+        src.is_dir(),
+        "Directory {src:?} does not exist. Try: git submodule update --init",
+    );
+    if dst.exists() {
+        fs::remove_dir_all(dst).unwrap();
+    }
+    fs::create_dir_all(dst).unwrap();
+    fs_extra::dir::copy(
+        src,
+        dst,
+        &fs_extra::dir::CopyOptions::new().content_only(true),
+    )
+    .unwrap();
 }
