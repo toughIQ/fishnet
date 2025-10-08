@@ -1,12 +1,30 @@
 #![forbid(unsafe_code)]
 
-use std::{env, fs, fs::File, io::Write, path::Path, process::Command};
+use std::{
+    env,
+    fs::{self, File},
+    io::Write,
+    path::{Path, PathBuf},
+    process::Command,
+    sync::LazyLock,
+    time::SystemTime,
+};
 
 use glob::glob;
 use zstd::stream::write::Encoder as ZstdEncoder;
 
-const EVAL_FILE: &str = "nn-1c0000000000.nnue";
-const EVAL_FILE_SMALL: &str = "nn-37f18f62d772.nnue";
+static OUT_PATH: LazyLock<PathBuf> = LazyLock::new(|| PathBuf::from(&env::var("OUT_DIR").unwrap()));
+static STOCKFISH_OUT_PATH: LazyLock<PathBuf> = LazyLock::new(|| OUT_PATH.join("Stockfish"));
+static FAIRY_STOCKFISH_OUT_PATH: LazyLock<PathBuf> =
+    LazyLock::new(|| OUT_PATH.join("Fairy-Stockfish"));
+
+const EVAL_FILE_NAME: &str = "nn-1c0000000000.nnue";
+static EVAL_FILE_OUT_PATH: LazyLock<PathBuf> =
+    LazyLock::new(|| STOCKFISH_OUT_PATH.join("src").join(EVAL_FILE_NAME));
+
+const EVAL_FILE_SMALL_NAME: &str = "nn-37f18f62d772.nnue";
+static EVAL_FILE_SMALL_OUT_PATH: LazyLock<PathBuf> =
+    LazyLock::new(|| STOCKFISH_OUT_PATH.join("src").join(EVAL_FILE_SMALL_NAME));
 
 fn main() {
     println!(
@@ -16,16 +34,31 @@ fn main() {
 
     hooks();
 
+    // If there are eval files from a previous build, back them up into a temp
+    // file before overwriting the submodule copies. This avoids re-downloading.
+    let eval_file_backup = backup_file_if_exists(&EVAL_FILE_OUT_PATH);
+    let eval_file_small_backup = backup_file_if_exists(&EVAL_FILE_SMALL_OUT_PATH);
+
+    // Copy submodule folders to OUT_DIR because their Makefiles create files,
+    // which would make the build non-idempotent.
+    copy_overwrite_submodule_folder(Path::new("Stockfish"), &STOCKFISH_OUT_PATH);
+    copy_overwrite_submodule_folder(Path::new("Fairy-Stockfish"), &FAIRY_STOCKFISH_OUT_PATH);
+
+    // Restore backed-up eval files (if we had them)
+    if let Some(eval_file_backup) = eval_file_backup {
+        move_file(&eval_file_backup, &EVAL_FILE_OUT_PATH);
+    };
+    if let Some(eval_file_small_backup) = eval_file_small_backup {
+        move_file(&eval_file_small_backup, &EVAL_FILE_SMALL_OUT_PATH);
+    };
+
+    // Build Stockfish and Fairy-Stockfish and archive them (along with eval files)
     let mut archive = ar::Builder::new(
-        ZstdEncoder::new(
-            File::create(Path::new(&env::var("OUT_DIR").unwrap()).join("assets.ar.zst")).unwrap(),
-            6,
-        )
-        .unwrap(),
+        ZstdEncoder::new(File::create(OUT_PATH.join("assets.ar.zst")).unwrap(), 6).unwrap(),
     );
     stockfish_build(&mut archive);
-    stockfish_eval_file(EVAL_FILE, &mut archive);
-    stockfish_eval_file(EVAL_FILE_SMALL, &mut archive);
+    append_file(&mut archive, &*EVAL_FILE_OUT_PATH, 0o644);
+    append_file(&mut archive, &*EVAL_FILE_SMALL_OUT_PATH, 0o644);
     archive.into_inner().unwrap().finish().unwrap();
 
     // Resource compilation may fail when toolchain does not match target,
@@ -284,7 +317,7 @@ impl Target {
     fn build<W: Write>(
         &self,
         flavor: Flavor,
-        src_dir: &'static str,
+        src_path: &Path,
         name: &'static str,
         archive: &mut ar::Builder<W>,
     ) {
@@ -342,13 +375,8 @@ impl Target {
         );
 
         assert!(
-            Path::new(src_dir).is_dir(),
-            "Directory {src_dir:?} does not exist. Try: git submodule update --init",
-        );
-
-        assert!(
             Command::new(&make)
-                .current_dir(src_dir)
+                .current_dir(src_path)
                 .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
                 .arg("clean")
                 .status()
@@ -359,7 +387,7 @@ impl Target {
 
         if flavor == Flavor::Official
             && !Command::new(&make)
-                .current_dir(src_dir)
+                .current_dir(src_path)
                 .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
                 .arg("-B")
                 .arg("net")
@@ -367,16 +395,16 @@ impl Target {
                 .unwrap()
                 .success()
         {
-            let _ = fs::remove_file(Path::new(src_dir).join(EVAL_FILE));
-            let _ = fs::remove_file(Path::new(src_dir).join(EVAL_FILE_SMALL));
+            let _ = fs::remove_file(src_path.join(EVAL_FILE_NAME));
+            let _ = fs::remove_file(src_path.join(EVAL_FILE_SMALL_NAME));
             println!(
-                "cargo:warning=Deleted corrupted network file {EVAL_FILE} or {EVAL_FILE_SMALL}"
+                "cargo:warning=Deleted corrupted network file {EVAL_FILE_NAME} or {EVAL_FILE_SMALL_NAME}"
             );
         }
 
         assert!(
             Command::new(&make)
-                .current_dir(src_dir)
+                .current_dir(src_path)
                 .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
                 .env(
                     "CXXFLAGS",
@@ -403,7 +431,7 @@ impl Target {
 
         assert!(
             Command::new(&make)
-                .current_dir(src_dir)
+                .current_dir(src_path)
                 .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
                 .arg(format!("EXE={exe}"))
                 .arg("strip")
@@ -413,19 +441,24 @@ impl Target {
             "$(MAKE) strip"
         );
 
-        let exe_path = Path::new(src_dir).join(exe);
+        let exe_path = Path::new(src_path).join(exe);
         append_file(archive, &exe_path, 0o755);
         fs::remove_file(&exe_path).unwrap();
     }
 
     fn build_official<W: Write>(&self, archive: &mut ar::Builder<W>) {
-        self.build(Flavor::Official, "Stockfish/src", "stockfish", archive);
+        self.build(
+            Flavor::Official,
+            &STOCKFISH_OUT_PATH.join("src"),
+            "stockfish",
+            archive,
+        );
     }
 
     fn build_multi_variant<W: Write>(&self, archive: &mut ar::Builder<W>) {
         self.build(
             Flavor::MultiVariant,
-            "Fairy-Stockfish/src",
+            &FAIRY_STOCKFISH_OUT_PATH.join("src"),
             "fairy-stockfish",
             archive,
         );
@@ -435,14 +468,6 @@ impl Target {
         self.build_official(archive);
         self.build_multi_variant(archive);
     }
-}
-
-fn stockfish_eval_file<W: Write>(name: &str, archive: &mut ar::Builder<W>) {
-    append_file(
-        archive,
-        Path::new("Stockfish").join("src").join(name),
-        0o644,
-    );
 }
 
 fn append_file<W: Write, P: AsRef<Path>>(archive: &mut ar::Builder<W>, path: P, mode: u32) {
@@ -460,4 +485,50 @@ fn append_file<W: Write, P: AsRef<Path>>(archive: &mut ar::Builder<W>, path: P, 
     );
     header.set_mode(mode);
     archive.append(&header, file).unwrap();
+}
+
+fn copy_overwrite_submodule_folder(src: &Path, dst: &Path) {
+    assert!(
+        src.is_dir(),
+        "Directory {src:?} does not exist. Try: git submodule update --init",
+    );
+    if dst.exists() {
+        fs::remove_dir_all(dst).unwrap();
+    }
+    fs::create_dir_all(dst).unwrap();
+    fs_extra::dir::copy(
+        src,
+        dst,
+        &fs_extra::dir::CopyOptions::new().content_only(true),
+    )
+    .unwrap();
+}
+
+/// If `src` exists, copy it to a temporary file.
+///
+/// Returns the path to the temporary file, or `None` if `src` did not exist.
+fn backup_file_if_exists(src: &Path) -> Option<PathBuf> {
+    if !src.exists() {
+        return None;
+    }
+
+    // Scope backup files by timestamp to avoid collisions with parallel builds
+    let timestamp = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let filename = src.file_name().unwrap().to_str().unwrap();
+    let tmp_file_path = env::temp_dir().join(format!("{timestamp}-{filename}"));
+
+    fs::copy(src, &tmp_file_path).unwrap();
+
+    Some(tmp_file_path)
+}
+
+/// Move a file from `src` to `dst` by copying and deleting the original.
+///
+/// Needed because `fs::rename` doesn't work across different filesystems.
+fn move_file(src: &Path, dst: &Path) {
+    fs::copy(src, dst).unwrap();
+    let _ = fs::remove_file(src);
 }
