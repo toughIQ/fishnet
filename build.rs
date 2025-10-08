@@ -3,28 +3,55 @@
 use std::{
     env,
     fs::{self, File},
+    hash::{DefaultHasher, Hash as _, Hasher as _},
     io::Write,
     path::{Path, PathBuf},
     process::Command,
     sync::LazyLock,
-    time::SystemTime,
 };
 
 use glob::glob;
 use zstd::stream::write::Encoder as ZstdEncoder;
 
 static OUT_PATH: LazyLock<PathBuf> = LazyLock::new(|| PathBuf::from(&env::var("OUT_DIR").unwrap()));
-static STOCKFISH_OUT_PATH: LazyLock<PathBuf> = LazyLock::new(|| OUT_PATH.join("Stockfish"));
-static FAIRY_STOCKFISH_OUT_PATH: LazyLock<PathBuf> =
-    LazyLock::new(|| OUT_PATH.join("Fairy-Stockfish"));
 
 const EVAL_FILE_NAME: &str = "nn-1c0000000000.nnue";
-static EVAL_FILE_OUT_PATH: LazyLock<PathBuf> =
-    LazyLock::new(|| STOCKFISH_OUT_PATH.join("src").join(EVAL_FILE_NAME));
-
 const EVAL_FILE_SMALL_NAME: &str = "nn-37f18f62d772.nnue";
-static EVAL_FILE_SMALL_OUT_PATH: LazyLock<PathBuf> =
-    LazyLock::new(|| STOCKFISH_OUT_PATH.join("src").join(EVAL_FILE_SMALL_NAME));
+
+static SF_SOURCE_FILES: LazyLock<Vec<PathBuf>> = LazyLock::new(|| {
+    assert!(
+        Path::new("Stockfish").is_dir(),
+        "Directory Stockfish does not exist. Try: git submodule update --init",
+    );
+    assert!(
+        Path::new("Fairy-Stockfish").is_dir(),
+        "Directory Fairy-Stockfish does not exist. Try: git submodule update --init",
+    );
+
+    [
+        // Stockfish
+        "Stockfish/src/Makefile",
+        "Stockfish/**/*.sh",
+        "Stockfish/src/**/*.cpp",
+        "Stockfish/src/**/*.h",
+        &format!("Stockfish/src/{}", EVAL_FILE_NAME),
+        &format!("Stockfish/src/{}", EVAL_FILE_SMALL_NAME),
+        // Fairy-Stockfish
+        "Fairy-Stockfish/src/Makefile",
+        "Fairy-Stockfish/src/**/*.cpp",
+        "Fairy-Stockfish/src/**/*.h",
+    ]
+    .iter()
+    .flat_map(|pattern| glob(pattern).unwrap())
+    .collect::<Result<Vec<PathBuf>, _>>()
+    .unwrap()
+});
+
+static SF_BUILD_PATH: LazyLock<PathBuf> = LazyLock::new(|| {
+    let mut hasher = DefaultHasher::new();
+    (&*SF_SOURCE_FILES).hash(&mut hasher);
+    OUT_PATH.join(hasher.finish().to_string())
+});
 
 fn main() {
     println!(
@@ -32,71 +59,31 @@ fn main() {
         env::var("TARGET").unwrap()
     );
 
-    hooks();
-
-    // If there are eval files from a previous build, back them up into a temp
-    // file before overwriting the submodule copies. This avoids re-downloading.
-    let eval_file_backup = backup_file_if_exists(&EVAL_FILE_OUT_PATH);
-    let eval_file_small_backup = backup_file_if_exists(&EVAL_FILE_SMALL_OUT_PATH);
-
-    // Copy submodule folders to OUT_DIR because their Makefiles create files,
-    // which would make the build non-idempotent.
-    copy_overwrite_submodule_folder(Path::new("Stockfish"), &STOCKFISH_OUT_PATH);
-    copy_overwrite_submodule_folder(Path::new("Fairy-Stockfish"), &FAIRY_STOCKFISH_OUT_PATH);
-
-    // Restore backed-up eval files (if we had them)
-    if let Some(eval_file_backup) = eval_file_backup {
-        move_file(&eval_file_backup, &EVAL_FILE_OUT_PATH);
-    };
-    if let Some(eval_file_small_backup) = eval_file_small_backup {
-        move_file(&eval_file_small_backup, &EVAL_FILE_SMALL_OUT_PATH);
-    };
-
-    // Build Stockfish and Fairy-Stockfish and archive them (along with eval files)
+    // Build Stockfish and Fairy-Stockfish and archive them
+    // (along with eval files).
     let mut archive = ar::Builder::new(
         ZstdEncoder::new(File::create(OUT_PATH.join("assets.ar.zst")).unwrap(), 6).unwrap(),
     );
     stockfish_build(&mut archive);
-    append_file(&mut archive, &*EVAL_FILE_OUT_PATH, 0o644);
-    append_file(&mut archive, &*EVAL_FILE_SMALL_OUT_PATH, 0o644);
+    append_file(
+        &mut archive,
+        SF_BUILD_PATH
+            .join("Stockfish")
+            .join("src")
+            .join(EVAL_FILE_NAME),
+        0o644,
+    );
+    append_file(
+        &mut archive,
+        SF_BUILD_PATH
+            .join("Stockfish")
+            .join("src")
+            .join(EVAL_FILE_SMALL_NAME),
+        0o644,
+    );
     archive.into_inner().unwrap().finish().unwrap();
 
-    // Resource compilation may fail when toolchain does not match target,
-    // e.g. windows-msvc toolchain with windows-gnu target.
-    #[cfg(target_family = "windows")]
-    winres::WindowsResource::new()
-        .set_icon("favicon.ico")
-        .compile()
-        .unwrap_or_else(|err| {
-            println!("cargo:warning=Resource compiler not invoked: {}", err);
-        });
-}
-
-fn hooks() {
-    println!("cargo:rerun-if-env-changed=CXX");
-    println!("cargo:rerun-if-env-changed=CXXFLAGS");
-    println!("cargo:rerun-if-env-changed=DEPENDFLAGS");
-    println!("cargo:rerun-if-env-changed=LDFLAGS");
-    println!("cargo:rerun-if-env-changed=MAKE");
-    println!("cargo:rerun-if-env-changed=SDE_PATH");
-
-    println!("cargo:rerun-if-changed=Stockfish/src/Makefile");
-    for entry in glob("Stockfish/src/**/*.cpp").unwrap() {
-        println!("cargo:rerun-if-changed={}", entry.unwrap().display());
-    }
-    for entry in glob("Stockfish/src/**/*.h").unwrap() {
-        println!("cargo:rerun-if-changed={}", entry.unwrap().display());
-    }
-
-    println!("cargo:rerun-if-changed=Fairy-Stockfish/src/Makefile");
-    for entry in glob("Fairy-Stockfish/src/**/*.cpp").unwrap() {
-        println!("cargo:rerun-if-changed={}", entry.unwrap().display());
-    }
-    for entry in glob("Fairy-Stockfish/src/**/*.h").unwrap() {
-        println!("cargo:rerun-if-changed={}", entry.unwrap().display());
-    }
-
-    println!("cargo:rerun-if-changed=favicon.ico");
+    add_favicon();
 }
 
 fn has_target_feature(feature: &str) -> bool {
@@ -134,6 +121,19 @@ macro_rules! has_aarch64_builder_feature {
 
 #[allow(clippy::nonminimal_bool, clippy::eq_op)]
 fn stockfish_build<W: Write>(archive: &mut ar::Builder<W>) {
+    println!("cargo:rerun-if-env-changed=CXX");
+    println!("cargo:rerun-if-env-changed=CXXFLAGS");
+    println!("cargo:rerun-if-env-changed=DEPENDFLAGS");
+    println!("cargo:rerun-if-env-changed=LDFLAGS");
+    println!("cargo:rerun-if-env-changed=MAKE");
+    println!("cargo:rerun-if-env-changed=SDE_PATH");
+
+    for source_file in &*SF_SOURCE_FILES {
+        fs::create_dir_all(SF_BUILD_PATH.join(source_file.parent().unwrap())).unwrap();
+        fs::copy(source_file, SF_BUILD_PATH.join(source_file)).unwrap();
+        println!("cargo:rerun-if-changed={}", source_file.display());
+    }
+
     // Note: The target arch of the build script is the architecture of the
     // builder and decides if pgo is possible. It is not necessarily the same
     // as CARGO_CFG_TARGET_ARCH, the target arch of the fishnet binary.
@@ -385,20 +385,17 @@ impl Target {
             "$(MAKE) clean"
         );
 
-        if flavor == Flavor::Official
-            && !Command::new(&make)
-                .current_dir(src_path)
-                .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
-                .arg("-B")
-                .arg("net")
-                .status()
-                .unwrap()
-                .success()
-        {
-            let _ = fs::remove_file(src_path.join(EVAL_FILE_NAME));
-            let _ = fs::remove_file(src_path.join(EVAL_FILE_SMALL_NAME));
-            println!(
-                "cargo:warning=Deleted corrupted network file {EVAL_FILE_NAME} or {EVAL_FILE_SMALL_NAME}"
+        if flavor == Flavor::Official {
+            assert!(
+                Command::new(&make)
+                    .current_dir(src_path)
+                    .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
+                    .arg("-B")
+                    .arg("net")
+                    .status()
+                    .unwrap()
+                    .success(),
+                "$(MAKE) net"
             );
         }
 
@@ -449,7 +446,7 @@ impl Target {
     fn build_official<W: Write>(&self, archive: &mut ar::Builder<W>) {
         self.build(
             Flavor::Official,
-            &STOCKFISH_OUT_PATH.join("src"),
+            &SF_BUILD_PATH.join("Stockfish").join("src"),
             "stockfish",
             archive,
         );
@@ -458,7 +455,7 @@ impl Target {
     fn build_multi_variant<W: Write>(&self, archive: &mut ar::Builder<W>) {
         self.build(
             Flavor::MultiVariant,
-            &FAIRY_STOCKFISH_OUT_PATH.join("src"),
+            &SF_BUILD_PATH.join("Fairy-Stockfish").join("src"),
             "fairy-stockfish",
             archive,
         );
@@ -487,48 +484,18 @@ fn append_file<W: Write, P: AsRef<Path>>(archive: &mut ar::Builder<W>, path: P, 
     archive.append(&header, file).unwrap();
 }
 
-fn copy_overwrite_submodule_folder(src: &Path, dst: &Path) {
-    assert!(
-        src.is_dir(),
-        "Directory {src:?} does not exist. Try: git submodule update --init",
-    );
-    if dst.exists() {
-        fs::remove_dir_all(dst).unwrap();
+fn add_favicon() {
+    #[cfg(target_family = "windows")]
+    {
+        println!("cargo:rerun-if-changed=favicon.ico");
+        winres::WindowsResource::new()
+            .set_icon("favicon.ico")
+            .compile()
+            .unwrap_or_else(|err| {
+                // Resource compilation may fail when toolchain does not match
+                // target, e.g. windows-msvc toolchain with windows-gnu target.
+                // Treat as non-fatal.
+                println!("cargo:warning=Resource compiler not invoked: {}", err);
+            });
     }
-    fs::create_dir_all(dst).unwrap();
-    fs_extra::dir::copy(
-        src,
-        dst,
-        &fs_extra::dir::CopyOptions::new().content_only(true),
-    )
-    .unwrap();
-}
-
-/// If `src` exists, copy it to a temporary file.
-///
-/// Returns the path to the temporary file, or `None` if `src` did not exist.
-fn backup_file_if_exists(src: &Path) -> Option<PathBuf> {
-    if !src.exists() {
-        return None;
-    }
-
-    // Scope backup files by timestamp to avoid collisions with parallel builds
-    let timestamp = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
-    let filename = src.file_name().unwrap().to_str().unwrap();
-    let tmp_file_path = env::temp_dir().join(format!("{timestamp}-{filename}"));
-
-    fs::copy(src, &tmp_file_path).unwrap();
-
-    Some(tmp_file_path)
-}
-
-/// Move a file from `src` to `dst` by copying and deleting the original.
-///
-/// Needed because `fs::rename` doesn't work across different filesystems.
-fn move_file(src: &Path, dst: &Path) {
-    fs::copy(src, dst).unwrap();
-    let _ = fs::remove_file(src);
 }
