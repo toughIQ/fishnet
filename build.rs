@@ -487,18 +487,19 @@ fn append_file<W: Write, P: AsRef<Path>>(archive: &mut ar::Builder<W>, path: P, 
     archive.append(&header, file).unwrap();
 }
 
-fn copy_overwrite_submodule_folder(src: &Path, dst: &Path) {
+fn copy_overwrite_submodule_folder(from: &Path, to: &Path) {
+    let from_src = from.join("src");
     assert!(
-        src.is_dir(),
-        "Directory {src:?} does not exist. Try: git submodule update --init",
+        from_src.is_dir(),
+        "Directory {from_src:?} does not exist. Try: git submodule update --init",
     );
-    if dst.exists() {
-        fs::remove_dir_all(dst).unwrap();
+    if to.exists() {
+        fs::remove_dir_all(to).unwrap();
     }
-    fs::create_dir_all(dst).unwrap();
+    fs::create_dir_all(to).unwrap();
     fs_extra::dir::copy(
-        src,
-        dst,
+        from,
+        to,
         &fs_extra::dir::CopyOptions::new().content_only(true),
     )
     .unwrap();
