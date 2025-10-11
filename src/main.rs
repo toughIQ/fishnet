@@ -1,4 +1,4 @@
-#![forbid(unsafe_code)]
+#![deny(unsafe_code)]
 
 mod api;
 mod assets;
@@ -24,7 +24,6 @@ use std::{
 
 use reqwest::Client;
 use shell_escape::escape;
-use thread_priority::{ThreadPriority, set_current_thread_priority};
 use tokio::{
     signal,
     sync::{mpsc, oneshot},
@@ -165,7 +164,7 @@ async fn run(opt: Opt, client: &Client, logger: &Logger) {
     match opt.cpu_priority.unwrap_or_default() {
         CpuPriority::Unchanged => (),
         CpuPriority::Min => {
-            if let Err(err) = set_current_thread_priority(ThreadPriority::Min) {
+            if let Err(err) = set_current_process_min_priority() {
                 logger.warn(&format!("Failed to decrease CPU priority: {err:?}"));
             }
         }
@@ -424,6 +423,38 @@ fn exec(command: &mut process::Command) -> io::Error {
         Ok(_) => process::exit(0),
         Err(err) => return err,
     }
+}
+
+#[cfg(unix)]
+#[allow(unsafe_code)]
+fn set_current_process_min_priority() -> io::Result<()> {
+    use libc::{PRIO_PROCESS, setpriority};
+
+    // On Linux the priority range is -20 (highest) to 19 (lowest). On other
+    // Unixes the range is -20 to 20.
+    #[cfg(target_os = "linux")]
+    const MINIMUM_PRIORITY_NICENESS: libc::c_int = 19;
+    #[cfg(not(target_os = "linux"))]
+    const MINIMUM_PRIORITY_NICENESS: libc::c_int = 20;
+
+    if unsafe { setpriority(PRIO_PROCESS, 0, MINIMUM_PRIORITY_NICENESS) != 0 } {
+        return Err(io::Error::last_os_error());
+    }
+
+    Ok(())
+}
+
+#[cfg(windows)]
+#[allow(unsafe_code)]
+fn set_current_process_min_priority() -> windows::core::Result<()> {
+    use windows::Win32::System::Threading::{
+        BELOW_NORMAL_PRIORITY_CLASS, GetCurrentProcess, SetPriorityClass,
+    };
+
+    // BELOW_NORMAL_PRIORITY_CLASS is the lowest priority that won't completely
+    // starve tasks of CPU time on high loads. The lowest IDLE_PRIORITY_CLASS
+    // is stricter than Linux's nice 19!
+    unsafe { SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS) }
 }
 
 fn configure_client() -> Client {
