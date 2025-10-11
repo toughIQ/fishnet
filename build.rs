@@ -20,12 +20,12 @@ const EVAL_FILE_SMALL_NAME: &str = "nn-37f18f62d772.nnue";
 
 static SF_SOURCE_FILES: LazyLock<Vec<PathBuf>> = LazyLock::new(|| {
     assert!(
-        Path::new("Stockfish").is_dir(),
-        "Directory Stockfish does not exist. Try: git submodule update --init",
+        Path::new("Stockfish").join("src").is_dir(),
+        "Directory Stockfish/src does not exist. Try: git submodule update --init",
     );
     assert!(
-        Path::new("Fairy-Stockfish").is_dir(),
-        "Directory Fairy-Stockfish does not exist. Try: git submodule update --init",
+        Path::new("Fairy-Stockfish").join("src").is_dir(),
+        "Directory Fairy-Stockfish/src does not exist. Try: git submodule update --init",
     );
 
     [
