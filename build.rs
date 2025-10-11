@@ -49,7 +49,7 @@ static SF_SOURCE_FILES: LazyLock<Vec<PathBuf>> = LazyLock::new(|| {
 
 static SF_BUILD_PATH: LazyLock<PathBuf> = LazyLock::new(|| {
     let mut hasher = DefaultHasher::new();
-    (&*SF_SOURCE_FILES).hash(&mut hasher);
+    (*SF_SOURCE_FILES).hash(&mut hasher);
     OUT_PATH.join(hasher.finish().to_string())
 });
 
