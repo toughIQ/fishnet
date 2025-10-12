@@ -5,7 +5,7 @@ use std::{
     fs::{self, File},
     hash::{DefaultHasher, Hash as _, Hasher as _},
     io::Write,
-    path::{Path, PathBuf},
+    path::{self, Path, PathBuf},
     process::Command,
     sync::LazyLock,
 };
@@ -337,14 +337,14 @@ impl Target {
             println!("cargo:warning=Building {exe} without profile-guided optimization");
         }
 
-        let (comp, default_cxx, default_make) = if windows {
-            ("mingw", "g++", "mingw32-make")
+        let (comp, default_cxx, sccache_wrapper, default_make) = if windows {
+            ("mingw", "g++", "sccache-g++.bat", "mingw32-make")
         } else if target_os == "linux" {
-            ("gcc", "g++", "make")
+            ("gcc", "g++", "sccache-g++", "make")
         } else if target_os == "freebsd" {
-            ("clang", "clang++", "gmake")
+            ("clang", "clang++", "sccache-clang++", "gmake")
         } else {
-            ("clang", "clang++", "make")
+            ("clang", "clang++", "sccache-clang++", "make")
         };
 
         let make = env::var("MAKE").unwrap_or_else(|_| default_make.to_owned());
@@ -363,7 +363,22 @@ impl Target {
             "$(MAKE) --version"
         );
 
-        let cxx = env::var("CXX").unwrap_or_else(|_| default_cxx.to_owned());
+        let cxx = env::var("CXX").unwrap_or_else(|_| {
+            if Command::new("sccache")
+                .arg("--version")
+                .status()
+                .map_or(false, |status| status.success())
+            {
+                path::absolute("scripts")
+                    .unwrap()
+                    .join(sccache_wrapper)
+                    .to_str()
+                    .unwrap()
+                    .to_owned()
+            } else {
+                default_cxx.to_owned()
+            }
+        });
 
         assert!(
             Command::new(&cxx)
@@ -402,6 +417,7 @@ impl Target {
         assert!(
             Command::new(&make)
                 .current_dir(src_path)
+                .env("GIT_DIR", "/var/empty")
                 .env("MAKEFLAGS", env::var("CARGO_MAKEFLAGS").unwrap())
                 .env(
                     "CXXFLAGS",

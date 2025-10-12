@@ -106,7 +106,7 @@ jobs:
         continue-on-error: true
       - run: tar xf intel-sde/sde-external-9.0.0-2021-11-07-win.tar.xz && echo SDE_PATH=$(cygpath -u $GITHUB_WORKSPACE)/sde-external-9.0.0-2021-11-07-win/sde.exe | tee $GITHUB_ENV
         if: steps.sde.outcome == 'success'
-      - run: CXX=$PWD/scripts/sccache-g++.bat cargo build --release --target x86_64-pc-windows-gnu -vv
+      - run: cargo build --release --target x86_64-pc-windows-gnu -vv
       - run: mv target/x86_64-pc-windows-gnu/release/fishnet.exe fishnet-x86_64-pc-windows-gnu-unsigned.exe
       - uses: actions/upload-artifact@v4
         id: upload-unsigned-artifact
@@ -135,7 +135,7 @@ jobs:
       - run: SCCACHE_CACHE_SIZE=1G SCCACHE_DIR=${{ runner.temp }}/sccache sccache --start-server
       - run: sccache --show-stats
       - run: cargo install --force cargo-auditable
-      - run: CXX=$PWD/scripts/sccache-clang++ cargo auditable build --release -vv
+      - run: cargo auditable build --release -vv
       - run: mv target/release/fishnet fishnet-x86_64-apple-darwin
       - uses: actions/upload-artifact@v4
         with:
@@ -166,7 +166,7 @@ jobs:
       - run: SCCACHE_CACHE_SIZE=1G SCCACHE_DIR=${{ runner.temp }}/sccache sccache --start-server
       - run: sccache --show-stats
       - run: cargo install --force cargo-auditable
-      - run: CXX=$PWD/scripts/sccache-clang++ cargo auditable build --release --target aarch64-apple-darwin -vv
+      - run: cargo auditable build --release --target aarch64-apple-darwin -vv
       - run: mv target/aarch64-apple-darwin/release/fishnet fishnet-aarch64-apple-darwin
       - uses: actions/upload-artifact@v4
         with:
