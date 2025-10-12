@@ -23,7 +23,9 @@ jobs:
         id: cache
         with:
           path: ${{ runner.temp }}/cache-mount
-          key: cache-mount-${{ hashFiles('Dockerfile') }}
+          key: cache-mount-${{ github.run-id }}
+          restore-keys: |
+            cache-mount
       - uses: reproducible-containers/buildkit-cache-dance@5b81f4d29dc8397a7d341dba3aeecc7ec54d6361 # v3.2.0
         with:
           builder: ${{ steps.setup-buildx.outputs.name }}
@@ -103,7 +105,9 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/sccache
-          key: sccache-windows-x86-64
+          key: sccache-windows-x86-64-${{ github.run_id }}
+          restore-keys: |
+            sccache-windows-x86-64
       - run: SCCACHE_CACHE_SIZE=1G SCCACHE_DIR=${{ runner.temp }}/sccache sccache --start-server
       - run: sccache --show-stats
       - uses: actions/checkout@v5
@@ -141,7 +145,9 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/sccache
-          key: macos-x86-64-sccache
+          key: macos-x86-64-sccache-${{ github.run_id }}
+          restore-keys: |
+            macos-x86-64-sccache
       - run: SCCACHE_CACHE_SIZE=1G SCCACHE_DIR=${{ runner.temp }}/sccache sccache --start-server
       - run: sccache --show-stats
       - run: cargo install --force cargo-auditable
@@ -172,7 +178,9 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/sccache
-          key: macos-aarch64-sccache
+          key: macos-aarch64-sccache-${{ github.run_id }}
+          restore-keys: |
+            macos-aarch64-sccache
       - run: SCCACHE_CACHE_SIZE=1G SCCACHE_DIR=${{ runner.temp }}/sccache sccache --start-server
       - run: sccache --show-stats
       - run: cargo install --force cargo-auditable
