@@ -4,7 +4,10 @@ ENV SCCACHE_DIR=/sccache
 ENV SCCACHE_CACHE_SIZE=1G
 WORKDIR /fishnet
 COPY . .
-RUN --mount=type=cache,target=/sccache cargo auditable build --release -vv
+RUN --mount=type=cache,target=/sccache \
+    sccache --show-stats; \
+    cargo auditable build --release -vv; \
+    sccache --show-stats
 
 FROM docker.io/alpine:3
 RUN apk --no-cache add bash

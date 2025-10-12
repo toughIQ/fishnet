@@ -16,15 +16,25 @@ jobs:
         with:
           platforms: arm64
       - uses: docker/setup-buildx-action@v3
+        id: setup-buildx
         with:
           platforms: linux/amd64,linux/arm64
+      - uses: actions/cache@v4
+        id: cache
+        with:
+          path: ${{ runner.temp }}/cache-mount
+          key: cache-mount-${{ hashFiles('Dockerfile') }}
+      - uses: reproducible-containers/buildkit-cache-dance@5b81f4d29dc8397a7d341dba3aeecc7ec54d6361 # v3.2.0
+        with:
+          builder: ${{ steps.setup-buildx.outputs.name }}
+          cache-dir: ${{ runner.temp }}/cache-mount
       - uses: docker/build-push-action@v5
         id: docker_build_amd64
         with:
           context: .
           platforms: amd64
           cache-from: type=gha
-          cache-to: type=gha
+          cache-to: type=gha,mode=max
           load: true
       - uses: docker/build-push-action@v5
         id: docker_build_arm64
@@ -32,7 +42,7 @@ jobs:
           context: .
           platforms: arm64
           cache-from: type=gha
-          cache-to: type=gha
+          cache-to: type=gha,mode=max
           load: true
       - uses: docker/login-action@v3
         with:
