@@ -16,15 +16,27 @@ jobs:
         with:
           platforms: arm64
       - uses: docker/setup-buildx-action@v3
+        id: setup-buildx
         with:
           platforms: linux/amd64,linux/arm64
+      - uses: actions/cache@v4
+        id: cache
+        with:
+          path: ${{ runner.temp }}/cache-mount
+          key: cache-mount-${{ github.run-id }}
+          restore-keys: |
+            cache-mount
+      - uses: reproducible-containers/buildkit-cache-dance@5b81f4d29dc8397a7d341dba3aeecc7ec54d6361 # v3.2.0
+        with:
+          builder: ${{ steps.setup-buildx.outputs.name }}
+          cache-dir: ${{ runner.temp }}/cache-mount
       - uses: docker/build-push-action@v5
         id: docker_build_amd64
         with:
           context: .
           platforms: amd64
           cache-from: type=gha
-          cache-to: type=gha
+          cache-to: type=gha,mode=max
           load: true
       - uses: docker/build-push-action@v5
         id: docker_build_arm64
@@ -32,7 +44,7 @@ jobs:
           context: .
           platforms: arm64
           cache-from: type=gha
-          cache-to: type=gha
+          cache-to: type=gha,mode=max
           load: true
       - uses: docker/login-action@v3
         with:
@@ -79,15 +91,25 @@ jobs:
     defaults:
       run:
         shell: msys2 {0}
+    env:
+      RUSTC_WRAPPER: sccache
     steps:
       - uses: msys2/setup-msys2@v2
         with:
           msystem: mingw64
           update: true
-          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-rust mingw-w64-x86_64-make tar
+          install: mingw-w64-x86_64-sccache mingw-w64-x86_64-gcc mingw-w64-x86_64-rust mingw-w64-x86_64-make tar
       - uses: actions/checkout@v5
         with:
           submodules: true
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/sccache
+          key: sccache-windows-x86-64-${{ github.run_id }}
+          restore-keys: |
+            sccache-windows-x86-64
+      - run: SCCACHE_CACHE_SIZE=250M SCCACHE_DIR=${{ runner.temp }}/sccache sccache --start-server
+      - run: sccache --show-stats
       - uses: actions/checkout@v5
         with:
           repository: lichess-org/intel-sde
@@ -105,15 +127,29 @@ jobs:
         with:
           name: fishnet-x86_64-pc-windows-gnu-unsigned
           path: fishnet-x86_64-pc-windows-gnu-unsigned.exe
+      - run: sccache --stop-server
   macos-x86-64:
     runs-on: macos-13
     permissions:
       contents: read
+    env:
+      RUSTC_WRAPPER: sccache
     steps:
       - uses: actions/checkout@v5
         with:
           submodules: true
       - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: sccache
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/sccache
+          key: macos-x86-64-sccache-${{ github.run_id }}
+          restore-keys: |
+            macos-x86-64-sccache
+      - run: SCCACHE_CACHE_SIZE=250M SCCACHE_DIR=${{ runner.temp }}/sccache sccache --start-server
+      - run: sccache --show-stats
       - run: cargo install --force cargo-auditable
       - run: cargo auditable build --release -vv
       - run: mv target/release/fishnet fishnet-x86_64-apple-darwin
@@ -121,12 +157,14 @@ jobs:
         with:
           name: fishnet-x86_64-apple-darwin
           path: fishnet-x86_64-apple-darwin
+      - run: sccache --stop-server
   macos-aarch64:
     runs-on: macos-13
     permissions:
       contents: read
     env:
       CXXFLAGS: -target arm64-apple-macos11
+      RUSTC_WRAPPER: sccache
     steps:
       - uses: actions/checkout@v5
         with:
@@ -134,6 +172,17 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-darwin
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: sccache
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/sccache
+          key: macos-aarch64-sccache-${{ github.run_id }}
+          restore-keys: |
+            macos-aarch64-sccache
+      - run: SCCACHE_CACHE_SIZE=250M SCCACHE_DIR=${{ runner.temp }}/sccache sccache --start-server
+      - run: sccache --show-stats
       - run: cargo install --force cargo-auditable
       - run: cargo auditable build --release --target aarch64-apple-darwin -vv
       - run: mv target/aarch64-apple-darwin/release/fishnet fishnet-aarch64-apple-darwin
@@ -141,6 +190,7 @@ jobs:
         with:
           name: fishnet-aarch64-apple-darwin
           path: fishnet-aarch64-apple-darwin
+      - run: sccache --stop-server
   windows-x86-64_signed:
     runs-on: ubuntu-latest
     permissions:

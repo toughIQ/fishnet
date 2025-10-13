@@ -6,12 +6,15 @@ See [README.md](/README.md).
 
 ## From source
 
-Assuming you have [a recent Rust toolchain](https://rustup.rs/), a C++ compiler, strip, and make installed:
+Requires [a recent Rust toolchain](https://rustup.rs/), a C++ compiler, `strip`,
+and `make`.
+
+`sccache` recommended for repeated builds.
 
 ```sh
 git clone --recursive https://github.com/lichess-org/fishnet.git
 cd fishnet
-RUSTFLAGS="-C target-cpu=native" cargo run --release -vv --
+RUSTC_WRAPPER=sccache RUSTFLAGS="-C target-cpu=native" cargo run --release -vv --
 ```
 
 To update, do not forget `git submodule update` before building again:
@@ -19,7 +22,7 @@ To update, do not forget `git submodule update` before building again:
 ```sh
 git pull
 git submodule update
-RUSTFLAGS="-C target-cpu=native" cargo run --release -vv --
+RUSTC_WRAPPER=sccache RUSTFLAGS="-C target-cpu=native" cargo run --release -vv --
 ```
 
 ## Docker
@@ -34,7 +37,7 @@ Per default, runs with `n-1` cores, alternatively, specify the number of cores t
 docker run -it --name fishnet -e KEY=abcdef -e CORES=n niklasf/fishnet:2
 ```
 
-For the full list of configurable environment variables, see [docker-entrypoint.sh](/docker-entrypoint.sh).
+For the full list of configurable environment variables, see [docker-entrypoint.sh](/scripts/docker-entrypoint.sh).
 
 To update, since we named the image `fishnet`:
 

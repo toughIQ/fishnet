@@ -2,7 +2,6 @@
 
 [![crates.io](https://img.shields.io/crates/v/fishnet.svg)](https://crates.io/crates/fishnet)
 [![Docker](https://img.shields.io/docker/v/niklasf/fishnet?label=docker&sort=semver)](https://hub.docker.com/r/niklasf/fishnet)
-[![Build](https://github.com/lichess-org/fishnet/workflows/Build/badge.svg)](https://github.com/lichess-org/fishnet/actions?query=workflow%3ABuild)
 
 ## Installation
 
