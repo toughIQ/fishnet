@@ -108,7 +108,7 @@ jobs:
           key: sccache-windows-x86-64-${{ github.run_id }}
           restore-keys: |
             sccache-windows-x86-64
-      - run: SCCACHE_CACHE_SIZE=1G SCCACHE_DIR=${{ runner.temp }}/sccache sccache --start-server
+      - run: SCCACHE_CACHE_SIZE=250M SCCACHE_DIR=${{ runner.temp }}/sccache sccache --start-server
       - run: sccache --show-stats
       - uses: actions/checkout@v5
         with:
@@ -148,7 +148,7 @@ jobs:
           key: macos-x86-64-sccache-${{ github.run_id }}
           restore-keys: |
             macos-x86-64-sccache
-      - run: SCCACHE_CACHE_SIZE=1G SCCACHE_DIR=${{ runner.temp }}/sccache sccache --start-server
+      - run: SCCACHE_CACHE_SIZE=250M SCCACHE_DIR=${{ runner.temp }}/sccache sccache --start-server
       - run: sccache --show-stats
       - run: cargo install --force cargo-auditable
       - run: cargo auditable build --release -vv
@@ -181,7 +181,7 @@ jobs:
           key: macos-aarch64-sccache-${{ github.run_id }}
           restore-keys: |
             macos-aarch64-sccache
-      - run: SCCACHE_CACHE_SIZE=1G SCCACHE_DIR=${{ runner.temp }}/sccache sccache --start-server
+      - run: SCCACHE_CACHE_SIZE=250M SCCACHE_DIR=${{ runner.temp }}/sccache sccache --start-server
       - run: sccache --show-stats
       - run: cargo install --force cargo-auditable
       - run: cargo auditable build --release --target aarch64-apple-darwin -vv
