@@ -1,4 +1,4 @@
-FROM docker.io/niklasf/fishnet-builder:12 AS builder
+FROM docker.io/niklasf/fishnet-builder:10 AS builder
 ENV RUSTC_WRAPPER=/usr/bin/sccache
 ENV SCCACHE_DIR=/sccache
 ENV SCCACHE_CACHE_SIZE=250M
