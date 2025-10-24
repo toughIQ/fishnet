@@ -338,19 +338,31 @@ impl Target {
             println!("cargo:warning=Building {exe} without profile-guided optimization");
         }
 
-        let (default_comp, default_cxx, sccache_wrapper, default_make) = if windows {
-            ("mingw", "g++", "sccache-g++.bat", "mingw32-make")
-        } else if target_os == "linux" {
-            ("gcc", "g++", "sccache-g++", "make")
-        } else if target_os == "freebsd" {
-            ("clang", "clang++", "sccache-clang++", "gmake")
-        } else {
-            ("clang", "clang++", "sccache-clang++", "make")
+        let comp = env::var("COMP").unwrap_or_else(|_| {
+            if windows {
+                "mingw".to_owned()
+            } else if target_os == "linux" {
+                "gcc".to_owned()
+            } else {
+                "clang".to_owned()
+            }
+        });
+
+        let (default_cxx, sccache_wrapper) = match &comp[..] {
+            "mingw" => ("g++", "sccache-g++.bat"),
+            "gcc" => ("g++", "sccache-g++"),
+            _ => ("clang++", "sccache-clang++"),
         };
 
-        let comp = env::var("COMP").unwrap_or_else(|_| default_comp.to_owned());
-
-        let make = env::var("MAKE").unwrap_or_else(|_| default_make.to_owned());
+        let make = env::var("MAKE").unwrap_or_else(|_| {
+            if windows {
+                "mingw32-make".to_owned()
+            } else if target_os == "freebsd" {
+                "gmake".to_owned()
+            } else {
+                "make".to_owned()
+            }
+        });
 
         assert!(
             Command::new(&make)
@@ -370,7 +382,7 @@ impl Target {
             if Command::new("sccache")
                 .arg("--version")
                 .status()
-                .map_or(false, |status| status.success())
+                .is_ok_and(|status| status.success())
             {
                 path::absolute("scripts")
                     .unwrap()
