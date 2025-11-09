@@ -1,6 +1,6 @@
 use std::{
     cmp::{max, min},
-    fmt,
+    env, fmt,
     fs::{File, OpenOptions},
     io,
     io::{Read as _, Seek as _, Write as _},
@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use crate::configure::StatsOpt;
 
 fn default_stats_file() -> Option<PathBuf> {
-    home::home_dir().map(|dir| dir.join(".fishnet-stats"))
+    env::home_dir().map(|dir| dir.join(".fishnet-stats"))
 }
 
 pub struct StatsRecorder {
